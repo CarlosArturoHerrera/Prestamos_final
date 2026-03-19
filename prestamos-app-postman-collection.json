@@ -1,0 +1,167 @@
+{
+  "info": {
+    "name": "Prestamos App API",
+    "description": "Colección de APIs de la app de préstamos",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" }
+  ],
+  "item": [
+    {
+      "name": "Clientes",
+      "item": [
+        {
+          "name": "Listar clientes",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/clients",
+            "description": "Opcional: ?search=texto para buscar por nombre o segmento"
+          }
+        },
+        {
+          "name": "Crear cliente",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Juan Pérez\",\n  \"phone\": \"8095551234\",\n  \"email\": \"juan@email.com\",\n  \"segment\": \"Premium\",\n  \"location\": \"Santo Domingo\",\n  \"notes\": \"Cliente referido\"\n}"
+            },
+            "url": "{{baseUrl}}/api/clients/create"
+          }
+        },
+        {
+          "name": "Actualizar cliente",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"name\": \"Juan Pérez\",\n  \"phone\": \"8095551234\",\n  \"email\": \"juan@email.com\",\n  \"segment\": \"Premium\",\n  \"location\": \"Santo Domingo\",\n  \"notes\": \"Notas actualizadas\"\n}"
+            },
+            "url": "{{baseUrl}}/api/clients/update"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Segmentos",
+      "item": [
+        {
+          "name": "Listar segmentos",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/segments"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Préstamos",
+      "item": [
+        {
+          "name": "Listar préstamos",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/loans"
+          }
+        },
+        {
+          "name": "Crear préstamo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"uuid-del-cliente\",\n  \"amount\": 50000,\n  \"rate\": 12,\n  \"termMonths\": 12,\n  \"status\": \"activo\",\n  \"startDate\": \"2025-03-17\",\n  \"paymentDays\": [\"15\", \"30\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/loans/create"
+          }
+        },
+        {
+          "name": "Actualizar préstamo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"PR-1234567890\",\n  \"amount\": 60000,\n  \"rate\": 10,\n  \"termMonths\": 18,\n  \"status\": \"aprobado\",\n  \"startDate\": \"2025-03-17\",\n  \"paymentDays\": [\"15\", \"30\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/loans/update"
+          }
+        },
+        {
+          "name": "Eliminar préstamo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanId\": \"PR-1234567890\"\n}"
+            },
+            "url": "{{baseUrl}}/api/loans/delete"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notificaciones",
+      "item": [
+        {
+          "name": "Listar notificaciones",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notifications"
+          }
+        },
+        {
+          "name": "Enviar notificación",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanId\": \"PR-1234567890\",\n  \"clientId\": \"uuid-del-cliente\",\n  \"phone\": \"+18095551234\",\n  \"subject\": \"Recordatorio de pago\",\n  \"content\": \"Tu cuota vence el 15 de marzo.\",\n  \"type\": \"whatsapp\"\n}"
+            },
+            "url": "{{baseUrl}}/api/notifications/send"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Clientes por segmento",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/dashboard/clients-segment" }
+        },
+        {
+          "name": "Préstamos por segmento",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/dashboard/loans-segment" }
+        },
+        {
+          "name": "Notificaciones por segmento",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/dashboard/notifications-segment" }
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "Chat IA",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"¿Cuántos préstamos activos hay?\" }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/chat"
+          }
+        }
+      ]
+    }
+  ]
+}
