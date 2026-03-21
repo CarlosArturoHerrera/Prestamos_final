@@ -1,17 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ShieldCheck, Sparkles } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { isSupabaseConfiguredOnClient } from "@/lib/env-public"
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
 import { toast } from "sonner"
 
 export default function LoginPage() {
   const router = useRouter()
+  const [configRedirect, setConfigRedirect] = useState(false)
+  useEffect(() => {
+    setConfigRedirect(new URLSearchParams(window.location.search).get("config") === "1")
+  }, [])
+  const hasSupabaseEnv = isSupabaseConfiguredOnClient()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
@@ -23,6 +30,10 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+      if (!hasSupabaseEnv) {
+        toast.error("Falta configurar Supabase en el servidor (variables NEXT_PUBLIC_*)")
+        return
+      }
       const supabase = createSupabaseBrowserClient()
       const { error } = await supabase.auth.signInWithPassword({
         email: formData.email,
@@ -36,8 +47,9 @@ export default function LoginPage() {
         router.push("/")
         router.refresh()
       }
-    } catch {
-      toast.error("Error al iniciar sesión")
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error al iniciar sesión"
+      toast.error(msg.includes("Faltan NEXT") ? "Configura Supabase (variables NEXT_PUBLIC_*) en el hosting." : msg)
     } finally {
       setIsLoading(false)
     }
@@ -47,6 +59,19 @@ export default function LoginPage() {
     <div className="page-shell relative flex min-h-screen items-center justify-center overflow-hidden p-4">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(96,165,250,0.14),transparent_24%)]" />
       <Card className="hero-surface relative w-full max-w-md border-primary/18">
+        {(configRedirect || !hasSupabaseEnv) && (
+          <div className="px-6 pt-4">
+            <Alert variant="destructive">
+              <AlertTitle>Configuración de Supabase</AlertTitle>
+              <AlertDescription className="text-xs">
+                En Vercel (o tu hosting) debes definir{" "}
+                <code className="rounded bg-muted px-1">NEXT_PUBLIC_SUPABASE_URL</code> y{" "}
+                <code className="rounded bg-muted px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{" "}
+                y volver a desplegar. Sin eso no hay sesión ni datos.
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
         <CardHeader className="space-y-4 text-center">
           <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-primary/20 bg-linear-to-br from-primary/16 to-secondary/18 text-primary shadow-[0_18px_38px_rgba(59,130,246,0.18)]">
             <ShieldCheck className="size-7" />
@@ -90,7 +115,7 @@ export default function LoginPage() {
                 autoComplete="current-password"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading || !hasSupabaseEnv}>
               {isLoading ? "Cargando..." : "Entrar"}
             </Button>
           </form>

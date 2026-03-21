@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 import { formatRD } from "@/lib/format-currency"
 
 export default function PrestamoDetallePage() {
@@ -29,13 +30,18 @@ export default function PrestamoDetallePage() {
   const [regancheForm, setRegancheForm] = useState({ monto: "", notas: "" })
 
   const load = useCallback(async () => {
-    const r = await fetch(`/api/prestamos/${id}`)
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error")
+    const res = await fetchApi<{
+      prestamo: Record<string, unknown>
+      abonos: Record<string, unknown>[]
+      intereses_atrasados: Record<string, unknown>[]
+      reganches: Record<string, unknown>[]
+    }>(`/api/prestamos/${id}`)
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
       return
     }
-    setData(j)
+    setData(res.data)
   }, [id])
 
   useEffect(() => {
@@ -43,14 +49,14 @@ export default function PrestamoDetallePage() {
   }, [load])
 
   const registrarAbono = async () => {
-    const r = await fetch(`/api/prestamos/${id}/abonos`, {
+    const res = await fetchApi(`/api/prestamos/${id}/abonos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(abonoForm),
     })
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error")
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
       return
     }
     toast.success("Abono registrado")
@@ -74,14 +80,14 @@ export default function PrestamoDetallePage() {
   }
 
   const aplicarIntereses = async () => {
-    const r = await fetch(`/api/prestamos/${id}/aplicar-interes-atrasado`, {
+    const res = await fetchApi(`/api/prestamos/${id}/aplicar-interes-atrasado`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     })
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error")
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
       return
     }
     toast.success("Intereses aplicados al capital")

@@ -12,7 +12,7 @@ import {
   UserCircle,
   Users,
 } from "lucide-react"
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
+import { createSupabaseBrowserClient, isSupabaseConfiguredOnClient } from "@/lib/supabase/browser"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -31,10 +31,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   const logout = async () => {
-    const supabase = createSupabaseBrowserClient()
-    await supabase.auth.signOut()
-    router.push("/login")
-    router.refresh()
+    try {
+      if (isSupabaseConfiguredOnClient()) {
+        const supabase = createSupabaseBrowserClient()
+        await supabase.auth.signOut({ scope: "local" })
+      }
+    } catch {
+      /* sin env o error de red: igual salimos al login */
+    } finally {
+      router.push("/login")
+      router.refresh()
+    }
   }
 
   return (

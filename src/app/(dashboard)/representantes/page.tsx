@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 
 type Rep = {
   id: number
@@ -53,10 +54,14 @@ export default function RepresentantesPage() {
   const load = useCallback(async () => {
     setLoading(true)
     const q = new URLSearchParams({ search, pageSize: "100" })
-    const r = await fetch(`/api/representantes?${q}`)
-    const j = await r.json()
-    if (!r.ok) toast.error(j.error ?? "Error")
-    else setRows(j.data ?? [])
+    const res = await fetchApi<{ data: Rep[] }>(`/api/representantes?${q}`)
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
+      setRows([])
+    } else {
+      setRows(res.data.data ?? [])
+    }
     setLoading(false)
   }, [search])
 
@@ -65,23 +70,23 @@ export default function RepresentantesPage() {
   }, [load])
 
   useEffect(() => {
-    fetch("/api/profile")
-      .then((r) => r.json())
-      .then((p) => setRole(p.role))
-      .catch(() => {})
+    void (async () => {
+      const res = await fetchApi<{ role: string }>("/api/profile")
+      if (res.ok) setRole(res.data.role)
+    })()
   }, [])
 
   const save = async () => {
     const method = editing ? "PUT" : "POST"
     const url = editing ? `/api/representantes/${editing.id}` : "/api/representantes"
-    const r = await fetch(url, {
+    const res = await fetchApi(url, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     })
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error")
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
       return
     }
     toast.success("Guardado")
@@ -92,10 +97,11 @@ export default function RepresentantesPage() {
 
   const remove = async () => {
     if (!deleteId) return
-    const r = await fetch(`/api/representantes/${deleteId}`, { method: "DELETE" })
-    const j = await r.json()
-    if (!r.ok) toast.error(j.error ?? "Error")
-    else {
+    const res = await fetchApi(`/api/representantes/${deleteId}`, { method: "DELETE" })
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
+    } else {
       toast.success("Eliminado")
       load()
     }

@@ -6,9 +6,16 @@ export async function proxy(request: NextRequest) {
     request,
   })
 
+  const path = request.nextUrl.pathname
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // Sin variables en el host (ej. Vercel), antes se dejaba pasar a "/" sin sesión → panel "cargando" y sin login.
   if (!url || !key) {
+    if (!path.startsWith("/login") && !path.startsWith("/api")) {
+      return NextResponse.redirect(new URL("/login?config=1", request.url))
+    }
     return response
   }
 
@@ -34,8 +41,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  const path = request.nextUrl.pathname
 
   if (path.startsWith("/login")) {
     if (user) {

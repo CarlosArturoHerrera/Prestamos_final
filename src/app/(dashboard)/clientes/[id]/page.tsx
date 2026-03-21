@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 import { formatRD } from "@/lib/format-currency"
 
 export default function ClienteDetallePage() {
@@ -15,13 +16,13 @@ export default function ClienteDetallePage() {
   const [data, setData] = useState<Record<string, unknown> | null>(null)
 
   const load = useCallback(async () => {
-    const r = await fetch(`/api/clientes/${id}`)
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error")
+    const res = await fetchApi<Record<string, unknown>>(`/api/clientes/${id}`)
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
       return
     }
-    setData(j)
+    setData(res.data)
   }, [id])
 
   useEffect(() => {

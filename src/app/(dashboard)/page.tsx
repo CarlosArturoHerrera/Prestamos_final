@@ -1,9 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 import { AlertCircle, CalendarClock, PiggyBank, Users } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 import { formatRD } from "@/lib/format-currency"
+import { isSupabaseConfiguredOnClient } from "@/lib/env-public"
 
 type Stats = {
   clientes_activos: number
@@ -21,27 +27,71 @@ type Stats = {
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    if (!isSupabaseConfiguredOnClient()) {
+      setError(
+        "Faltan variables NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY en el despliegue. Configúralas en Vercel y vuelve a publicar.",
+      )
+      setLoading(false)
+      return
+    }
+
+    const res = await fetchApi<Stats>("/api/dashboard/stats")
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      setError(res.message)
+      setLoading(false)
+      return
+    }
+    setStats(res.data)
+    setLoading(false)
+  }, [])
 
   useEffect(() => {
-    fetch("/api/dashboard/stats")
-      .then((r) => {
-        if (!r.ok) throw new Error("No se pudo cargar el panel")
-        return r.json()
-      })
-      .then(setStats)
-      .catch((e: Error) => setError(e.message))
-  }, [])
+    void load()
+  }, [load])
+
+  if (loading && !error) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-4 w-96 max-w-full" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-28 rounded-xl" />
+          <Skeleton className="h-28 rounded-xl" />
+          <Skeleton className="h-28 rounded-xl" />
+        </div>
+        <Skeleton className="h-48 rounded-xl" />
+      </div>
+    )
+  }
 
   if (error) {
     return (
-      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
-        {error}
+      <div className="space-y-4">
+        <Alert variant="destructive">
+          <AlertTitle>No se pudo cargar el panel</AlertTitle>
+          <AlertDescription className="whitespace-pre-wrap text-sm">{error}</AlertDescription>
+        </Alert>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={() => void load()}>
+            Reintentar
+          </Button>
+          <Button type="button" asChild variant="secondary">
+            <Link href="/login">Ir al inicio de sesión</Link>
+          </Button>
+        </div>
       </div>
     )
   }
 
   if (!stats) {
-    return <div className="text-sm text-muted-foreground">Cargando panel…</div>
+    return null
   }
 
   const kpis = [

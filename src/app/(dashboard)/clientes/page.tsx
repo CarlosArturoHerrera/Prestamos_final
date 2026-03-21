@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 
 type ClienteRow = {
   id: number
@@ -61,10 +62,14 @@ export default function ClientesPage() {
   const load = useCallback(async () => {
     setLoading(true)
     const q = new URLSearchParams({ search, pageSize: "100" })
-    const r = await fetch(`/api/clientes?${q}`)
-    const j = await r.json()
-    if (!r.ok) toast.error(j.error ?? "Error")
-    else setRows(j.data ?? [])
+    const res = await fetchApi<{ data: ClienteRow[] }>(`/api/clientes?${q}`)
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
+      setRows([])
+    } else {
+      setRows(res.data.data ?? [])
+    }
     setLoading(false)
   }, [search])
 
@@ -73,22 +78,24 @@ export default function ClientesPage() {
   }, [load])
 
   useEffect(() => {
-    fetch("/api/profile")
-      .then((r) => r.json())
-      .then((p) => setRole(p.role))
-      .catch(() => {})
-    fetch("/api/empresas?pageSize=500")
-      .then((r) => r.json())
-      .then((j) => setEmpresas((j.data ?? []).map((e: { id: number; nombre: string }) => e)))
-    fetch("/api/representantes?pageSize=500")
-      .then((r) => r.json())
-      .then((j) => setReps(j.data ?? []))
+    void (async () => {
+      const [p, e, r] = await Promise.all([
+        fetchApi<{ role: string }>("/api/profile"),
+        fetchApi<{ data: { id: number; nombre: string }[] }>("/api/empresas?pageSize=500"),
+        fetchApi<{ data: { id: number; nombre: string; apellido: string }[] }>(
+          "/api/representantes?pageSize=500",
+        ),
+      ])
+      if (p.ok) setRole(p.data.role)
+      if (e.ok) setEmpresas((e.data.data ?? []).map((x) => ({ id: x.id, nombre: x.nombre })))
+      if (r.ok) setReps(r.data.data ?? [])
+    })()
   }, [])
 
   const save = async () => {
     const method = editing ? "PUT" : "POST"
     const url = editing ? `/api/clientes/${editing.id}` : "/api/clientes"
-    const r = await fetch(url, {
+    const res = await fetchApi(url, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -101,9 +108,9 @@ export default function ClientesPage() {
         representanteId: Number(form.representanteId),
       }),
     })
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error")
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
       return
     }
     toast.success("Cliente guardado")
@@ -114,10 +121,11 @@ export default function ClientesPage() {
 
   const remove = async () => {
     if (!deleteId) return
-    const r = await fetch(`/api/clientes/${deleteId}`, { method: "DELETE" })
-    const j = await r.json()
-    if (!r.ok) toast.error(j.error ?? "Error")
-    else {
+    const res = await fetchApi(`/api/clientes/${deleteId}`, { method: "DELETE" })
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
+    } else {
       toast.success("Eliminado")
       load()
     }
@@ -302,19 +310,20 @@ export default function ClientesPage() {
                       size="icon"
                       variant="ghost"
                       onClick={async () => {
-                        const r = await fetch(`/api/clientes/${c.id}`)
-                        const j = await r.json()
-                        if (!r.ok) {
-                          toast.error(j.error ?? "Error")
+                        const res = await fetchApi<Record<string, unknown>>(`/api/clientes/${c.id}`)
+                        if (!res.ok) {
+                          redirectToLoginIfUnauthorized(res.status)
+                          toast.error(res.message)
                           return
                         }
+                        const j = res.data
                         setEditing(c)
                         setForm({
-                          nombre: j.nombre,
-                          apellido: j.apellido,
-                          cedula: j.cedula,
-                          ubicacion: j.ubicacion,
-                          telefono: j.telefono,
+                          nombre: String(j.nombre),
+                          apellido: String(j.apellido),
+                          cedula: String(j.cedula),
+                          ubicacion: String(j.ubicacion),
+                          telefono: String(j.telefono),
                           empresaId: String(j.empresa_id),
                           representanteId: String(j.representante_id),
                         })

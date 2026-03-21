@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 
 type NotifRow = {
   id: number
@@ -35,10 +36,14 @@ export default function NotificacionesPage() {
     const q = new URLSearchParams()
     if (filtroRep) q.set("representanteId", filtroRep)
     if (canal) q.set("canal", canal)
-    const r = await fetch(`/api/notificaciones?${q}`)
-    const j = await r.json()
-    if (!r.ok) toast.error(j.error ?? "Error")
-    else setRows(j.data ?? [])
+    const res = await fetchApi<{ data: NotifRow[] }>(`/api/notificaciones?${q}`)
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
+      setRows([])
+    } else {
+      setRows(res.data.data ?? [])
+    }
   }, [filtroRep, canal])
 
   useEffect(() => {
@@ -60,18 +65,18 @@ export default function NotificacionesPage() {
     if (!form.enviarATodos && form.representanteId) {
       body.representanteIds = [Number(form.representanteId)]
     }
-    const r = await fetch("/api/notificaciones/enviar", {
+    const res = await fetchApi<{ data: { mensaje?: string }[] }>("/api/notificaciones/enviar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     })
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error")
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
       return
     }
-    const first = j.data?.[0]
-    setPreview(first?.mensaje ?? JSON.stringify(j, null, 2))
+    const first = res.data.data?.[0]
+    setPreview(first?.mensaje ?? JSON.stringify(res.data, null, 2))
     toast.message("Vista previa generada")
   }
 
@@ -84,14 +89,14 @@ export default function NotificacionesPage() {
     if (!form.enviarATodos && form.representanteId) {
       body.representanteIds = [Number(form.representanteId)]
     }
-    const r = await fetch("/api/notificaciones/enviar", {
+    const res = await fetchApi("/api/notificaciones/enviar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     })
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error")
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
       return
     }
     toast.success("Proceso de envío terminado")

@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 
 type Empresa = {
   id: number
@@ -54,12 +55,13 @@ export default function EmpresasPage() {
   const load = useCallback(async () => {
     setLoading(true)
     const q = new URLSearchParams({ search, pageSize: "100" })
-    const r = await fetch(`/api/empresas?${q}`)
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error al cargar")
+    const res = await fetchApi<{ data: Empresa[] }>(`/api/empresas?${q}`)
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
+      setRows([])
     } else {
-      setRows(j.data ?? [])
+      setRows(res.data.data ?? [])
     }
     setLoading(false)
   }, [search])
@@ -69,16 +71,16 @@ export default function EmpresasPage() {
   }, [load])
 
   useEffect(() => {
-    fetch("/api/profile")
-      .then((r) => r.json())
-      .then((p) => setRole(p.role))
-      .catch(() => {})
+    void (async () => {
+      const res = await fetchApi<{ role: string }>("/api/profile")
+      if (res.ok) setRole(res.data.role)
+    })()
   }, [])
 
   const save = async () => {
     const method = editing ? "PUT" : "POST"
     const url = editing ? `/api/empresas/${editing.id}` : "/api/empresas"
-    const r = await fetch(url, {
+    const res = await fetchApi(url, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -89,9 +91,9 @@ export default function EmpresasPage() {
         email: form.email || null,
       }),
     })
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error al guardar")
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
       return
     }
     toast.success("Empresa guardada")
@@ -102,10 +104,10 @@ export default function EmpresasPage() {
 
   const remove = async () => {
     if (!deleteId) return
-    const r = await fetch(`/api/empresas/${deleteId}`, { method: "DELETE" })
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "No se pudo eliminar")
+    const res = await fetchApi(`/api/empresas/${deleteId}`, { method: "DELETE" })
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
     } else {
       toast.success("Eliminada")
       load()

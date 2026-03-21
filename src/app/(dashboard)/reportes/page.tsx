@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 import { formatRD } from "@/lib/format-currency"
 import { Pie, PieChart, ResponsiveContainer, Cell, Tooltip } from "recharts"
 
@@ -33,14 +34,16 @@ export default function ReportesPage() {
     if (filtros.fechaDesde) q.set("fechaDesde", filtros.fechaDesde)
     if (filtros.fechaHasta) q.set("fechaHasta", filtros.fechaHasta)
 
-    const r = await fetch(`/api/reportes?${q}`)
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error")
+    const res = await fetchApi<{ kpis: Record<string, string>; data: Record<string, unknown>[] }>(
+      `/api/reportes?${q}`,
+    )
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
       return
     }
-    setKpis(j.kpis)
-    setRows(j.data ?? [])
+    setKpis(res.data.kpis)
+    setRows(res.data.data ?? [])
   }, [filtros])
 
   useEffect(() => {
@@ -48,12 +51,16 @@ export default function ReportesPage() {
   }, [])
 
   useEffect(() => {
-    fetch("/api/empresas?pageSize=500")
-      .then((r) => r.json())
-      .then((j) => setEmpresas(j.data ?? []))
-    fetch("/api/representantes?pageSize=500")
-      .then((r) => r.json())
-      .then((j) => setReps(j.data ?? []))
+    void (async () => {
+      const [e, r] = await Promise.all([
+        fetchApi<{ data: { id: number; nombre: string }[] }>("/api/empresas?pageSize=500"),
+        fetchApi<{ data: { id: number; nombre: string; apellido: string }[] }>(
+          "/api/representantes?pageSize=500",
+        ),
+      ])
+      if (e.ok) setEmpresas(e.data.data ?? [])
+      if (r.ok) setReps(r.data.data ?? [])
+    })()
   }, [])
 
   const exportar = (formato: "pdf" | "excel") => {

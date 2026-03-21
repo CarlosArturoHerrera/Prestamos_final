@@ -40,3 +40,26 @@ Los nuevos usuarios reciben por defecto `OPERADOR` (trigger).
 ## 5. Next.js 16 — Proxy
 
 La sesión de Supabase se renueva en `src/proxy.ts` (antes `middleware`). Asegúrate de tener las variables `NEXT_PUBLIC_*` en el entorno de build y de Vercel/hosting.
+
+## 6. Problemas en producción (Vercel / dominio)
+
+### No aparece login, solo “Cargando panel”
+- Causa habitual: **no están definidas** `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` en **Vercel → Settings → Environment Variables** (y redeploy).
+- Sin esas variables no hay cookies de sesión válidas y las APIs devuelven 401.
+
+### Tablas duplicadas en inglés (`companies`, `representatives`) vs español (`empresas`, `representantes`)
+- La app **solo usa** `empresas` y `representantes`. Si tus datos están en las tablas en inglés, hay que **copiarlos** a las tablas correctas o crearlos de nuevo en el Table Editor.
+
+### `profiles` vacío
+- Cada usuario de **Authentication** debería tener una fila en `profiles` (trigger al registrarse). Si falta, inserta manualmente (reemplaza el UUID):
+
+```sql
+insert into public.profiles (id, role)
+values ('UUID-DEL-USUARIO-AUTH', 'ADMIN')
+on conflict (id) do update set role = excluded.role;
+```
+
+El UUID lo ves en **Authentication → Users**.
+
+### Datos de prueba
+No hace falta llenar todo para que “cargue” el panel: con **env correcto + login + perfil** basta. Para usar formularios necesitas al menos **una empresa** y **un representante** en las tablas `empresas` y `representantes` (puedes crearlos desde la app como ADMIN o en SQL).

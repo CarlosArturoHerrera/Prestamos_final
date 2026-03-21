@@ -10,3 +10,5 @@ export function createSupabaseBrowserClient() {
   }
   return createBrowserClient(url, key)
 }
+
+export { isSupabaseConfiguredOnClient } from "@/lib/env-public"

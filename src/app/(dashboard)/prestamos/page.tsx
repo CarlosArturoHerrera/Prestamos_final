@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 import { formatRD } from "@/lib/format-currency"
 import { cn } from "@/lib/utils"
 
@@ -59,10 +60,14 @@ export default function PrestamosPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const r = await fetch("/api/prestamos")
-    const j = await r.json()
-    if (!r.ok) toast.error(j.error ?? "Error")
-    else setRows(j.data ?? [])
+    const res = await fetchApi<{ data: PrestamoList[] }>("/api/prestamos")
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
+      setRows([])
+    } else {
+      setRows(res.data.data ?? [])
+    }
     setLoading(false)
   }, [])
 
@@ -77,7 +82,7 @@ export default function PrestamosPage() {
   }, [])
 
   const crear = async () => {
-    const r = await fetch("/api/prestamos", {
+    const res = await fetchApi("/api/prestamos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -90,9 +95,9 @@ export default function PrestamosPage() {
         notas: form.notas || null,
       }),
     })
-    const j = await r.json()
-    if (!r.ok) {
-      toast.error(j.error ?? "Error")
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
       return
     }
     toast.success("Préstamo creado")
