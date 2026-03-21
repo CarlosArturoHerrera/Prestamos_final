@@ -1,66 +1,132 @@
 "use client"
 
-import { useState } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LayoutDashboard, Users, Package, BarChart3, Bell } from "lucide-react"
+import { useEffect, useState } from "react"
+import { AlertCircle, CalendarClock, PiggyBank, Users } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatRD } from "@/lib/format-currency"
 
-import { DashboardTab } from "@/components/dashboard/dashboard-tab"
-import { ClientsTab } from "@/components/dashboard/clients-tab"
-import { CarteraTab } from "@/components/dashboard/cartera-tab"
-import { NotificationsTab } from "@/components/dashboard/notificaciones-tab"
-import { ReportsTab } from "@/components/dashboard/reports-tab"
+type Stats = {
+  clientes_activos: number
+  prestamos_en_mora: number
+  recaudacion_mes: string
+  proximos_vencimientos: {
+    id: number
+    fecha_proximo_vencimiento: string
+    capital_pendiente: string | number
+    estado: string
+    clientes: { nombre: string; apellido: string } | null
+  }[]
+}
 
-export default function Home() {
-  const [activeTab, setActiveTab] = useState("dashboard")
+export default function DashboardPage() {
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/dashboard/stats")
+      .then((r) => {
+        if (!r.ok) throw new Error("No se pudo cargar el panel")
+        return r.json()
+      })
+      .then(setStats)
+      .catch((e: Error) => setError(e.message))
+  }, [])
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
+        {error}
+      </div>
+    )
+  }
+
+  if (!stats) {
+    return <div className="text-sm text-muted-foreground">Cargando panel…</div>
+  }
+
+  const kpis = [
+    {
+      title: "Clientes activos",
+      value: String(stats.clientes_activos),
+      desc: "Con préstamo en estado ACTIVO",
+      icon: Users,
+    },
+    {
+      title: "Préstamos en mora",
+      value: String(stats.prestamos_en_mora),
+      desc: "Requieren seguimiento",
+      icon: AlertCircle,
+    },
+    {
+      title: "Recaudación del mes",
+      value: formatRD(stats.recaudacion_mes),
+      desc: "Suma de abonos registrados este mes",
+      icon: PiggyBank,
+    },
+  ]
 
   return (
-    <main className="page-shell">
-      <div className="mx-auto w-full max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 gap-1.5 sm:grid-cols-5 mb-8 h-auto">
-            <TabsTrigger value="dashboard" className="gap-2">
-              <LayoutDashboard className="h-4 w-4 hidden sm:block" />
-              <span>Panel</span>
-            </TabsTrigger>
-            <TabsTrigger value="clients" className="gap-2">
-              <Users className="h-4 w-4 hidden sm:block" />
-              <span>Clientes</span>
-            </TabsTrigger>
-            <TabsTrigger value="prestamos" className="gap-2">
-              <Package className="h-4 w-4 hidden sm:block" />
-              <span>Préstamos</span>
-            </TabsTrigger>
-            <TabsTrigger value="notificaciones" className="gap-2">
-              <Bell className="h-4 w-4 hidden sm:block" />
-              <span>Notificaciones</span>
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="gap-2">
-              <BarChart3 className="h-4 w-4 hidden sm:block" />
-              <span>Reportes</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="dashboard" className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <DashboardTab />
-          </TabsContent>
-
-          <TabsContent value="clients" className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <ClientsTab />
-          </TabsContent>
-
-          <TabsContent value="prestamos" className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <CarteraTab />
-          </TabsContent>
-
-          <TabsContent value="notificaciones" className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <NotificationsTab />
-          </TabsContent>
-
-          <TabsContent value="reports" className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <ReportsTab />
-          </TabsContent>
-        </Tabs>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-sm text-muted-foreground">Resumen de cartera y próximos vencimientos.</p>
       </div>
-    </main>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {kpis.map((k) => (
+          <Card key={k.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{k.title}</CardTitle>
+              <k.icon className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{k.value}</div>
+              <p className="text-xs text-muted-foreground">{k.desc}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarClock className="size-4" />
+            Próximos vencimientos
+          </CardTitle>
+          <CardDescription>Préstamos activos ordenados por fecha de cuota.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {stats.proximos_vencimientos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay datos.</p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {stats.proximos_vencimientos.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 px-3 py-2"
+                >
+                  <span>
+                    {p.clientes ? `${p.clientes.nombre} ${p.clientes.apellido}` : "Cliente"}{" "}
+                    <span className="text-muted-foreground">· Préstamo #{p.id}</span>
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {p.fecha_proximo_vencimiento} · {formatRD(p.capital_pendiente)}{" "}
+                    <span
+                      className={
+                        p.estado === "MORA"
+                          ? "text-red-600"
+                          : "text-amber-600 dark:text-amber-400"
+                      }
+                    >
+                      ({p.estado})
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }

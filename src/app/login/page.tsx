@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { ShieldCheck, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
 import { toast } from "sonner"
 
 export default function LoginPage() {
@@ -23,20 +23,20 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const result = await signIn("credentials", {
+      const supabase = createSupabaseBrowserClient()
+      const { error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
-        redirect: false,
       })
 
-      if (result?.error) {
+      if (error) {
         toast.error("Credenciales inválidas")
       } else {
         toast.success("Inicio de sesión exitoso")
         router.push("/")
         router.refresh()
       }
-    } catch (error) {
+    } catch {
       toast.error("Error al iniciar sesión")
     } finally {
       setIsLoading(false)
@@ -54,30 +54,27 @@ export default function LoginPage() {
           <div className="space-y-2">
             <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="size-3.5" />
-              Acceso seguro
+              Supabase Auth
             </div>
-            <CardTitle className="text-3xl font-bold text-center">
-              Iniciar Sesión
-            </CardTitle>
+            <CardTitle className="text-3xl font-bold text-center">Iniciar sesión</CardTitle>
             <CardDescription className="text-center text-sm">
-              Ingresa tus credenciales para acceder al sistema y administrar tu cartera con una vista moderna y centralizada.
+              Accede al panel de microfinanzas: empresas, clientes, préstamos y cobranza.
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Correo</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="tu@email.com"
                 value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
                 disabled={isLoading}
+                autoComplete="email"
               />
             </div>
             <div className="space-y-2">
@@ -87,19 +84,14 @@ export default function LoginPage() {
                 type="password"
                 placeholder="••••••••"
                 value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
                 disabled={isLoading}
+                autoComplete="current-password"
               />
             </div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
-              {isLoading ? "Cargando..." : "Iniciar Sesión"}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Cargando..." : "Entrar"}
             </Button>
           </form>
         </CardContent>

@@ -1,0 +1,236 @@
+"use client"
+
+import { useCallback, useEffect, useState } from "react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Textarea } from "@/components/ui/textarea"
+
+type NotifRow = {
+  id: number
+  canal: string
+  estado: string
+  fecha_envio: string
+  mensaje: string
+  error_detalle: string | null
+  representantes: { nombre: string; apellido: string } | null
+}
+
+export default function NotificacionesPage() {
+  const [rows, setRows] = useState<NotifRow[]>([])
+  const [reps, setReps] = useState<{ id: number; nombre: string; apellido: string }[]>([])
+  const [filtroRep, setFiltroRep] = useState("")
+  const [canal, setCanal] = useState("")
+  const [preview, setPreview] = useState("")
+  const [form, setForm] = useState({
+    enviarATodos: false,
+    representanteId: "",
+    canal: "AMBOS" as "WHATSAPP" | "EMAIL" | "AMBOS",
+  })
+
+  const load = useCallback(async () => {
+    const q = new URLSearchParams()
+    if (filtroRep) q.set("representanteId", filtroRep)
+    if (canal) q.set("canal", canal)
+    const r = await fetch(`/api/notificaciones?${q}`)
+    const j = await r.json()
+    if (!r.ok) toast.error(j.error ?? "Error")
+    else setRows(j.data ?? [])
+  }, [filtroRep, canal])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  useEffect(() => {
+    fetch("/api/representantes?pageSize=500")
+      .then((r) => r.json())
+      .then((j) => setReps(j.data ?? []))
+  }, [])
+
+  const vistaPrevia = async () => {
+    const body: Record<string, unknown> = {
+      canal: form.canal,
+      vistaPrevia: true,
+      enviarATodos: form.enviarATodos,
+    }
+    if (!form.enviarATodos && form.representanteId) {
+      body.representanteIds = [Number(form.representanteId)]
+    }
+    const r = await fetch("/api/notificaciones/enviar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    const j = await r.json()
+    if (!r.ok) {
+      toast.error(j.error ?? "Error")
+      return
+    }
+    const first = j.data?.[0]
+    setPreview(first?.mensaje ?? JSON.stringify(j, null, 2))
+    toast.message("Vista previa generada")
+  }
+
+  const enviar = async () => {
+    const body: Record<string, unknown> = {
+      canal: form.canal,
+      vistaPrevia: false,
+      enviarATodos: form.enviarATodos,
+    }
+    if (!form.enviarATodos && form.representanteId) {
+      body.representanteIds = [Number(form.representanteId)]
+    }
+    const r = await fetch("/api/notificaciones/enviar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    const j = await r.json()
+    if (!r.ok) {
+      toast.error(j.error ?? "Error")
+      return
+    }
+    toast.success("Proceso de envío terminado")
+    load()
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold">Notificaciones</h1>
+        <p className="text-sm text-muted-foreground">
+          Reporte de mora por WhatsApp (Twilio) y correo (Resend). Configura variables de entorno.
+        </p>
+      </div>
+
+      <div className="grid gap-4 rounded-xl border border-border/60 p-4 md:grid-cols-2">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="all"
+              checked={form.enviarATodos}
+              onChange={(e) => setForm({ ...form, enviarATodos: e.target.checked })}
+            />
+            <Label htmlFor="all">Enviar a todos los representantes</Label>
+          </div>
+          {!form.enviarATodos && (
+            <div className="space-y-2">
+              <Label>Representante</Label>
+              <Select
+                value={form.representanteId}
+                onValueChange={(v) => setForm({ ...form, representanteId: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar" />
+                </SelectTrigger>
+                <SelectContent>
+                  {reps.map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.nombre} {r.apellido}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label>Canal</Label>
+            <Select
+              value={form.canal}
+              onValueChange={(v) => setForm({ ...form, canal: v as typeof form.canal })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                <SelectItem value="EMAIL">Email</SelectItem>
+                <SelectItem value="AMBOS">Ambos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={vistaPrevia}>
+              Vista previa
+            </Button>
+            <Button onClick={enviar}>Enviar</Button>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Vista previa del mensaje</Label>
+          <Textarea value={preview} readOnly className="min-h-[200px] font-mono text-xs" placeholder="Pulsa “Vista previa”" />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Input
+          placeholder="Filtrar por rep. id"
+          value={filtroRep}
+          onChange={(e) => setFiltroRep(e.target.value)}
+          className="max-w-xs"
+        />
+        <Select value={canal || "all"} onValueChange={(v) => setCanal(v === "all" ? "" : v)}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Canal" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+            <SelectItem value="EMAIL">Email</SelectItem>
+            <SelectItem value="AMBOS">Ambos</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" onClick={load}>
+          Aplicar filtros
+        </Button>
+      </div>
+
+      <div className="rounded-xl border border-border/60">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Fecha</TableHead>
+              <TableHead>Representante</TableHead>
+              <TableHead>Canal</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Mensaje</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5}>Sin historial</TableCell>
+              </TableRow>
+            ) : (
+              rows.map((n) => (
+                <TableRow key={n.id}>
+                  <TableCell className="whitespace-nowrap text-xs">
+                    {new Date(n.fecha_envio).toLocaleString("es-DO")}
+                  </TableCell>
+                  <TableCell>
+                    {n.representantes
+                      ? `${n.representantes.nombre} ${n.representantes.apellido}`
+                      : "—"}
+                  </TableCell>
+                  <TableCell>{n.canal}</TableCell>
+                  <TableCell>
+                    {n.estado}
+                    {n.error_detalle ? (
+                      <span className="block text-xs text-destructive">{n.error_detalle}</span>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="max-w-md truncate text-xs">{n.mensaje}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
+}

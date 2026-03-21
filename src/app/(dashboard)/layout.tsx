@@ -1,13 +1,7 @@
-import { AIChatSidebar } from "@/components/dashboard/chat-sidebar";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppShell } from "@/components/app/app-shell"
 
 export default function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <SidebarProvider defaultOpen={false} className="overflow-hidden">
-      <AIChatSidebar />
-      {children}
-    </SidebarProvider>
-  );
-} 
+  return <AppShell>{children}</AppShell>
+}
