@@ -15,6 +15,7 @@ import {
 import { createSupabaseBrowserClient, isSupabaseConfiguredOnClient } from "@/lib/supabase/browser"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { AIChatSidebar } from "@/components/dashboard/chat-sidebar"
 
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -85,6 +86,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
         <div className="page-shell flex-1 p-4 md:p-8">{children}</div>
       </div>
+
+      <AIChatSidebar />
     </div>
   )
 }
