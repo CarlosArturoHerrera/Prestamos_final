@@ -256,8 +256,11 @@ export default function ClientesPage() {
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Label>Empresa</Label>
-                  <Button variant="link" className="h-auto p-0 text-xs" asChild>
-                    <Link href="/empresas">+ Agregar empresa</Link>
+                  <Button variant="outline" size="sm" className="shrink-0 gap-1" asChild>
+                    <Link href="/empresas">
+                      <Plus className="size-3.5" />
+                      Nueva empresa
+                    </Link>
                   </Button>
                 </div>
                 <Select value={form.empresaId} onValueChange={(v) => setForm({ ...form, empresaId: v })}>
@@ -266,11 +269,14 @@ export default function ClientesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {empresas.length === 0 ? (
-                      <div className="px-2 py-3 text-sm text-muted-foreground">
-                        Lista vacía.{" "}
-                        <Link href="/empresas" className="text-primary underline">
-                          Ir a Empresas
-                        </Link>
+                      <div className="flex flex-col gap-2 p-2">
+                        <p className="text-sm text-muted-foreground">Aún no hay empresas.</p>
+                        <Button variant="secondary" size="sm" className="w-full" asChild>
+                          <Link href="/empresas">
+                            <Plus className="mr-1 size-3.5" />
+                            Crear empresa
+                          </Link>
+                        </Button>
                       </div>
                     ) : (
                       empresas.map((e) => (
@@ -285,8 +291,11 @@ export default function ClientesPage() {
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Label>Representante</Label>
-                  <Button variant="link" className="h-auto p-0 text-xs" asChild>
-                    <Link href="/representantes">+ Agregar representante</Link>
+                  <Button variant="outline" size="sm" className="shrink-0 gap-1" asChild>
+                    <Link href="/representantes">
+                      <Plus className="size-3.5" />
+                      Nuevo representante
+                    </Link>
                   </Button>
                 </div>
                 <Select
@@ -300,11 +309,14 @@ export default function ClientesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {reps.length === 0 ? (
-                      <div className="px-2 py-3 text-sm text-muted-foreground">
-                        Lista vacía.{" "}
-                        <Link href="/representantes" className="text-primary underline">
-                          Ir a Representantes
-                        </Link>
+                      <div className="flex flex-col gap-2 p-2">
+                        <p className="text-sm text-muted-foreground">Aún no hay representantes.</p>
+                        <Button variant="secondary" size="sm" className="w-full" asChild>
+                          <Link href="/representantes">
+                            <Plus className="mr-1 size-3.5" />
+                            Crear representante
+                          </Link>
+                        </Button>
                       </div>
                     ) : (
                       reps.map((r) => (

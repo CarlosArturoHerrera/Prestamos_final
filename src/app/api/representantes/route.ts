@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { badRequest, forbidden, getUserAndRole, requireAdmin, unauthorized } from "@/lib/api-auth"
+import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { representanteCreateSchema } from "@/lib/validations/schemas"
 
@@ -61,7 +61,6 @@ export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient()
   const session = await getUserAndRole(supabase)
   if (!session) return unauthorized()
-  if (!requireAdmin(session.role)) return forbidden()
 
   let body: unknown
   try {

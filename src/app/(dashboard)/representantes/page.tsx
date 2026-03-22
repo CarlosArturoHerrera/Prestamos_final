@@ -117,71 +117,72 @@ export default function RepresentantesPage() {
           <h1 className="text-2xl font-bold">Representantes</h1>
           <p className="text-sm text-muted-foreground">Recibe notificaciones de cobranza por WhatsApp y correo.</p>
         </div>
-        {isAdmin && (
-          <Dialog open={open} onOpenChange={(v) => {
+        <Dialog
+          open={open}
+          onOpenChange={(v) => {
             setOpen(v)
             if (!v) setEditing(null)
-          }}>
-            <DialogTrigger asChild>
-              <Button
-                onClick={() => {
-                  setEditing(null)
-                  setForm({ nombre: "", apellido: "", telefono: "", email: "" })
-                  setOpen(true)
-                }}
-              >
-                <Plus className="mr-2 size-4" />
-                Nuevo representante
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editing ? "Editar" : "Nuevo"} representante</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-3 py-2">
-                <div className="space-y-2">
-                  <Label>Nombre</Label>
-                  <Input
-                    value={form.nombre}
-                    onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Apellido</Label>
-                  <Input
-                    value={form.apellido}
-                    onChange={(e) => setForm({ ...form, apellido: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Teléfono / WhatsApp</Label>
-                  <Input
-                    value={form.telefono}
-                    onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    required
-                  />
-                </div>
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button
+              onClick={() => {
+                setEditing(null)
+                setForm({ nombre: "", apellido: "", telefono: "", email: "" })
+                setOpen(true)
+              }}
+            >
+              <Plus className="mr-2 size-4" />
+              Nuevo representante
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editing ? "Editar" : "Nuevo"} representante</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-3 py-2">
+              <div className="space-y-2">
+                <Label>Nombre</Label>
+                <Input
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                  required
+                />
               </div>
-              <DialogFooter>
-                <Button variant="secondary" onClick={() => setOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={save}>Guardar</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+              <div className="space-y-2">
+                <Label>Apellido</Label>
+                <Input
+                  value={form.apellido}
+                  onChange={(e) => setForm({ ...form, apellido: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Teléfono / WhatsApp</Label>
+                <Input
+                  value={form.telefono}
+                  onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={save}>Guardar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex gap-2">
@@ -210,11 +211,11 @@ export default function RepresentantesPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5}>Cargando…</TableCell>
+                <TableCell colSpan={isAdmin ? 5 : 4}>Cargando…</TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5}>Sin datos</TableCell>
+                <TableCell colSpan={isAdmin ? 5 : 4}>Sin datos</TableCell>
               </TableRow>
             ) : (
               rows.map((r) => (
