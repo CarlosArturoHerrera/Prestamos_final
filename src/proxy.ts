@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { getSupabaseUrlAndAnonKeyForServer } from "@/lib/supabase/env"
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -8,8 +9,9 @@ export async function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseEnv = getSupabaseUrlAndAnonKeyForServer()
+  const url = supabaseEnv?.url
+  const key = supabaseEnv?.key
 
   // Sin variables en el host (ej. Vercel), antes se dejaba pasar a "/" sin sesión → panel "cargando" y sin login.
   if (!url || !key) {
