@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth"
-import { calcularFechasNuevoPrestamo } from "@/lib/prestamo-logic"
+import {
+  abonosCountFromRow,
+  calcularFechasNuevoPrestamo,
+  proyectarProximaCuota,
+} from "@/lib/prestamo-logic"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { prestamoCreateSchema } from "@/lib/validations/schemas"
 
@@ -25,7 +29,8 @@ export async function GET(request: Request) {
         cedula,
         representantes ( id, nombre, apellido ),
         empresas ( id, nombre )
-      )
+      ),
+      abonos(count)
     `,
     )
     .order("created_at", { ascending: false })
@@ -43,7 +48,33 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
-  return NextResponse.json({ data: data ?? [] })
+  const rows = (data ?? []).map((raw) => {
+    const n = abonosCountFromRow(raw as { abonos?: { count?: number }[] | null })
+    const { abonos: _a, ...prestamo } = raw as {
+      abonos?: { count?: number }[] | null
+      capital_pendiente: string | number
+      tasa_interes: string | number
+      plazo: number
+      estado: string
+      [key: string]: unknown
+    }
+    const proj = proyectarProximaCuota(
+      String(prestamo.capital_pendiente),
+      String(prestamo.tasa_interes),
+      Number(prestamo.plazo),
+      n,
+      String(prestamo.estado),
+    )
+    return {
+      ...prestamo,
+      abonos_realizados: n,
+      interes_proximo: proj.interesProximo,
+      capital_debitar_proximo: proj.capitalDebitarSugerido,
+      total_proximo_pago: proj.totalProximoPago,
+    }
+  })
+
+  return NextResponse.json({ data: rows })
 }
 
 export async function POST(request: Request) {

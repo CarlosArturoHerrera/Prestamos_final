@@ -30,6 +30,12 @@ type PrestamoList = {
   fecha_proximo_vencimiento: string
   estado: string
   clientes: { nombre: string; apellido: string; cedula: string } | null
+  /** Interés del período sobre capital pendiente (próxima cuota). */
+  interes_proximo: string
+  /** Capital sugerido: pendiente ÷ cuotas restantes (plazo − abonos). */
+  capital_debitar_proximo: string
+  /** interes_proximo + capital_debitar_proximo */
+  total_proximo_pago: string
 }
 
 function rowTone(p: PrestamoList): "red" | "yellow" | "green" {
@@ -111,7 +117,10 @@ export default function PrestamosPage() {
         <div>
           <h1 className="text-2xl font-bold">Préstamos</h1>
           <p className="text-sm text-muted-foreground">
-            Rojo: mora · Amarillo: vence en 7 días · Verde: al día
+            Rojo: mora · Amarillo: vence en 7 días · Verde: al día.{" "}
+            <span className="block sm:inline">
+              “Capital a debitar” y “Próximo pago” son estimados según cuotas restantes (plazo − abonos).
+            </span>
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -224,9 +233,11 @@ export default function PrestamosPage() {
             <TableRow>
               <TableHead>Cliente</TableHead>
               <TableHead>Monto original</TableHead>
-              <TableHead>Capital pendiente</TableHead>
+              <TableHead>Interés pendiente</TableHead>
+              <TableHead className="min-w-[9rem]">Capital a debitar</TableHead>
               <TableHead>Tasa %</TableHead>
               <TableHead>Próximo venc.</TableHead>
+              <TableHead>Próximo pago</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Ver</TableHead>
             </TableRow>
@@ -234,15 +245,16 @@ export default function PrestamosPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7}>Cargando…</TableCell>
+                <TableCell colSpan={9}>Cargando…</TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7}>Sin préstamos</TableCell>
+                <TableCell colSpan={9}>Sin préstamos</TableCell>
               </TableRow>
             ) : (
               rows.map((p) => {
                 const tone = rowTone(p)
+                const saldado = p.estado === "SALDADO"
                 return (
                   <TableRow
                     key={p.id}
@@ -256,9 +268,13 @@ export default function PrestamosPage() {
                       {p.clientes ? `${p.clientes.nombre} ${p.clientes.apellido}` : "—"}
                     </TableCell>
                     <TableCell>{formatRD(p.monto)}</TableCell>
-                    <TableCell>{formatRD(p.capital_pendiente)}</TableCell>
+                    <TableCell>{saldado ? "—" : formatRD(p.interes_proximo)}</TableCell>
+                    <TableCell>{saldado ? "—" : formatRD(p.capital_debitar_proximo)}</TableCell>
                     <TableCell>{p.tasa_interes}%</TableCell>
                     <TableCell>{p.fecha_proximo_vencimiento}</TableCell>
+                    <TableCell className="font-medium">
+                      {saldado ? "—" : formatRD(p.total_proximo_pago)}
+                    </TableCell>
                     <TableCell>{p.estado}</TableCell>
                     <TableCell className="text-right">
                       <Button asChild size="sm" variant="outline">

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { addDays } from "date-fns"
+import Decimal from "decimal.js"
 import {
   addPeriod,
   fechaVencimientoFinal,
@@ -88,4 +89,46 @@ export function capitalPendienteFinal(saldo: string): string {
   const s = Number.parseFloat(saldo)
   if (s < 0) return "0.00"
   return toDecimalString(saldo)
+}
+
+/**
+ * Proyección para la próxima cuota (listado / referencia):
+ * - Interés del período sobre el capital pendiente actual.
+ * - Capital sugerido a debitar: capital restante repartido en las cuotas que faltan (plazo − abonos, mínimo 1).
+ * - Total próximo pago = interés + ese capital.
+ */
+export function proyectarProximaCuota(
+  capitalPendiente: string,
+  tasaPorcentaje: string,
+  plazo: number,
+  abonosCount: number,
+  estado: string,
+): {
+  interesProximo: string
+  capitalDebitarSugerido: string
+  totalProximoPago: string
+} {
+  if (estado === "SALDADO" || new Decimal(capitalPendiente).lte(0)) {
+    return {
+      interesProximo: "0.00",
+      capitalDebitarSugerido: "0.00",
+      totalProximoPago: "0.00",
+    }
+  }
+  const interesProximo = interesPeriodo(capitalPendiente, tasaPorcentaje)
+  const cuotasRestantes = Math.max(1, plazo - abonosCount)
+  const capitalDebitarSugerido = new Decimal(capitalPendiente)
+    .div(cuotasRestantes)
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+    .toFixed(2)
+  const totalProximoPago = sumDecimal(interesProximo, capitalDebitarSugerido)
+  return { interesProximo, capitalDebitarSugerido, totalProximoPago }
+}
+
+/** Cuenta de abonos embebida en select `abonos(count)` de Supabase. */
+export function abonosCountFromRow(row: { abonos?: { count?: number }[] | null }): number {
+  const a = row.abonos
+  if (!a?.length) return 0
+  const c = a[0]?.count
+  return typeof c === "number" ? c : 0
 }

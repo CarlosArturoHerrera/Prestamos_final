@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Info, Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 
 type ClienteRow = {
@@ -77,22 +78,34 @@ export default function ClientesPage() {
     load()
   }, [load])
 
-  useEffect(() => {
-    void (async () => {
-      const [p, e, r] = await Promise.all([
-        fetchApi<{ role: string }>("/api/profile"),
-        fetchApi<{ data: { id: number; nombre: string }[] }>("/api/empresas?pageSize=500"),
-        fetchApi<{ data: { id: number; nombre: string; apellido: string }[] }>(
-          "/api/representantes?pageSize=500",
-        ),
-      ])
-      if (p.ok) setRole(p.data.role)
-      if (e.ok) setEmpresas((e.data.data ?? []).map((x) => ({ id: x.id, nombre: x.nombre })))
-      if (r.ok) setReps(r.data.data ?? [])
-    })()
+  const loadEmpresasYReps = useCallback(async () => {
+    const [e, r] = await Promise.all([
+      fetchApi<{ data: { id: number; nombre: string }[] }>("/api/empresas?pageSize=500"),
+      fetchApi<{ data: { id: number; nombre: string; apellido: string }[] }>(
+        "/api/representantes?pageSize=500",
+      ),
+    ])
+    if (e.ok) setEmpresas((e.data.data ?? []).map((x) => ({ id: x.id, nombre: x.nombre })))
+    if (r.ok) setReps(r.data.data ?? [])
   }, [])
 
+  useEffect(() => {
+    void (async () => {
+      const p = await fetchApi<{ role: string }>("/api/profile")
+      if (p.ok) setRole(p.data.role)
+      await loadEmpresasYReps()
+    })()
+  }, [loadEmpresasYReps])
+
+  useEffect(() => {
+    if (open) void loadEmpresasYReps()
+  }, [open, loadEmpresasYReps])
+
   const save = async () => {
+    if (!form.empresaId || !form.representanteId) {
+      toast.error("Debes elegir una empresa y un representante antes de guardar.")
+      return
+    }
     const method = editing ? "PUT" : "POST"
     const url = editing ? `/api/clientes/${editing.id}` : "/api/clientes"
     const res = await fetchApi(url, {
@@ -169,6 +182,34 @@ export default function ClientesPage() {
             <DialogHeader>
               <DialogTitle>{editing ? "Editar" : "Nuevo"} cliente</DialogTitle>
             </DialogHeader>
+            {(empresas.length === 0 || reps.length === 0) && (
+              <Alert>
+                <Info className="size-4" />
+                <AlertDescription className="space-y-2">
+                  {empresas.length === 0 && (
+                    <p>
+                      No hay <strong>empresas</strong> registradas.{" "}
+                      <Link href="/empresas" className="font-medium text-primary underline underline-offset-2">
+                        Ir a Empresas y crear la primera
+                      </Link>
+                      .
+                    </p>
+                  )}
+                  {reps.length === 0 && (
+                    <p>
+                      No hay <strong>representantes</strong>.{" "}
+                      <Link
+                        href="/representantes"
+                        className="font-medium text-primary underline underline-offset-2"
+                      >
+                        Ir a Representantes y crear uno
+                      </Link>
+                      .
+                    </p>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="grid gap-3 py-2">
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -213,35 +254,65 @@ export default function ClientesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Empresa</Label>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label>Empresa</Label>
+                  <Button variant="link" className="h-auto p-0 text-xs" asChild>
+                    <Link href="/empresas">+ Agregar empresa</Link>
+                  </Button>
+                </div>
                 <Select value={form.empresaId} onValueChange={(v) => setForm({ ...form, empresaId: v })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
+                    <SelectValue placeholder={empresas.length ? "Seleccionar" : "Sin empresas — créalas primero"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {empresas.map((e) => (
-                      <SelectItem key={e.id} value={String(e.id)}>
-                        {e.nombre}
-                      </SelectItem>
-                    ))}
+                    {empresas.length === 0 ? (
+                      <div className="px-2 py-3 text-sm text-muted-foreground">
+                        Lista vacía.{" "}
+                        <Link href="/empresas" className="text-primary underline">
+                          Ir a Empresas
+                        </Link>
+                      </div>
+                    ) : (
+                      empresas.map((e) => (
+                        <SelectItem key={e.id} value={String(e.id)}>
+                          {e.nombre}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Representante</Label>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label>Representante</Label>
+                  <Button variant="link" className="h-auto p-0 text-xs" asChild>
+                    <Link href="/representantes">+ Agregar representante</Link>
+                  </Button>
+                </div>
                 <Select
                   value={form.representanteId}
                   onValueChange={(v) => setForm({ ...form, representanteId: v })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
+                    <SelectValue
+                      placeholder={reps.length ? "Seleccionar" : "Sin representantes — créalos primero"}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {reps.map((r) => (
-                      <SelectItem key={r.id} value={String(r.id)}>
-                        {r.nombre} {r.apellido}
-                      </SelectItem>
-                    ))}
+                    {reps.length === 0 ? (
+                      <div className="px-2 py-3 text-sm text-muted-foreground">
+                        Lista vacía.{" "}
+                        <Link href="/representantes" className="text-primary underline">
+                          Ir a Representantes
+                        </Link>
+                      </div>
+                    ) : (
+                      reps.map((r) => (
+                        <SelectItem key={r.id} value={String(r.id)}>
+                          {r.nombre} {r.apellido}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -250,7 +321,17 @@ export default function ClientesPage() {
               <Button variant="secondary" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={save}>Guardar</Button>
+              <Button
+                onClick={save}
+                disabled={!form.empresaId || !form.representanteId}
+                title={
+                  !form.empresaId || !form.representanteId
+                    ? "Elige empresa y representante"
+                    : undefined
+                }
+              >
+                Guardar
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

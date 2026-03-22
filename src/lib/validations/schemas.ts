@@ -26,8 +26,12 @@ export const clienteCreateSchema = z.object({
   cedula: z.string().min(1).max(50),
   ubicacion: z.string().min(1).max(1000),
   telefono: z.string().min(1).max(50),
-  representanteId: z.coerce.number().int().positive(),
-  empresaId: z.coerce.number().int().positive(),
+  representanteId: z.coerce.number().int().positive({
+    message: "Selecciona un representante",
+  }),
+  empresaId: z.coerce.number().int().positive({
+    message: "Selecciona una empresa",
+  }),
 })
 
 export const tipoPlazoSchema = z.enum(["DIARIO", "SEMANAL", "QUINCENAL", "MENSUAL"])
