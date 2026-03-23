@@ -49,6 +49,7 @@ export async function GET(_request: Request, ctx: Ctx) {
     .from("intereses_atrasados")
     .select("*")
     .eq("prestamo_id", id)
+    .order("fecha_periodo", { ascending: false })
     .order("created_at", { ascending: false })
 
   const { data: reganches } = await supabase

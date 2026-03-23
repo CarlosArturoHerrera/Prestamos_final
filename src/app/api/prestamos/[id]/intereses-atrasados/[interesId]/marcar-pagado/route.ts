@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 
 type Ctx = { params: Promise<{ id: string; interesId: string }> }
 
-export async function DELETE(_request: Request, ctx: Ctx) {
+export async function POST(_request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient()
   const session = await getUserAndRole(supabase)
   if (!session) return unauthorized()
@@ -16,14 +16,15 @@ export async function DELETE(_request: Request, ctx: Ctx) {
     return badRequest("ID inválido")
   }
 
+  const hoy = new Date().toISOString().slice(0, 10)
   const { error } = await supabase
     .from("intereses_atrasados")
     .update({
-      estado: "ANULADO",
+      estado: "PAGADO",
       interes_pendiente: "0.00",
       monto: "0.00",
       aplicado: false,
-      fecha_aplicado: null,
+      fecha_aplicado: hoy,
     })
     .eq("id", interesId)
     .eq("prestamo_id", id)

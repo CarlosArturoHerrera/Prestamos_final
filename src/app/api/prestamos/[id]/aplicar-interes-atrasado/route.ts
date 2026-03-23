@@ -44,7 +44,7 @@ export async function POST(request: Request, ctx: Ctx) {
     .from("intereses_atrasados")
     .select("*")
     .eq("prestamo_id", id)
-    .eq("aplicado", false)
+    .eq("estado", "PENDIENTE")
 
   if (parsed.data.ids?.length) {
     q = q.in("id", parsed.data.ids)
@@ -61,7 +61,7 @@ export async function POST(request: Request, ctx: Ctx) {
   }
 
   const total = pendientes.reduce(
-    (acc, row) => acc.plus(String(row.monto)),
+    (acc, row) => acc.plus(String(row.interes_pendiente ?? row.monto)),
     new Decimal(0),
   )
 
@@ -72,7 +72,13 @@ export async function POST(request: Request, ctx: Ctx) {
 
   const { error: ue } = await supabase
     .from("intereses_atrasados")
-    .update({ aplicado: true, fecha_aplicado: hoy })
+    .update({
+      aplicado: true,
+      fecha_aplicado: hoy,
+      estado: "CAPITALIZADO",
+      interes_pendiente: "0.00",
+      monto: "0.00",
+    })
     .in("id", ids)
 
   if (ue) {

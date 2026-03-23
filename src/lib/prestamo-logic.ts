@@ -12,6 +12,81 @@ import {
   type TipoPlazo,
 } from "@/lib/finance"
 
+export type EstadoInteresPendiente = "PENDIENTE" | "PAGADO" | "CAPITALIZADO" | "ANULADO"
+
+export async function upsertInteresPendientePeriodo(
+  supabase: SupabaseClient,
+  {
+    prestamoId,
+    fechaPeriodo,
+    interesGenerado,
+    interesPagadoIncremental,
+  }: {
+    prestamoId: number
+    fechaPeriodo: string
+    interesGenerado: string
+    interesPagadoIncremental: string
+  },
+): Promise<void> {
+  const { data: existing, error: ee } = await supabase
+    .from("intereses_atrasados")
+    .select("*")
+    .eq("prestamo_id", prestamoId)
+    .eq("fecha_periodo", fechaPeriodo)
+    .maybeSingle()
+
+  if (ee) return
+
+  const generado = new Decimal(interesGenerado)
+  const pagadoInc = new Decimal(interesPagadoIncremental)
+
+  if (!existing) {
+    const pagado = Decimal.min(generado, pagadoInc)
+    const pendiente = Decimal.max(new Decimal(0), generado.minus(pagado))
+    const estado: EstadoInteresPendiente = pendiente.gt(0) ? "PENDIENTE" : "PAGADO"
+    await supabase.from("intereses_atrasados").insert({
+      prestamo_id: prestamoId,
+      fecha_generado: fechaPeriodo,
+      fecha_periodo: fechaPeriodo,
+      monto: pendiente.toFixed(2),
+      interes_generado: generado.toFixed(2),
+      interes_pagado: pagado.toFixed(2),
+      interes_pendiente: pendiente.toFixed(2),
+      estado,
+      aplicado: false,
+      fecha_aplicado: null,
+    })
+    return
+  }
+
+  const estadoActual = String(existing.estado ?? "PENDIENTE") as EstadoInteresPendiente
+  if (estadoActual === "ANULADO" || estadoActual === "CAPITALIZADO") {
+    return
+  }
+  if (estadoActual === "PAGADO" && pagadoInc.lte(0)) {
+    return
+  }
+
+  const pagadoActual = new Decimal(String(existing.interes_pagado ?? 0))
+  const pagadoNuevo = Decimal.min(generado, pagadoActual.plus(pagadoInc))
+  const pendienteNuevo = Decimal.max(new Decimal(0), generado.minus(pagadoNuevo))
+  const estadoNuevo: EstadoInteresPendiente = pendienteNuevo.gt(0) ? "PENDIENTE" : "PAGADO"
+
+  await supabase
+    .from("intereses_atrasados")
+    .update({
+      fecha_generado: fechaPeriodo,
+      interes_generado: generado.toFixed(2),
+      interes_pagado: pagadoNuevo.toFixed(2),
+      interes_pendiente: pendienteNuevo.toFixed(2),
+      monto: pendienteNuevo.toFixed(2),
+      estado: estadoNuevo,
+      aplicado: false,
+      fecha_aplicado: null,
+    })
+    .eq("id", existing.id)
+}
+
 export async function generarInteresesAtrasadosSiCorresponde(
   supabase: SupabaseClient,
   prestamo: Record<string, unknown>,
@@ -26,32 +101,21 @@ export async function generarInteresesAtrasadosSiCorresponde(
   const hoy = new Date()
   const proximo = new Date(`${fechaProx}T12:00:00`)
   const limiteMora = addDays(proximo, 3)
-
-  if (hoy <= limiteMora) return
-
-  const monto = interesPeriodo(capital, tasa)
-
-  const { data: existing } = await supabase
-    .from("intereses_atrasados")
-    .select("id")
-    .eq("prestamo_id", id)
-    .eq("fecha_generado", fechaProx)
-    .eq("aplicado", false)
-    .maybeSingle()
-
-  if (existing) {
-    await supabase.from("prestamos").update({ estado: "MORA" }).eq("id", id)
-    return
+  // Cuando llega o pasa el período, se registra el interés generado como pendiente
+  // (si no se ha cubierto aún con abonos). Nunca se capitaliza automáticamente.
+  if (hoy >= proximo) {
+    const monto = interesPeriodo(capital, tasa)
+    await upsertInteresPendientePeriodo(supabase, {
+      prestamoId: id,
+      fechaPeriodo: fechaProx,
+      interesGenerado: monto,
+      interesPagadoIncremental: "0.00",
+    })
   }
 
-  await supabase.from("intereses_atrasados").insert({
-    prestamo_id: id,
-    fecha_generado: fechaProx,
-    monto,
-    aplicado: false,
-  })
-
-  await supabase.from("prestamos").update({ estado: "MORA" }).eq("id", id)
+  if (hoy > limiteMora) {
+    await supabase.from("prestamos").update({ estado: "MORA" }).eq("id", id)
+  }
 }
 
 export function calcularFechasNuevoPrestamo(

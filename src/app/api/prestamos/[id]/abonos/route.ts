@@ -2,7 +2,11 @@ import { NextResponse } from "next/server"
 import Decimal from "decimal.js"
 import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth"
 import { interesPeriodo, subDecimal, toDecimalString } from "@/lib/finance"
-import { capitalPendienteFinal, siguienteVencimientoDesde } from "@/lib/prestamo-logic"
+import {
+  capitalPendienteFinal,
+  siguienteVencimientoDesde,
+  upsertInteresPendientePeriodo,
+} from "@/lib/prestamo-logic"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { abonoCreateSchema } from "@/lib/validations/schemas"
 
@@ -62,6 +66,7 @@ export async function POST(request: Request, ctx: Ctx) {
   }
 
   const capitalAntes = String(prestamo.capital_pendiente)
+  const fechaPeriodo = String(prestamo.fecha_proximo_vencimiento)
   const interesPeriodoActual = interesPeriodo(capitalAntes, String(prestamo.tasa_interes))
   const pagoRecibidoStr = parsed.data.pago !== undefined ? String(parsed.data.pago) : undefined
   const capitalManualStr =
@@ -153,26 +158,12 @@ export async function POST(request: Request, ctx: Ctx) {
     return NextResponse.json({ error: ce.message }, { status: 400 })
   }
 
-  const interesPendiente = new Decimal(interesPeriodoActual).minus(interesCobrado)
-  if (interesPendiente.gt(0)) {
-    const fechaRef = parsed.data.fechaAbono
-    const { data: existing } = await supabase
-      .from("intereses_atrasados")
-      .select("id")
-      .eq("prestamo_id", id)
-      .eq("fecha_generado", fechaRef)
-      .eq("aplicado", false)
-      .maybeSingle()
-
-    if (!existing) {
-      await supabase.from("intereses_atrasados").insert({
-        prestamo_id: id,
-        fecha_generado: fechaRef,
-        monto: interesPendiente.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2),
-        aplicado: false,
-      })
-    }
-  }
+  await upsertInteresPendientePeriodo(supabase, {
+    prestamoId: id,
+    fechaPeriodo,
+    interesGenerado: interesPeriodoActual,
+    interesPagadoIncremental: interesCobrado.toFixed(2),
+  })
 
   return NextResponse.json(abono)
 }

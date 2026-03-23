@@ -93,6 +93,12 @@ export default function PrestamoDetallePage() {
   }
 
   const aplicarIntereses = async (ids?: number[]) => {
+    const ok = window.confirm(
+      ids?.length
+        ? "¿Aplicar este interés pendiente al capital del préstamo?"
+        : "¿Aplicar TODOS los intereses pendientes al capital del préstamo?",
+    )
+    if (!ok) return
     if (applyingIntereses) return
     setApplyingIntereses(true)
     const res = await fetchApi(`/api/prestamos/${id}/aplicar-interes-atrasado`, {
@@ -109,6 +115,21 @@ export default function PrestamoDetallePage() {
     toast.success("Intereses aplicados al capital")
     await load()
     setApplyingIntereses(false)
+  }
+
+  const marcarInteresPagado = async (interesId: number) => {
+    const ok = window.confirm("¿Marcar este interés pendiente como pagado (sin capitalizar)?")
+    if (!ok) return
+    const res = await fetchApi(`/api/prestamos/${id}/intereses-atrasados/${interesId}/marcar-pagado`, {
+      method: "POST",
+    })
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
+      return
+    }
+    toast.success("Interés marcado como pagado")
+    await load()
   }
 
   const anularInteres = async (interesId: number) => {
@@ -275,32 +296,43 @@ export default function PrestamoDetallePage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Fecha ref.</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Aplicado</TableHead>
+                <TableHead>Período</TableHead>
+                <TableHead>Interés generado</TableHead>
+                <TableHead>Pagado a interés</TableHead>
+                <TableHead>Pendiente</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {(data.intereses_atrasados ?? []).length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4}>Sin registros</TableCell>
+                  <TableCell colSpan={6}>Sin registros</TableCell>
                 </TableRow>
               ) : (
                 data.intereses_atrasados.map((i) => (
                   <TableRow key={String(i.id)}>
-                    <TableCell>{String(i.fecha_generado)}</TableCell>
-                    <TableCell>{formatRD(i.monto as string)}</TableCell>
-                    <TableCell>{i.aplicado ? "Sí" : "No"}</TableCell>
+                    <TableCell>{String(i.fecha_periodo ?? i.fecha_generado)}</TableCell>
+                    <TableCell>{formatRD((i.interes_generado as string) ?? (i.monto as string))}</TableCell>
+                    <TableCell>{formatRD((i.interes_pagado as string) ?? "0")}</TableCell>
+                    <TableCell>{formatRD((i.interes_pendiente as string) ?? (i.monto as string))}</TableCell>
+                    <TableCell>{String(i.estado ?? (i.aplicado ? "CAPITALIZADO" : "PENDIENTE"))}</TableCell>
                     <TableCell className="text-right">
-                      {!i.aplicado && (
+                      {String(i.estado ?? "") === "PENDIENTE" && (
                         <div className="flex justify-end gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => aplicarIntereses([Number(i.id)])}
                           >
-                            Aplicar
+                            Capitalizar
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => marcarInteresPagado(Number(i.id))}
+                          >
+                            Marcar pagado
                           </Button>
                           <Button
                             variant="ghost"
