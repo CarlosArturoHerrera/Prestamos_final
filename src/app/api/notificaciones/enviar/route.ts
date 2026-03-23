@@ -88,6 +88,7 @@ export async function POST(request: Request) {
       cliente_id: l.cliente_id,
       prestamo_id: l.prestamo_id,
       nombre: l.nombre_completo,
+      cedula: l.cedula,
       monto_pendiente: l.monto_pendiente,
       dias_atraso: l.dias_atraso,
       ultimo_pago: l.ultimo_pago,

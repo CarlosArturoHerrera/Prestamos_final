@@ -43,7 +43,8 @@ export default function RepresentantesPage() {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Rep | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [role, setRole] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [form, setForm] = useState({
     nombre: "",
     apellido: "",
@@ -69,14 +70,9 @@ export default function RepresentantesPage() {
     load()
   }, [load])
 
-  useEffect(() => {
-    void (async () => {
-      const res = await fetchApi<{ role: string }>("/api/profile")
-      if (res.ok) setRole(res.data.role)
-    })()
-  }, [])
-
   const save = async () => {
+    if (isSaving) return
+    setIsSaving(true)
     const method = editing ? "PUT" : "POST"
     const url = editing ? `/api/representantes/${editing.id}` : "/api/representantes"
     const res = await fetchApi(url, {
@@ -87,28 +83,30 @@ export default function RepresentantesPage() {
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
+      setIsSaving(false)
       return
     }
     toast.success("Guardado")
     setOpen(false)
     setEditing(null)
-    load()
+    await load()
+    setIsSaving(false)
   }
 
   const remove = async () => {
-    if (!deleteId) return
+    if (!deleteId || isDeleting) return
+    setIsDeleting(true)
     const res = await fetchApi(`/api/representantes/${deleteId}`, { method: "DELETE" })
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
     } else {
       toast.success("Eliminado")
-      load()
+      await load()
     }
     setDeleteId(null)
+    setIsDeleting(false)
   }
-
-  const isAdmin = role === "ADMIN"
 
   return (
     <div className="space-y-6">
@@ -176,10 +174,12 @@ export default function RepresentantesPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="secondary" onClick={() => setOpen(false)}>
+              <Button variant="secondary" onClick={() => setOpen(false)} disabled={isSaving}>
                 Cancelar
               </Button>
-              <Button onClick={save}>Guardar</Button>
+              <Button onClick={save} disabled={isSaving}>
+                {isSaving ? "Guardando..." : "Guardar"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -205,17 +205,17 @@ export default function RepresentantesPage() {
               <TableHead>Teléfono</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Clientes</TableHead>
-              {isAdmin && <TableHead className="text-right">Acciones</TableHead>}
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 5 : 4}>Cargando…</TableCell>
+                <TableCell colSpan={5}>Cargando…</TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 5 : 4}>Sin datos</TableCell>
+                <TableCell colSpan={5}>Sin datos</TableCell>
               </TableRow>
             ) : (
               rows.map((r) => (
@@ -226,29 +226,27 @@ export default function RepresentantesPage() {
                   <TableCell>{r.telefono}</TableCell>
                   <TableCell>{r.email}</TableCell>
                   <TableCell>{r.clientes_asignados ?? 0}</TableCell>
-                  {isAdmin && (
-                    <TableCell className="text-right">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditing(r)
-                          setForm({
-                            nombre: r.nombre,
-                            apellido: r.apellido,
-                            telefono: r.telefono,
-                            email: r.email,
-                          })
-                          setOpen(true)
-                        }}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => setDeleteId(r.id)}>
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  )}
+                  <TableCell className="text-right">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditing(r)
+                        setForm({
+                          nombre: r.nombre,
+                          apellido: r.apellido,
+                          telefono: r.telefono,
+                          email: r.email,
+                        })
+                        setOpen(true)
+                      }}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => setDeleteId(r.id)}>
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -263,8 +261,10 @@ export default function RepresentantesPage() {
             <AlertDialogDescription>Solo si no tiene clientes asignados.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={remove}>Eliminar</AlertDialogAction>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={remove} disabled={isDeleting}>
+              {isDeleting ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

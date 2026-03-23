@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
   const payload = {
     nombre: parsed.data.nombre.trim(),
-    ruc: parsed.data.ruc?.trim() || null,
+    rnc: parsed.data.rnc?.trim() || null,
     direccion: parsed.data.direccion?.trim() || null,
     telefono: parsed.data.telefono?.trim() || null,
     email: parsed.data.email?.trim() || null,

@@ -36,6 +36,7 @@ type ClienteRow = {
   apellido: string
   cedula: string
   ultimo_pago: string | null
+  estado_validacion?: "VALIDADO" | "PENDIENTE_VALIDAR"
   empresas: { nombre: string } | null
   representantes: { nombre: string; apellido: string } | null
 }
@@ -43,11 +44,15 @@ type ClienteRow = {
 export default function ClientesPage() {
   const [rows, setRows] = useState<ClienteRow[]>([])
   const [search, setSearch] = useState("")
+  const [filtroEmpresa, setFiltroEmpresa] = useState("")
+  const [filtroRep, setFiltroRep] = useState("")
+  const [filtroEstadoValidacion, setFiltroEstadoValidacion] = useState("")
   const [loading, setLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<ClienteRow | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [role, setRole] = useState<string | null>(null)
   const [empresas, setEmpresas] = useState<{ id: number; nombre: string }[]>([])
   const [reps, setReps] = useState<{ id: number; nombre: string; apellido: string }[]>([])
   const [form, setForm] = useState({
@@ -56,6 +61,7 @@ export default function ClientesPage() {
     cedula: "",
     ubicacion: "",
     telefono: "",
+    estadoValidacion: "VALIDADO" as "VALIDADO" | "PENDIENTE_VALIDAR",
     empresaId: "",
     representanteId: "",
   })
@@ -63,6 +69,9 @@ export default function ClientesPage() {
   const load = useCallback(async () => {
     setLoading(true)
     const q = new URLSearchParams({ search, pageSize: "100" })
+    if (filtroEmpresa) q.set("empresaId", filtroEmpresa)
+    if (filtroRep) q.set("representanteId", filtroRep)
+    if (filtroEstadoValidacion) q.set("estadoValidacion", filtroEstadoValidacion)
     const res = await fetchApi<{ data: ClienteRow[] }>(`/api/clientes?${q}`)
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
@@ -72,7 +81,7 @@ export default function ClientesPage() {
       setRows(res.data.data ?? [])
     }
     setLoading(false)
-  }, [search])
+  }, [search, filtroEmpresa, filtroRep, filtroEstadoValidacion])
 
   useEffect(() => {
     load()
@@ -91,8 +100,6 @@ export default function ClientesPage() {
 
   useEffect(() => {
     void (async () => {
-      const p = await fetchApi<{ role: string }>("/api/profile")
-      if (p.ok) setRole(p.data.role)
       await loadEmpresasYReps()
     })()
   }, [loadEmpresasYReps])
@@ -102,10 +109,12 @@ export default function ClientesPage() {
   }, [open, loadEmpresasYReps])
 
   const save = async () => {
+    if (isSaving) return
     if (!form.empresaId || !form.representanteId) {
       toast.error("Debes elegir una empresa y un representante antes de guardar.")
       return
     }
+    setIsSaving(true)
     const method = editing ? "PUT" : "POST"
     const url = editing ? `/api/clientes/${editing.id}` : "/api/clientes"
     const res = await fetchApi(url, {
@@ -117,6 +126,7 @@ export default function ClientesPage() {
         cedula: form.cedula,
         ubicacion: form.ubicacion,
         telefono: form.telefono,
+        estadoValidacion: form.estadoValidacion,
         empresaId: Number(form.empresaId),
         representanteId: Number(form.representanteId),
       }),
@@ -124,28 +134,30 @@ export default function ClientesPage() {
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
+      setIsSaving(false)
       return
     }
     toast.success("Cliente guardado")
     setOpen(false)
     setEditing(null)
-    load()
+    await load()
+    setIsSaving(false)
   }
 
   const remove = async () => {
-    if (!deleteId) return
+    if (!deleteId || isDeleting) return
+    setIsDeleting(true)
     const res = await fetchApi(`/api/clientes/${deleteId}`, { method: "DELETE" })
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
     } else {
       toast.success("Eliminado")
-      load()
+      await load()
     }
     setDeleteId(null)
+    setIsDeleting(false)
   }
-
-  const isAdmin = role === "ADMIN"
 
   return (
     <div className="space-y-6">
@@ -168,6 +180,7 @@ export default function ClientesPage() {
                   cedula: "",
                   ubicacion: "",
                   telefono: "",
+                  estadoValidacion: "VALIDADO",
                   empresaId: "",
                   representanteId: "",
                 })
@@ -254,6 +267,26 @@ export default function ClientesPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label>Estado de validación</Label>
+                <Select
+                  value={form.estadoValidacion}
+                  onValueChange={(v) =>
+                    setForm({
+                      ...form,
+                      estadoValidacion: v as "VALIDADO" | "PENDIENTE_VALIDAR",
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="VALIDADO">Validado</SelectItem>
+                    <SelectItem value="PENDIENTE_VALIDAR">Pendiente de validar</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Label>Empresa</Label>
                   <Button variant="outline" size="sm" className="shrink-0 gap-1" asChild>
@@ -330,32 +363,71 @@ export default function ClientesPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="secondary" onClick={() => setOpen(false)}>
+              <Button variant="secondary" onClick={() => setOpen(false)} disabled={isSaving}>
                 Cancelar
               </Button>
               <Button
                 onClick={save}
-                disabled={!form.empresaId || !form.representanteId}
+                disabled={!form.empresaId || !form.representanteId || isSaving}
                 title={
                   !form.empresaId || !form.representanteId
                     ? "Elige empresa y representante"
                     : undefined
                 }
               >
-                Guardar
+                {isSaving ? "Guardando..." : "Guardar"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Input
           placeholder="Nombre, cédula..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
+        <Select value={filtroEmpresa || "all"} onValueChange={(v) => setFiltroEmpresa(v === "all" ? "" : v)}>
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="Empresa" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las empresas</SelectItem>
+            {empresas.map((e) => (
+              <SelectItem key={e.id} value={String(e.id)}>
+                {e.nombre}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filtroRep || "all"} onValueChange={(v) => setFiltroRep(v === "all" ? "" : v)}>
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="Representante" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los representantes</SelectItem>
+            {reps.map((r) => (
+              <SelectItem key={r.id} value={String(r.id)}>
+                {r.nombre} {r.apellido}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={filtroEstadoValidacion || "all"}
+          onValueChange={(v) => setFiltroEstadoValidacion(v === "all" ? "" : v)}
+        >
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="Estado validación" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los estados</SelectItem>
+            <SelectItem value="VALIDADO">Validado</SelectItem>
+            <SelectItem value="PENDIENTE_VALIDAR">Pendiente de validar</SelectItem>
+          </SelectContent>
+        </Select>
         <Button variant="outline" onClick={load}>
           Buscar
         </Button>
@@ -369,6 +441,7 @@ export default function ClientesPage() {
               <TableHead>Cédula</TableHead>
               <TableHead>Empresa</TableHead>
               <TableHead>Representante</TableHead>
+              <TableHead>Validación</TableHead>
               <TableHead>Último pago</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
@@ -376,11 +449,11 @@ export default function ClientesPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6}>Cargando…</TableCell>
+                <TableCell colSpan={7}>Cargando…</TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6}>Sin clientes</TableCell>
+                <TableCell colSpan={7}>Sin clientes</TableCell>
               </TableRow>
             ) : (
               rows.map((c) => (
@@ -396,6 +469,9 @@ export default function ClientesPage() {
                     {c.representantes
                       ? `${c.representantes.nombre} ${c.representantes.apellido}`
                       : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {c.estado_validacion === "PENDIENTE_VALIDAR" ? "Pendiente de validar" : "Validado"}
                   </TableCell>
                   <TableCell>{c.ultimo_pago ?? "—"}</TableCell>
                   <TableCell className="text-right">
@@ -417,6 +493,7 @@ export default function ClientesPage() {
                           cedula: String(j.cedula),
                           ubicacion: String(j.ubicacion),
                           telefono: String(j.telefono),
+                          estadoValidacion: (j.estado_validacion as "VALIDADO" | "PENDIENTE_VALIDAR") ?? "VALIDADO",
                           empresaId: String(j.empresa_id),
                           representanteId: String(j.representante_id),
                         })
@@ -425,11 +502,9 @@ export default function ClientesPage() {
                     >
                       <Pencil className="size-4" />
                     </Button>
-                    {isAdmin && (
-                      <Button size="icon" variant="ghost" onClick={() => setDeleteId(c.id)}>
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
-                    )}
+                    <Button size="icon" variant="ghost" onClick={() => setDeleteId(c.id)}>
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
@@ -445,8 +520,10 @@ export default function ClientesPage() {
             <AlertDialogDescription>Solo si no tiene préstamos activos o en mora.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={remove}>Eliminar</AlertDialogAction>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={remove} disabled={isDeleting}>
+              {isDeleting ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

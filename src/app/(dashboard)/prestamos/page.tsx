@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { CalendarDatePicker } from "@/components/ui/calendar-date-picker"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 import { formatRD } from "@/lib/format-currency"
 import { cn } from "@/lib/utils"
@@ -53,6 +54,7 @@ export default function PrestamosPage() {
   const [rows, setRows] = useState<PrestamoList[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
   const [clientes, setClientes] = useState<{ id: number; nombre: string; apellido: string }[]>([])
   const [form, setForm] = useState({
     clienteId: "",
@@ -61,6 +63,7 @@ export default function PrestamosPage() {
     plazo: "12",
     tipoPlazo: "MENSUAL",
     fechaInicio: new Date().toISOString().slice(0, 10),
+    fechaProximoPago: "",
     notas: "",
   })
 
@@ -88,6 +91,8 @@ export default function PrestamosPage() {
   }, [])
 
   const crear = async () => {
+    if (isCreating) return
+    setIsCreating(true)
     const res = await fetchApi("/api/prestamos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -98,17 +103,20 @@ export default function PrestamosPage() {
         plazo: Number(form.plazo),
         tipoPlazo: form.tipoPlazo,
         fechaInicio: form.fechaInicio,
+        fechaProximoPago: form.fechaProximoPago || undefined,
         notas: form.notas || null,
       }),
     })
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
+      setIsCreating(false)
       return
     }
     toast.success("Préstamo creado")
     setOpen(false)
-    load()
+    await load()
+    setIsCreating(false)
   }
 
   return (
@@ -134,6 +142,7 @@ export default function PrestamosPage() {
                   plazo: "12",
                   tipoPlazo: "MENSUAL",
                   fechaInicio: new Date().toISOString().slice(0, 10),
+                  fechaProximoPago: "",
                   notas: "",
                 })
               }
@@ -206,10 +215,18 @@ export default function PrestamosPage() {
               </div>
               <div className="space-y-2">
                 <Label>Fecha inicio</Label>
-                <Input
-                  type="date"
+                <CalendarDatePicker
                   value={form.fechaInicio}
-                  onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })}
+                  onChange={(value) => setForm({ ...form, fechaInicio: value })}
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Próxima fecha de pago (manual, opcional)</Label>
+                <CalendarDatePicker
+                  value={form.fechaProximoPago}
+                  onChange={(value) => setForm({ ...form, fechaProximoPago: value })}
+                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
@@ -221,7 +238,9 @@ export default function PrestamosPage() {
               <Button variant="secondary" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={crear}>Crear</Button>
+              <Button onClick={crear} disabled={isCreating}>
+                {isCreating ? "Creando..." : "Crear"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

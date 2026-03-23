@@ -4,6 +4,7 @@ export type ClienteMorosoLinea = {
   cliente_id: number
   prestamo_id: number
   nombre_completo: string
+  cedula: string
   monto_pendiente: string
   dias_atraso: number
   ultimo_pago: string | null
@@ -15,7 +16,7 @@ export async function obtenerMorososRepresentante(
 ): Promise<{ lineas: ClienteMorosoLinea[]; total_cartera_mora: string }> {
   const { data: clientes } = await supabase
     .from("clientes")
-    .select("id, nombre, apellido, ultimo_pago")
+    .select("id, nombre, apellido, cedula, ultimo_pago")
     .eq("representante_id", representanteId)
 
   const cids = (clientes ?? []).map((c) => c.id)
@@ -48,6 +49,7 @@ export async function obtenerMorososRepresentante(
       cliente_id: c.id,
       prestamo_id: p.id,
       nombre_completo: `${c.nombre} ${c.apellido}`,
+      cedula: String(c.cedula),
       monto_pendiente: String(p.capital_pendiente),
       dias_atraso,
       ultimo_pago: c.ultimo_pago,
@@ -83,7 +85,7 @@ export function construirMensajeReporte(
   msg += "Detalle:\n"
   for (const l of lineas) {
     const up = l.ultimo_pago ? `Último pago: ${l.ultimo_pago}` : "Sin último pago registrado"
-    msg += `- ${l.nombre_completo} | Pendiente RD$ ${Number(l.monto_pendiente).toLocaleString("es-DO")} | Atraso: ${l.dias_atraso} días | ${up}\n`
+    msg += `- ${l.nombre_completo} (Cédula: ${l.cedula}) | Pendiente RD$ ${Number(l.monto_pendiente).toLocaleString("es-DO")} | Atraso: ${l.dias_atraso} días | ${up}\n`
   }
 
   msg += `\nTotal cartera en mora: RD$ ${Number(total).toLocaleString("es-DO")}\n`

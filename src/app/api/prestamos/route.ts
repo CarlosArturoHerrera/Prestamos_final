@@ -99,6 +99,7 @@ export async function POST(request: Request) {
     parsed.data.tipoPlazo,
     parsed.data.plazo,
   )
+  const fechaProximo = parsed.data.fechaProximoPago ?? fecha_proximo_vencimiento
 
   const montoStr = String(parsed.data.monto)
 
@@ -110,7 +111,7 @@ export async function POST(request: Request) {
     tipo_plazo: parsed.data.tipoPlazo,
     fecha_inicio: parsed.data.fechaInicio,
     fecha_vencimiento,
-    fecha_proximo_vencimiento,
+    fecha_proximo_vencimiento: fechaProximo,
     capital_pendiente: montoStr,
     estado: "ACTIVO" as const,
     notas: parsed.data.notas?.trim() || null,

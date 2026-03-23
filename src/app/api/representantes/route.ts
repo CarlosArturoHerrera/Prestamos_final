@@ -84,6 +84,9 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.from("representantes").insert(payload).select().single()
 
   if (error) {
+    if (error.code === "23505") {
+      return badRequest("Ya existe un representante con ese email")
+    }
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 

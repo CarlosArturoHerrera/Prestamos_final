@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server"
 import {
   badRequest,
-  forbidden,
   getUserAndRole,
-  requireAdmin,
   unauthorized,
 } from "@/lib/api-auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
@@ -72,6 +70,7 @@ export async function PUT(request: Request, ctx: Ctx) {
     cedula: parsed.data.cedula.trim(),
     ubicacion: parsed.data.ubicacion.trim(),
     telefono: parsed.data.telefono.trim(),
+    estado_validacion: parsed.data.estadoValidacion ?? "VALIDADO",
     representante_id: parsed.data.representanteId,
     empresa_id: parsed.data.empresaId,
   }
@@ -92,7 +91,6 @@ export async function DELETE(_request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient()
   const session = await getUserAndRole(supabase)
   if (!session) return unauthorized()
-  if (!requireAdmin(session.role)) return forbidden()
 
   const { id: idParam } = await ctx.params
   const id = Number(idParam)

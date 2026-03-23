@@ -30,7 +30,7 @@ import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 type Empresa = {
   id: number
   nombre: string
-  ruc: string | null
+  rnc: string | null
   direccion: string | null
   telefono: string | null
   email: string | null
@@ -43,10 +43,11 @@ export default function EmpresasPage() {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Empresa | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [role, setRole] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [form, setForm] = useState({
     nombre: "",
-    ruc: "",
+    rnc: "",
     direccion: "",
     telefono: "",
     email: "",
@@ -55,13 +56,13 @@ export default function EmpresasPage() {
   const load = useCallback(async () => {
     setLoading(true)
     const q = new URLSearchParams({ search, pageSize: "100" })
-    const res = await fetchApi<{ data: Empresa[] }>(`/api/empresas?${q}`)
+    const res = await fetchApi<{ data: Array<Empresa & { ruc?: string | null }> }>(`/api/empresas?${q}`)
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
       setRows([])
     } else {
-      setRows(res.data.data ?? [])
+      setRows((res.data.data ?? []).map((x) => ({ ...x, rnc: x.rnc ?? x.ruc ?? null })))
     }
     setLoading(false)
   }, [search])
@@ -70,14 +71,9 @@ export default function EmpresasPage() {
     load()
   }, [load])
 
-  useEffect(() => {
-    void (async () => {
-      const res = await fetchApi<{ role: string }>("/api/profile")
-      if (res.ok) setRole(res.data.role)
-    })()
-  }, [])
-
   const save = async () => {
+    if (isSaving) return
+    setIsSaving(true)
     const method = editing ? "PUT" : "POST"
     const url = editing ? `/api/empresas/${editing.id}` : "/api/empresas"
     const res = await fetchApi(url, {
@@ -85,7 +81,7 @@ export default function EmpresasPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nombre: form.nombre,
-        ruc: form.ruc || null,
+        rnc: form.rnc || null,
         direccion: form.direccion || null,
         telefono: form.telefono || null,
         email: form.email || null,
@@ -94,28 +90,30 @@ export default function EmpresasPage() {
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
+      setIsSaving(false)
       return
     }
     toast.success("Empresa guardada")
     setOpen(false)
     setEditing(null)
-    load()
+    await load()
+    setIsSaving(false)
   }
 
   const remove = async () => {
-    if (!deleteId) return
+    if (!deleteId || isDeleting) return
+    setIsDeleting(true)
     const res = await fetchApi(`/api/empresas/${deleteId}`, { method: "DELETE" })
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
     } else {
       toast.success("Eliminada")
-      load()
+      await load()
     }
     setDeleteId(null)
+    setIsDeleting(false)
   }
-
-  const isAdmin = role === "ADMIN"
 
   return (
     <div className="space-y-6">
@@ -135,7 +133,7 @@ export default function EmpresasPage() {
             <Button
               onClick={() => {
                 setEditing(null)
-                setForm({ nombre: "", ruc: "", direccion: "", telefono: "", email: "" })
+                setForm({ nombre: "", rnc: "", direccion: "", telefono: "", email: "" })
                 setOpen(true)
               }}
             >
@@ -157,8 +155,8 @@ export default function EmpresasPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>RUC</Label>
-                <Input value={form.ruc} onChange={(e) => setForm({ ...form, ruc: e.target.value })} />
+                <Label>RNC (opcional)</Label>
+                <Input value={form.rnc} onChange={(e) => setForm({ ...form, rnc: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label>Dirección</Label>
@@ -184,10 +182,12 @@ export default function EmpresasPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="secondary" onClick={() => setOpen(false)}>
+              <Button variant="secondary" onClick={() => setOpen(false)} disabled={isSaving}>
                 Cancelar
               </Button>
-              <Button onClick={save}>Guardar</Button>
+              <Button onClick={save} disabled={isSaving}>
+                {isSaving ? "Guardando..." : "Guardar"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -210,52 +210,50 @@ export default function EmpresasPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
-              <TableHead>RUC</TableHead>
+              <TableHead>RNC</TableHead>
               <TableHead>Teléfono</TableHead>
               <TableHead>Email</TableHead>
-              {isAdmin && <TableHead className="text-right">Acciones</TableHead>}
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 5 : 4}>Cargando…</TableCell>
+                <TableCell colSpan={5}>Cargando…</TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 5 : 4}>Sin empresas</TableCell>
+                <TableCell colSpan={5}>Sin empresas</TableCell>
               </TableRow>
             ) : (
               rows.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="font-medium">{e.nombre}</TableCell>
-                  <TableCell>{e.ruc ?? "—"}</TableCell>
+                  <TableCell>{e.rnc ?? "—"}</TableCell>
                   <TableCell>{e.telefono ?? "—"}</TableCell>
                   <TableCell>{e.email ?? "—"}</TableCell>
-                  {isAdmin && (
-                    <TableCell className="text-right">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditing(e)
-                          setForm({
-                            nombre: e.nombre,
-                            ruc: e.ruc ?? "",
-                            direccion: e.direccion ?? "",
-                            telefono: e.telefono ?? "",
-                            email: e.email ?? "",
-                          })
-                          setOpen(true)
-                        }}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => setDeleteId(e.id)}>
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  )}
+                  <TableCell className="text-right">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditing(e)
+                        setForm({
+                          nombre: e.nombre,
+                          rnc: e.rnc ?? "",
+                          direccion: e.direccion ?? "",
+                          telefono: e.telefono ?? "",
+                          email: e.email ?? "",
+                        })
+                        setOpen(true)
+                      }}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => setDeleteId(e.id)}>
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -272,8 +270,10 @@ export default function EmpresasPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={remove}>Eliminar</AlertDialogAction>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={remove} disabled={isDeleting}>
+              {isDeleting ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

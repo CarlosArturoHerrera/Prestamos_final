@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { CalendarDatePicker } from "@/components/ui/calendar-date-picker"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 import { formatRD } from "@/lib/format-currency"
 import { Pie, PieChart, ResponsiveContainer, Cell, Tooltip } from "recharts"
@@ -180,18 +181,20 @@ export default function ReportesPage() {
             </div>
             <div className="space-y-2">
               <Label>Fecha inicio desde</Label>
-              <Input
-                type="date"
+              <CalendarDatePicker
                 value={filtros.fechaDesde}
-                onChange={(e) => setFiltros({ ...filtros, fechaDesde: e.target.value })}
+                onChange={(value) => setFiltros({ ...filtros, fechaDesde: value })}
+                placeholder="Fecha desde"
+                className="w-full"
               />
             </div>
             <div className="space-y-2">
               <Label>Fecha inicio hasta</Label>
-              <Input
-                type="date"
+              <CalendarDatePicker
                 value={filtros.fechaHasta}
-                onChange={(e) => setFiltros({ ...filtros, fechaHasta: e.target.value })}
+                onChange={(value) => setFiltros({ ...filtros, fechaHasta: value })}
+                placeholder="Fecha hasta"
+                className="w-full"
               />
             </div>
           </div>

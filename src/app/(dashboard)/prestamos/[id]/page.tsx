@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { CalendarDatePicker } from "@/components/ui/calendar-date-picker"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 import { formatRD } from "@/lib/format-currency"
 
@@ -24,10 +25,14 @@ export default function PrestamoDetallePage() {
 
   const [abonoForm, setAbonoForm] = useState({
     fechaAbono: new Date().toISOString().slice(0, 10),
+    pago: "",
     montoCapitalDebitado: "0",
     observaciones: "",
   })
   const [regancheForm, setRegancheForm] = useState({ monto: "", notas: "" })
+  const [savingAbono, setSavingAbono] = useState(false)
+  const [savingReganche, setSavingReganche] = useState(false)
+  const [applyingIntereses, setApplyingIntereses] = useState(false)
 
   const load = useCallback(async () => {
     const res = await fetchApi<{
@@ -49,6 +54,8 @@ export default function PrestamoDetallePage() {
   }, [load])
 
   const registrarAbono = async () => {
+    if (savingAbono) return
+    setSavingAbono(true)
     const res = await fetchApi(`/api/prestamos/${id}/abonos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -57,13 +64,17 @@ export default function PrestamoDetallePage() {
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
+      setSavingAbono(false)
       return
     }
     toast.success("Abono registrado")
-    load()
+    await load()
+    setSavingAbono(false)
   }
 
   const reganche = async () => {
+    if (savingReganche) return
+    setSavingReganche(true)
     const r = await fetch(`/api/prestamos/${id}/reganche`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -72,26 +83,47 @@ export default function PrestamoDetallePage() {
     const j = await r.json()
     if (!r.ok) {
       toast.error(j.error ?? "Error")
+      setSavingReganche(false)
       return
     }
     toast.success("Reganche aplicado al mismo préstamo")
     setRegancheForm({ monto: "", notas: "" })
-    load()
+    await load()
+    setSavingReganche(false)
   }
 
-  const aplicarIntereses = async () => {
+  const aplicarIntereses = async (ids?: number[]) => {
+    if (applyingIntereses) return
+    setApplyingIntereses(true)
     const res = await fetchApi(`/api/prestamos/${id}/aplicar-interes-atrasado`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify(ids?.length ? { ids } : {}),
+    })
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
+      setApplyingIntereses(false)
+      return
+    }
+    toast.success("Intereses aplicados al capital")
+    await load()
+    setApplyingIntereses(false)
+  }
+
+  const anularInteres = async (interesId: number) => {
+    const ok = window.confirm("¿Seguro que deseas anular este interés pendiente?")
+    if (!ok) return
+    const res = await fetchApi(`/api/prestamos/${id}/intereses-atrasados/${interesId}`, {
+      method: "DELETE",
     })
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
       return
     }
-    toast.success("Intereses aplicados al capital")
-    load()
+    toast.success("Interés pendiente anulado")
+    await load()
   }
 
   if (!data?.prestamo) {
@@ -99,6 +131,15 @@ export default function PrestamoDetallePage() {
   }
 
   const p = data.prestamo
+  const cliente = p.clientes as
+    | {
+        nombre?: string
+        apellido?: string
+        cedula?: string
+        empresas?: { nombre?: string }
+        representantes?: { nombre?: string; apellido?: string }
+      }
+    | undefined
 
   return (
     <div className="space-y-8">
@@ -106,7 +147,17 @@ export default function PrestamoDetallePage() {
         <Button variant="outline" asChild>
           <Link href="/prestamos">← Volver</Link>
         </Button>
-        <h1 className="text-2xl font-bold">Préstamo #{id}</h1>
+        <div>
+          <h1 className="text-2xl font-bold">
+            Préstamo de {cliente ? `${cliente.nombre ?? ""} ${cliente.apellido ?? ""}`.trim() : `#${id}`}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Cédula: {cliente?.cedula ?? "—"} · Empresa: {cliente?.empresas?.nombre ?? "—"} · Representante:{" "}
+            {cliente?.representantes
+              ? `${cliente.representantes.nombre ?? ""} ${cliente.representantes.apellido ?? ""}`.trim()
+              : "—"}
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -172,14 +223,22 @@ export default function PrestamoDetallePage() {
         <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="space-y-2">
             <Label>Fecha</Label>
+              <CalendarDatePicker
+                value={abonoForm.fechaAbono}
+                onChange={(value) => setAbonoForm({ ...abonoForm, fechaAbono: value })}
+                className="w-full"
+              />
+          </div>
+          <div className="space-y-2">
+            <Label>Pago recibido</Label>
             <Input
-              type="date"
-              value={abonoForm.fechaAbono}
-              onChange={(e) => setAbonoForm({ ...abonoForm, fechaAbono: e.target.value })}
+              value={abonoForm.pago}
+              onChange={(e) => setAbonoForm({ ...abonoForm, pago: e.target.value })}
+              placeholder="Ej. 1500 (interés + capital)"
             />
           </div>
           <div className="space-y-2">
-            <Label>Capital a descontar (0 = solo interés)</Label>
+            <Label>Capital a debitar (manual)</Label>
             <Input
               value={abonoForm.montoCapitalDebitado}
               onChange={(e) =>
@@ -194,15 +253,22 @@ export default function PrestamoDetallePage() {
               onChange={(e) => setAbonoForm({ ...abonoForm, observaciones: e.target.value })}
             />
           </div>
-          <Button onClick={registrarAbono}>Registrar abono</Button>
+          <Button onClick={registrarAbono} disabled={savingAbono}>
+            {savingAbono ? "Registrando..." : "Registrar abono"}
+          </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Intereses atrasados pendientes</CardTitle>
-          <Button variant="secondary" size="sm" onClick={aplicarIntereses}>
-            Aplicar todos al capital
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => aplicarIntereses()}
+            disabled={applyingIntereses}
+          >
+            {applyingIntereses ? "Aplicando..." : "Aplicar todos al capital"}
           </Button>
         </CardHeader>
         <CardContent>
@@ -212,12 +278,13 @@ export default function PrestamoDetallePage() {
                 <TableHead>Fecha ref.</TableHead>
                 <TableHead>Monto</TableHead>
                 <TableHead>Aplicado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {(data.intereses_atrasados ?? []).length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3}>Sin registros</TableCell>
+                  <TableCell colSpan={4}>Sin registros</TableCell>
                 </TableRow>
               ) : (
                 data.intereses_atrasados.map((i) => (
@@ -225,6 +292,26 @@ export default function PrestamoDetallePage() {
                     <TableCell>{String(i.fecha_generado)}</TableCell>
                     <TableCell>{formatRD(i.monto as string)}</TableCell>
                     <TableCell>{i.aplicado ? "Sí" : "No"}</TableCell>
+                    <TableCell className="text-right">
+                      {!i.aplicado && (
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => aplicarIntereses([Number(i.id)])}
+                          >
+                            Aplicar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => anularInteres(Number(i.id))}
+                          >
+                            Anular
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               )}

@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server"
 import {
   badRequest,
-  forbidden,
   getUserAndRole,
-  requireAdmin,
   unauthorized,
 } from "@/lib/api-auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
@@ -15,7 +13,6 @@ export async function PUT(request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient()
   const session = await getUserAndRole(supabase)
   if (!session) return unauthorized()
-  if (!requireAdmin(session.role)) return forbidden()
 
   const { id: idParam } = await ctx.params
   const id = Number(idParam)
@@ -35,7 +32,7 @@ export async function PUT(request: Request, ctx: Ctx) {
 
   const payload = {
     nombre: parsed.data.nombre.trim(),
-    ruc: parsed.data.ruc?.trim() || null,
+    rnc: parsed.data.rnc?.trim() || null,
     direccion: parsed.data.direccion?.trim() || null,
     telefono: parsed.data.telefono?.trim() || null,
     email: parsed.data.email?.trim() || null,
@@ -57,7 +54,6 @@ export async function DELETE(_request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient()
   const session = await getUserAndRole(supabase)
   if (!session) return unauthorized()
-  if (!requireAdmin(session.role)) return forbidden()
 
   const { id: idParam } = await ctx.params
   const id = Number(idParam)

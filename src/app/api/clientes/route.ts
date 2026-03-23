@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   const search = (searchParams.get("search") || "").trim()
   const representanteId = searchParams.get("representanteId")
   const empresaId = searchParams.get("empresaId")
+  const estadoValidacion = searchParams.get("estadoValidacion")
 
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
@@ -35,6 +36,9 @@ export async function GET(request: Request) {
   }
   if (empresaId) {
     q = q.eq("empresa_id", Number(empresaId))
+  }
+  if (estadoValidacion && ["VALIDADO", "PENDIENTE_VALIDAR"].includes(estadoValidacion)) {
+    q = q.eq("estado_validacion", estadoValidacion)
   }
 
   if (search) {
@@ -79,6 +83,7 @@ export async function POST(request: Request) {
     cedula: parsed.data.cedula.trim(),
     ubicacion: parsed.data.ubicacion.trim(),
     telefono: parsed.data.telefono.trim(),
+    estado_validacion: parsed.data.estadoValidacion ?? "VALIDADO",
     representante_id: parsed.data.representanteId,
     empresa_id: parsed.data.empresaId,
   }

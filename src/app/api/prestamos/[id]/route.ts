@@ -58,7 +58,7 @@ export async function GET(_request: Request, ctx: Ctx) {
     .order("created_at", { ascending: false })
 
   return NextResponse.json({
-    prestamo: refreshed ?? p,
+    prestamo: refreshed ? { ...refreshed, clientes: p.clientes } : p,
     abonos: abonos ?? [],
     intereses_atrasados: intereses ?? [],
     reganches: reganches ?? [],

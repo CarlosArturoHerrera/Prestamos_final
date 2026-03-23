@@ -12,6 +12,7 @@ export async function GET(request: Request) {
   const fechaDesde = searchParams.get("fechaDesde")
   const fechaHasta = searchParams.get("fechaHasta")
   const canal = searchParams.get("canal")
+  const cedula = (searchParams.get("cedula") || "").trim()
 
   let q = supabase
     .from("notificaciones")
@@ -42,5 +43,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
-  return NextResponse.json({ data: data ?? [] })
+  const rows = (data ?? []) as Array<{
+    clientes_incluidos?: Array<{ cedula?: string }>
+  }>
+
+  const filtered = cedula
+    ? rows.filter((r) =>
+        (r.clientes_incluidos ?? []).some((c) =>
+          String(c.cedula ?? "").toLowerCase().includes(cedula.toLowerCase()),
+        ),
+      )
+    : rows
+
+  return NextResponse.json({ data: filtered })
 }

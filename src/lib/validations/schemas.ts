@@ -7,7 +7,7 @@ const moneyString = z.union([
 
 export const empresaCreateSchema = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio").max(500),
-  ruc: z.string().max(100).optional().nullable(),
+  rnc: z.string().max(100).optional().nullable(),
   direccion: z.string().max(1000).optional().nullable(),
   telefono: z.string().max(50).optional().nullable(),
   email: z.union([z.string().email("Email inválido"), z.literal(""), z.null()]).optional(),
@@ -26,6 +26,7 @@ export const clienteCreateSchema = z.object({
   cedula: z.string().min(1).max(50),
   ubicacion: z.string().min(1).max(1000),
   telefono: z.string().min(1).max(50),
+  estadoValidacion: z.enum(["VALIDADO", "PENDIENTE_VALIDAR"]).optional(),
   representanteId: z.coerce.number().int().positive({
     message: "Selecciona un representante",
   }),
@@ -43,6 +44,7 @@ export const prestamoCreateSchema = z.object({
   plazo: z.coerce.number().int().positive(),
   tipoPlazo: tipoPlazoSchema,
   fechaInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (YYYY-MM-DD)"),
+  fechaProximoPago: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   notas: z.string().max(5000).optional().nullable(),
 })
 
@@ -53,8 +55,11 @@ export const regancheSchema = z.object({
 
 export const abonoCreateSchema = z.object({
   fechaAbono: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  montoCapitalDebitado: moneyString,
+  montoCapitalDebitado: moneyString.optional(),
+  pago: moneyString.optional(),
   observaciones: z.string().max(2000).optional().nullable(),
+}).refine((d) => d.montoCapitalDebitado !== undefined || d.pago !== undefined, {
+  message: "Indica al menos Pago o Capital a debitar",
 })
 
 export const notificacionEnviarSchema = z

@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server"
 import {
   badRequest,
-  forbidden,
   getUserAndRole,
-  requireAdmin,
   unauthorized,
 } from "@/lib/api-auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
@@ -15,7 +13,6 @@ export async function PUT(request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient()
   const session = await getUserAndRole(supabase)
   if (!session) return unauthorized()
-  if (!requireAdmin(session.role)) return forbidden()
 
   const { id: idParam } = await ctx.params
   const id = Number(idParam)
@@ -43,6 +40,9 @@ export async function PUT(request: Request, ctx: Ctx) {
   const { data, error } = await supabase.from("representantes").update(payload).eq("id", id).select().single()
 
   if (error) {
+    if (error.code === "23505") {
+      return badRequest("Ya existe un representante con ese email")
+    }
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
@@ -53,7 +53,6 @@ export async function DELETE(_request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient()
   const session = await getUserAndRole(supabase)
   if (!session) return unauthorized()
-  if (!requireAdmin(session.role)) return forbidden()
 
   const { id: idParam } = await ctx.params
   const id = Number(idParam)

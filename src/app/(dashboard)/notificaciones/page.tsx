@@ -24,7 +24,11 @@ export default function NotificacionesPage() {
   const [rows, setRows] = useState<NotifRow[]>([])
   const [reps, setReps] = useState<{ id: number; nombre: string; apellido: string }[]>([])
   const [filtroRep, setFiltroRep] = useState("")
+  const [filtroCedula, setFiltroCedula] = useState("")
   const [canal, setCanal] = useState("")
+  const [loadingHistorial, setLoadingHistorial] = useState(false)
+  const [sendingPreview, setSendingPreview] = useState(false)
+  const [sending, setSending] = useState(false)
   const [preview, setPreview] = useState("")
   const [form, setForm] = useState({
     enviarATodos: false,
@@ -33,8 +37,10 @@ export default function NotificacionesPage() {
   })
 
   const load = useCallback(async () => {
+    setLoadingHistorial(true)
     const q = new URLSearchParams()
     if (filtroRep) q.set("representanteId", filtroRep)
+    if (filtroCedula) q.set("cedula", filtroCedula)
     if (canal) q.set("canal", canal)
     const res = await fetchApi<{ data: NotifRow[] }>(`/api/notificaciones?${q}`)
     if (!res.ok) {
@@ -44,7 +50,8 @@ export default function NotificacionesPage() {
     } else {
       setRows(res.data.data ?? [])
     }
-  }, [filtroRep, canal])
+    setLoadingHistorial(false)
+  }, [filtroRep, filtroCedula, canal])
 
   useEffect(() => {
     load()
@@ -57,6 +64,8 @@ export default function NotificacionesPage() {
   }, [])
 
   const vistaPrevia = async () => {
+    if (sendingPreview) return
+    setSendingPreview(true)
     const body: Record<string, unknown> = {
       canal: form.canal,
       vistaPrevia: true,
@@ -73,14 +82,18 @@ export default function NotificacionesPage() {
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
+      setSendingPreview(false)
       return
     }
     const first = res.data.data?.[0]
     setPreview(first?.mensaje ?? JSON.stringify(res.data, null, 2))
     toast.message("Vista previa generada")
+    setSendingPreview(false)
   }
 
   const enviar = async () => {
+    if (sending) return
+    setSending(true)
     const body: Record<string, unknown> = {
       canal: form.canal,
       vistaPrevia: false,
@@ -97,10 +110,12 @@ export default function NotificacionesPage() {
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
+      setSending(false)
       return
     }
     toast.success("Proceso de envío terminado")
-    load()
+    await load()
+    setSending(false)
   }
 
   return (
@@ -160,10 +175,12 @@ export default function NotificacionesPage() {
             </Select>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={vistaPrevia}>
-              Vista previa
+            <Button variant="secondary" onClick={vistaPrevia} disabled={sendingPreview}>
+              {sendingPreview ? "Generando..." : "Vista previa"}
             </Button>
-            <Button onClick={enviar}>Enviar</Button>
+            <Button onClick={enviar} disabled={sending}>
+              {sending ? "Enviando..." : "Enviar"}
+            </Button>
           </div>
         </div>
         <div className="space-y-2">
@@ -173,10 +190,23 @@ export default function NotificacionesPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
+        <Select value={filtroRep || "all"} onValueChange={(v) => setFiltroRep(v === "all" ? "" : v)}>
+          <SelectTrigger className="w-[240px]">
+            <SelectValue placeholder="Representante" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los representantes</SelectItem>
+            {reps.map((r) => (
+              <SelectItem key={r.id} value={String(r.id)}>
+                {r.nombre} {r.apellido}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Input
-          placeholder="Filtrar por rep. id"
-          value={filtroRep}
-          onChange={(e) => setFiltroRep(e.target.value)}
+          placeholder="Filtrar por cédula"
+          value={filtroCedula}
+          onChange={(e) => setFiltroCedula(e.target.value)}
           className="max-w-xs"
         />
         <Select value={canal || "all"} onValueChange={(v) => setCanal(v === "all" ? "" : v)}>
@@ -207,7 +237,11 @@ export default function NotificacionesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 ? (
+            {loadingHistorial ? (
+              <TableRow>
+                <TableCell colSpan={5}>Cargando...</TableCell>
+              </TableRow>
+            ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5}>Sin historial</TableCell>
               </TableRow>
