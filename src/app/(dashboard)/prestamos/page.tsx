@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Plus } from "lucide-react"
 import { addDays } from "date-fns"
@@ -85,10 +85,11 @@ export default function PrestamosPage() {
   }, [load])
 
   useEffect(() => {
+    if (!open || clientes.length > 0) return
     fetch("/api/clientes?pageSize=200")
       .then((r) => r.json())
       .then((j) => setClientes(j.data ?? []))
-  }, [])
+  }, [open, clientes.length])
 
   const crear = async () => {
     if (isCreating) return
@@ -118,6 +119,65 @@ export default function PrestamosPage() {
     await load()
     setIsCreating(false)
   }
+
+  const clienteOptions = useMemo(
+    () =>
+      clientes.map((c) => (
+        <SelectItem key={c.id} value={String(c.id)}>
+          {c.nombre} {c.apellido}
+        </SelectItem>
+      )),
+    [clientes],
+  )
+
+  const tableRows = useMemo(() => {
+    if (loading) {
+      return (
+        <TableRow>
+          <TableCell colSpan={9}>Cargando…</TableCell>
+        </TableRow>
+      )
+    }
+    if (rows.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={9}>Sin préstamos</TableCell>
+        </TableRow>
+      )
+    }
+    return rows.map((p) => {
+      const tone = rowTone(p)
+      const saldado = p.estado === "SALDADO"
+      return (
+        <TableRow
+          key={p.id}
+          className={cn(
+            tone === "red" && "bg-red-500/10",
+            tone === "yellow" && "bg-amber-500/10",
+            tone === "green" && "bg-emerald-500/5",
+          )}
+        >
+          <TableCell className="font-medium">
+            {p.clientes ? `${p.clientes.nombre} ${p.clientes.apellido}` : "—"}
+          </TableCell>
+          <TableCell>{formatRD(p.monto)}</TableCell>
+          <TableCell>{saldado ? "—" : formatRD(p.interes_proximo)}</TableCell>
+          <TableCell>{saldado ? "—" : formatRD(p.capital_debitar_proximo)}</TableCell>
+          <TableCell>{p.tasa_interes}%</TableCell>
+          <TableCell>{p.fecha_proximo_vencimiento}</TableCell>
+          <TableCell className="font-medium">
+            {saldado ? "—" : formatRD(p.total_proximo_pago)}
+          </TableCell>
+          <TableCell>{p.estado}</TableCell>
+          <TableCell className="text-right">
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/prestamos/${p.id}`}>Detalle</Link>
+            </Button>
+          </TableCell>
+        </TableRow>
+      )
+    })
+  }, [loading, rows])
 
   return (
     <div className="space-y-6">
@@ -151,6 +211,7 @@ export default function PrestamosPage() {
               Nuevo préstamo
             </Button>
           </DialogTrigger>
+          {open && (
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Nuevo préstamo</DialogTitle>
@@ -163,11 +224,7 @@ export default function PrestamosPage() {
                     <SelectValue placeholder="Seleccionar cliente" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clientes.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.nombre} {c.apellido}
-                      </SelectItem>
-                    ))}
+                    {clienteOptions}
                   </SelectContent>
                 </Select>
               </div>
@@ -243,6 +300,7 @@ export default function PrestamosPage() {
               </Button>
             </DialogFooter>
           </DialogContent>
+          )}
         </Dialog>
       </div>
 
@@ -261,50 +319,7 @@ export default function PrestamosPage() {
               <TableHead className="text-right">Ver</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={9}>Cargando…</TableCell>
-              </TableRow>
-            ) : rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9}>Sin préstamos</TableCell>
-              </TableRow>
-            ) : (
-              rows.map((p) => {
-                const tone = rowTone(p)
-                const saldado = p.estado === "SALDADO"
-                return (
-                  <TableRow
-                    key={p.id}
-                    className={cn(
-                      tone === "red" && "bg-red-500/10",
-                      tone === "yellow" && "bg-amber-500/10",
-                      tone === "green" && "bg-emerald-500/5",
-                    )}
-                  >
-                    <TableCell className="font-medium">
-                      {p.clientes ? `${p.clientes.nombre} ${p.clientes.apellido}` : "—"}
-                    </TableCell>
-                    <TableCell>{formatRD(p.monto)}</TableCell>
-                    <TableCell>{saldado ? "—" : formatRD(p.interes_proximo)}</TableCell>
-                    <TableCell>{saldado ? "—" : formatRD(p.capital_debitar_proximo)}</TableCell>
-                    <TableCell>{p.tasa_interes}%</TableCell>
-                    <TableCell>{p.fecha_proximo_vencimiento}</TableCell>
-                    <TableCell className="font-medium">
-                      {saldado ? "—" : formatRD(p.total_proximo_pago)}
-                    </TableCell>
-                    <TableCell>{p.estado}</TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={`/prestamos/${p.id}`}>Detalle</Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
+          <TableBody>{tableRows}</TableBody>
         </Table>
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -117,6 +117,53 @@ export default function EmpresasPage() {
     setIsDeleting(false)
   }
 
+  const tableRows = useMemo(() => {
+    if (loading) {
+      return (
+        <TableRow>
+          <TableCell colSpan={5}>Cargando…</TableCell>
+        </TableRow>
+      )
+    }
+    if (rows.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={5}>Sin empresas</TableCell>
+        </TableRow>
+      )
+    }
+    return rows.map((e) => (
+      <TableRow key={e.id}>
+        <TableCell className="font-medium">{e.nombre}</TableCell>
+        <TableCell>{e.rnc ?? "—"}</TableCell>
+        <TableCell>{e.telefono ?? "—"}</TableCell>
+        <TableCell>{e.email ?? "—"}</TableCell>
+        <TableCell className="text-right">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => {
+              setEditing(e)
+              setForm({
+                nombre: e.nombre,
+                rnc: e.rnc ?? "",
+                direccion: e.direccion ?? "",
+                telefono: e.telefono ?? "",
+                email: e.email ?? "",
+              })
+              setOpen(true)
+            }}
+          >
+            <Pencil className="size-4" />
+          </Button>
+          <Button size="icon" variant="ghost" onClick={() => setDeleteId(e.id)}>
+            <Trash2 className="size-4 text-destructive" />
+          </Button>
+        </TableCell>
+      </TableRow>
+    ))
+  }, [loading, rows])
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -143,6 +190,7 @@ export default function EmpresasPage() {
               Nueva empresa
             </Button>
           </DialogTrigger>
+          {open && (
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editing ? "Editar empresa" : "Nueva empresa"}</DialogTitle>
@@ -192,6 +240,7 @@ export default function EmpresasPage() {
               </Button>
             </DialogFooter>
           </DialogContent>
+          )}
         </Dialog>
       </div>
 
@@ -218,48 +267,7 @@ export default function EmpresasPage() {
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={5}>Cargando…</TableCell>
-              </TableRow>
-            ) : rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5}>Sin empresas</TableCell>
-              </TableRow>
-            ) : (
-              rows.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell className="font-medium">{e.nombre}</TableCell>
-                  <TableCell>{e.rnc ?? "—"}</TableCell>
-                  <TableCell>{e.telefono ?? "—"}</TableCell>
-                  <TableCell>{e.email ?? "—"}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditing(e)
-                        setForm({
-                          nombre: e.nombre,
-                          rnc: e.rnc ?? "",
-                          direccion: e.direccion ?? "",
-                          telefono: e.telefono ?? "",
-                          email: e.email ?? "",
-                        })
-                        setOpen(true)
-                      }}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={() => setDeleteId(e.id)}>
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
+          <TableBody>{tableRows}</TableBody>
         </Table>
       </div>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Info, Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
@@ -161,6 +161,95 @@ export default function ClientesPage() {
     setIsDeleting(false)
   }
 
+  const empresaOptions = useMemo(
+    () =>
+      empresas.map((e) => (
+        <SelectItem key={e.id} value={String(e.id)}>
+          {e.nombre}
+        </SelectItem>
+      )),
+    [empresas],
+  )
+
+  const representanteOptions = useMemo(
+    () =>
+      reps.map((r) => (
+        <SelectItem key={r.id} value={String(r.id)}>
+          {r.nombre} {r.apellido}
+        </SelectItem>
+      )),
+    [reps],
+  )
+
+  const tableRows = useMemo(() => {
+    if (loading) {
+      return (
+        <TableRow>
+          <TableCell colSpan={7}>Cargando…</TableCell>
+        </TableRow>
+      )
+    }
+    if (rows.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={7}>Sin clientes</TableCell>
+        </TableRow>
+      )
+    }
+    return rows.map((c) => (
+      <TableRow key={c.id}>
+        <TableCell className="font-medium">
+          <Link href={`/clientes/${c.id}`} className="text-primary hover:underline">
+            {c.nombre} {c.apellido}
+          </Link>
+        </TableCell>
+        <TableCell>{c.cedula}</TableCell>
+        <TableCell>{c.empresas?.nombre ?? "—"}</TableCell>
+        <TableCell>
+          {c.representantes
+            ? `${c.representantes.nombre} ${c.representantes.apellido}`
+            : "—"}
+        </TableCell>
+        <TableCell>
+          {c.estado_validacion === "PENDIENTE_VALIDAR" ? "Pendiente de validar" : "Validado"}
+        </TableCell>
+        <TableCell>{c.ultimo_pago ?? "—"}</TableCell>
+        <TableCell className="text-right">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={async () => {
+              const res = await fetchApi<Record<string, unknown>>(`/api/clientes/${c.id}`)
+              if (!res.ok) {
+                redirectToLoginIfUnauthorized(res.status)
+                toast.error(res.message)
+                return
+              }
+              const j = res.data
+              setEditing(c)
+              setForm({
+                nombre: String(j.nombre),
+                apellido: String(j.apellido),
+                cedula: String(j.cedula),
+                ubicacion: String(j.ubicacion),
+                telefono: String(j.telefono),
+                estadoValidacion: (j.estado_validacion as "VALIDADO" | "PENDIENTE_VALIDAR") ?? "VALIDADO",
+                empresaId: String(j.empresa_id),
+                representanteId: String(j.representante_id),
+              })
+              setOpen(true)
+            }}
+          >
+            <Pencil className="size-4" />
+          </Button>
+          <Button size="icon" variant="ghost" onClick={() => setDeleteId(c.id)}>
+            <Trash2 className="size-4 text-destructive" />
+          </Button>
+        </TableCell>
+      </TableRow>
+    ))
+  }, [loading, rows])
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -193,6 +282,7 @@ export default function ClientesPage() {
               Nuevo cliente
             </Button>
           </DialogTrigger>
+          {open && (
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editing ? "Editar" : "Nuevo"} cliente</DialogTitle>
@@ -314,11 +404,7 @@ export default function ClientesPage() {
                         </Button>
                       </div>
                     ) : (
-                      empresas.map((e) => (
-                        <SelectItem key={e.id} value={String(e.id)}>
-                          {e.nombre}
-                        </SelectItem>
-                      ))
+                      empresaOptions
                     )}
                   </SelectContent>
                 </Select>
@@ -354,11 +440,7 @@ export default function ClientesPage() {
                         </Button>
                       </div>
                     ) : (
-                      reps.map((r) => (
-                        <SelectItem key={r.id} value={String(r.id)}>
-                          {r.nombre} {r.apellido}
-                        </SelectItem>
-                      ))
+                      representanteOptions
                     )}
                   </SelectContent>
                 </Select>
@@ -381,6 +463,7 @@ export default function ClientesPage() {
               </Button>
             </DialogFooter>
           </DialogContent>
+          )}
         </Dialog>
       </div>
 
@@ -448,70 +531,7 @@ export default function ClientesPage() {
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7}>Cargando…</TableCell>
-              </TableRow>
-            ) : rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7}>Sin clientes</TableCell>
-              </TableRow>
-            ) : (
-              rows.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">
-                    <Link href={`/clientes/${c.id}`} className="text-primary hover:underline">
-                      {c.nombre} {c.apellido}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{c.cedula}</TableCell>
-                  <TableCell>{c.empresas?.nombre ?? "—"}</TableCell>
-                  <TableCell>
-                    {c.representantes
-                      ? `${c.representantes.nombre} ${c.representantes.apellido}`
-                      : "—"}
-                  </TableCell>
-                  <TableCell>
-                    {c.estado_validacion === "PENDIENTE_VALIDAR" ? "Pendiente de validar" : "Validado"}
-                  </TableCell>
-                  <TableCell>{c.ultimo_pago ?? "—"}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={async () => {
-                        const res = await fetchApi<Record<string, unknown>>(`/api/clientes/${c.id}`)
-                        if (!res.ok) {
-                          redirectToLoginIfUnauthorized(res.status)
-                          toast.error(res.message)
-                          return
-                        }
-                        const j = res.data
-                        setEditing(c)
-                        setForm({
-                          nombre: String(j.nombre),
-                          apellido: String(j.apellido),
-                          cedula: String(j.cedula),
-                          ubicacion: String(j.ubicacion),
-                          telefono: String(j.telefono),
-                          estadoValidacion: (j.estado_validacion as "VALIDADO" | "PENDIENTE_VALIDAR") ?? "VALIDADO",
-                          empresaId: String(j.empresa_id),
-                          representanteId: String(j.representante_id),
-                        })
-                        setOpen(true)
-                      }}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={() => setDeleteId(c.id)}>
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
+          <TableBody>{tableRows}</TableBody>
         </Table>
       </div>
 

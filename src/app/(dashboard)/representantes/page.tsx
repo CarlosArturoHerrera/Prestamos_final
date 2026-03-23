@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -110,6 +110,54 @@ export default function RepresentantesPage() {
     setIsDeleting(false)
   }
 
+  const tableRows = useMemo(() => {
+    if (loading) {
+      return (
+        <TableRow>
+          <TableCell colSpan={5}>Cargando…</TableCell>
+        </TableRow>
+      )
+    }
+    if (rows.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={5}>Sin datos</TableCell>
+        </TableRow>
+      )
+    }
+    return rows.map((r) => (
+      <TableRow key={r.id}>
+        <TableCell className="font-medium">
+          {r.nombre} {r.apellido}
+        </TableCell>
+        <TableCell>{r.telefono}</TableCell>
+        <TableCell>{r.email}</TableCell>
+        <TableCell>{r.clientes_asignados ?? 0}</TableCell>
+        <TableCell className="text-right">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => {
+              setEditing(r)
+              setForm({
+                nombre: r.nombre,
+                apellido: r.apellido,
+                telefono: r.telefono,
+                email: r.email,
+              })
+              setOpen(true)
+            }}
+          >
+            <Pencil className="size-4" />
+          </Button>
+          <Button size="icon" variant="ghost" onClick={() => setDeleteId(r.id)}>
+            <Trash2 className="size-4 text-destructive" />
+          </Button>
+        </TableCell>
+      </TableRow>
+    ))
+  }, [loading, rows])
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -136,6 +184,7 @@ export default function RepresentantesPage() {
               Nuevo representante
             </Button>
           </DialogTrigger>
+          {open && (
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editing ? "Editar" : "Nuevo"} representante</DialogTitle>
@@ -184,6 +233,7 @@ export default function RepresentantesPage() {
               </Button>
             </DialogFooter>
           </DialogContent>
+          )}
         </Dialog>
       </div>
 
@@ -210,49 +260,7 @@ export default function RepresentantesPage() {
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={5}>Cargando…</TableCell>
-              </TableRow>
-            ) : rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5}>Sin datos</TableCell>
-              </TableRow>
-            ) : (
-              rows.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">
-                    {r.nombre} {r.apellido}
-                  </TableCell>
-                  <TableCell>{r.telefono}</TableCell>
-                  <TableCell>{r.email}</TableCell>
-                  <TableCell>{r.clientes_asignados ?? 0}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditing(r)
-                        setForm({
-                          nombre: r.nombre,
-                          apellido: r.apellido,
-                          telefono: r.telefono,
-                          email: r.email,
-                        })
-                        setOpen(true)
-                      }}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={() => setDeleteId(r.id)}>
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
+          <TableBody>{tableRows}</TableBody>
         </Table>
       </div>
 
