@@ -13,6 +13,8 @@ export async function GET(request: Request) {
   const fechaHasta = searchParams.get("fechaHasta")
   const canal = searchParams.get("canal")
   const cedula = (searchParams.get("cedula") || "").trim()
+  const page = Math.max(1, Number(searchParams.get("page") || 1))
+  const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || 50)))
 
   let q = supabase
     .from("notificaciones")
@@ -36,6 +38,11 @@ export async function GET(request: Request) {
   if (canal && ["WHATSAPP", "EMAIL", "AMBOS"].includes(canal)) {
     q = q.eq("canal", canal)
   }
+  if (!cedula) {
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    q = q.range(from, to)
+  }
 
   const { data, error } = await q
 
@@ -55,5 +62,5 @@ export async function GET(request: Request) {
       )
     : rows
 
-  return NextResponse.json({ data: filtered })
+  return NextResponse.json({ data: filtered, page, pageSize })
 }

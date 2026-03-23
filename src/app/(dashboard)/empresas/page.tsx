@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
+import { useDebouncedValue } from "@/lib/use-debounced-value"
 
 type Empresa = {
   id: number
@@ -39,6 +40,7 @@ type Empresa = {
 export default function EmpresasPage() {
   const [rows, setRows] = useState<Empresa[]>([])
   const [search, setSearch] = useState("")
+  const searchDebounced = useDebouncedValue(search, 350)
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Empresa | null>(null)
@@ -55,7 +57,7 @@ export default function EmpresasPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const q = new URLSearchParams({ search, pageSize: "100" })
+    const q = new URLSearchParams({ search: searchDebounced, pageSize: "50" })
     const res = await fetchApi<{ data: Array<Empresa & { ruc?: string | null }> }>(`/api/empresas?${q}`)
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
@@ -65,7 +67,7 @@ export default function EmpresasPage() {
       setRows((res.data.data ?? []).map((x) => ({ ...x, rnc: x.rnc ?? x.ruc ?? null })))
     }
     setLoading(false)
-  }, [search])
+  }, [searchDebounced])
 
   useEffect(() => {
     load()

@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
+import { useDebouncedValue } from "@/lib/use-debounced-value"
 
 type Rep = {
   id: number
@@ -39,6 +40,7 @@ type Rep = {
 export default function RepresentantesPage() {
   const [rows, setRows] = useState<Rep[]>([])
   const [search, setSearch] = useState("")
+  const searchDebounced = useDebouncedValue(search, 350)
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Rep | null>(null)
@@ -54,7 +56,7 @@ export default function RepresentantesPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const q = new URLSearchParams({ search, pageSize: "100" })
+    const q = new URLSearchParams({ search: searchDebounced, pageSize: "50" })
     const res = await fetchApi<{ data: Rep[] }>(`/api/representantes?${q}`)
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
@@ -64,7 +66,7 @@ export default function RepresentantesPage() {
       setRows(res.data.data ?? [])
     }
     setLoading(false)
-  }, [search])
+  }, [searchDebounced])
 
   useEffect(() => {
     load()

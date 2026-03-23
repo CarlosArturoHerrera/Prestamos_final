@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import dynamic from "next/dynamic"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +11,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { CalendarDatePicker } from "@/components/ui/calendar-date-picker"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 import { formatRD } from "@/lib/format-currency"
-import { Pie, PieChart, ResponsiveContainer, Cell, Tooltip } from "recharts"
+
+const EstadoPieChart = dynamic(
+  () => import("@/components/reportes/estado-pie-chart").then((m) => m.EstadoPieChart),
+  { ssr: false },
+)
 
 export default function ReportesPage() {
   const [kpis, setKpis] = useState<Record<string, string> | null>(null)
@@ -54,9 +59,9 @@ export default function ReportesPage() {
   useEffect(() => {
     void (async () => {
       const [e, r] = await Promise.all([
-        fetchApi<{ data: { id: number; nombre: string }[] }>("/api/empresas?pageSize=500"),
+        fetchApi<{ data: { id: number; nombre: string }[] }>("/api/empresas?pageSize=200"),
         fetchApi<{ data: { id: number; nombre: string; apellido: string }[] }>(
-          "/api/representantes?pageSize=500",
+          "/api/representantes?pageSize=200",
         ),
       ])
       if (e.ok) setEmpresas(e.data.data ?? [])
@@ -82,8 +87,6 @@ export default function ReportesPage() {
   }, {})
 
   const pieData = Object.entries(estadosCount).map(([name, value]) => ({ name, value }))
-
-  const COLORS = ["#22c55e", "#eab308", "#ef4444", "#64748b"]
 
   return (
     <div className="space-y-8">
@@ -211,16 +214,7 @@ export default function ReportesPage() {
 
         <div className="min-h-[280px] w-full min-w-0 rounded-xl border border-border/60 p-2">
           <p className="mb-2 text-center text-sm font-medium">Estados (resultado filtrado)</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={80} label>
-                {pieData.map((_, i) => (
-                  <Cell key={String(i)} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+          <EstadoPieChart data={pieData} />
         </div>
       </div>
 

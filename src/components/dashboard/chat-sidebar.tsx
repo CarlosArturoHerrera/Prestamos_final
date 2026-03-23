@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useRef, useEffect, CSSProperties, FormEvent } from "react"
+import dynamic from "next/dynamic"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { TextareaAutosize } from "@/components/ui/textarea-autosize"
@@ -11,7 +12,6 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import ReactMarkdown from "react-markdown"
 import {
   Tooltip,
   TooltipContent,
@@ -19,6 +19,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { BarVisualizer } from "@/components/ui/bar-visualizer"
+
+const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false })
 
 interface ChatMessage {
   id: string
@@ -29,7 +31,17 @@ interface ChatMessage {
 
 const CHAT_SESSION_KEY = "ai_chat_session"
 
-export function AIChatSidebar() {
+type AIChatSidebarProps = {
+  forceOpen?: boolean
+  showLauncher?: boolean
+  onRequestClose?: () => void
+}
+
+export function AIChatSidebar({
+  forceOpen = false,
+  showLauncher = true,
+  onRequestClose,
+}: AIChatSidebarProps = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -44,10 +56,22 @@ export function AIChatSidebar() {
   const audioChunksRef = useRef<Blob[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
+  const closeSidebar = () => {
+    setSidebarOpen(false)
+    onRequestClose?.()
+  }
+
+  useEffect(() => {
+    if (forceOpen) {
+      setSidebarOpen(true)
+    }
+  }, [forceOpen])
+
   // Auto-scroll cuando los mensajes cambien
   useEffect(() => {
+    if (!sidebarOpen) return
     scrollToBottom()
-  }, [messages])
+  }, [messages, sidebarOpen])
 
   // Cargar mensajes desde sessionStorage al inicializar
   useEffect(() => {
@@ -64,11 +88,14 @@ export function AIChatSidebar() {
 
   // Guardar mensajes en sessionStorage cuando cambien
   useEffect(() => {
-    try {
-      sessionStorage.setItem(CHAT_SESSION_KEY, JSON.stringify(messages))
-    } catch (error) {
-      console.error("Error saving messages to sessionStorage:", error)
-    }
+    const t = setTimeout(() => {
+      try {
+        sessionStorage.setItem(CHAT_SESSION_KEY, JSON.stringify(messages))
+      } catch (error) {
+        console.error("Error saving messages to sessionStorage:", error)
+      }
+    }, 300)
+    return () => clearTimeout(t)
   }, [messages])
 
   // Función para hacer scroll al final
@@ -324,14 +351,14 @@ export function AIChatSidebar() {
       {/* Sidebar Modal Grande con Blur */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-md transition-opacity duration-300"
-          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-sm transition-opacity duration-300"
+          onClick={closeSidebar}
         />
       )}
 
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-full flex-col border-r border-primary/14 bg-background/92 shadow-[0_32px_80px_rgba(2,6,23,0.28)] backdrop-blur-2xl transition-transform duration-300 ease-out sm:w-[620px]",
+              "fixed inset-y-0 left-0 z-50 flex w-full flex-col border-r border-primary/14 bg-background/92 shadow-[0_18px_44px_rgba(2,6,23,0.20)] backdrop-blur-xl transition-transform duration-300 ease-out sm:w-[620px]",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -375,7 +402,7 @@ export function AIChatSidebar() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setSidebarOpen(false)}
+              onClick={closeSidebar}
               className="h-10 w-10 hover:bg-primary/20 rounded-lg"
             >
               <X className="h-5 w-5" />
@@ -389,7 +416,7 @@ export function AIChatSidebar() {
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full gap-4 text-center py-12">
                 <div className="p-4 rounded-2xl bg-primary/10 backdrop-blur-sm">
-                  <Sparkles className="h-12 w-12 text-primary mx-auto animate-pulse" />
+                  <Sparkles className="h-12 w-12 text-primary mx-auto motion-safe:animate-pulse" />
                 </div>
                 <div>
                   <p className="text-lg font-semibold">Hola! Soy tu Asistente IA</p>
@@ -600,13 +627,13 @@ export function AIChatSidebar() {
             className={cn(
               "w-full gap-2 rounded-2xl border border-primary/18 bg-surface/76 font-semibold text-base shadow-[0_12px_26px_rgba(15,23,42,0.05)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01]",
               isListening &&
-                "scale-[1.01] animate-pulse border-primary/40 bg-primary/14 text-primary shadow-lg shadow-primary/25"
+                "scale-[1.01] motion-safe:animate-pulse border-primary/40 bg-primary/14 text-primary shadow-lg shadow-primary/25"
             )}
             onClick={handleVoiceInput}
           >
             {isListening ? (
               <>
-                <MicOff className="h-5 w-5 animate-pulse" />
+                <MicOff className="h-5 w-5 motion-safe:animate-pulse" />
                 <span>Detener grabación</span>
               </>
             ) : (
@@ -628,7 +655,9 @@ export function AIChatSidebar() {
       </div>
 
       {/* Floating Button */}
-      <FloatButton isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      {showLauncher && (
+        <FloatButton isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      )}
     </>
   )
 }
@@ -658,7 +687,7 @@ function FloatButton({ isOpen, onToggle }: FloatButtonProps) {
             >
               <div className="relative flex items-center justify-center">
                 <Sparkles className="h-5 w-5 transition-transform duration-500 group-hover:rotate-180 group-hover:scale-110" />
-                <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse group-hover:animate-ping" />
+                <div className="absolute inset-0 rounded-full bg-primary/20 group-hover:motion-safe:animate-ping" />
               </div>
             </Button>
           </div>

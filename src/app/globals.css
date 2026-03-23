@@ -146,8 +146,8 @@
   body {
     @apply bg-background text-foreground;
     background-image:
-      radial-gradient(circle at top left, rgba(96, 165, 250, 0.16), transparent 22rem),
-      radial-gradient(circle at top right, rgba(219, 234, 254, 0.9), transparent 18rem),
+      radial-gradient(circle at top left, rgba(96, 165, 250, 0.12), transparent 18rem),
+      radial-gradient(circle at top right, rgba(219, 234, 254, 0.72), transparent 14rem),
       linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 251, 255, 1));
     min-height: 100vh;
   }
@@ -167,8 +167,8 @@
   .page-shell {
     @apply min-h-screen w-full;
     background:
-      radial-gradient(circle at 12% 12%, rgba(96, 165, 250, 0.16), transparent 18rem),
-      radial-gradient(circle at 100% 0%, rgba(219, 234, 254, 0.85), transparent 20rem),
+      radial-gradient(circle at 12% 12%, rgba(96, 165, 250, 0.12), transparent 14rem),
+      radial-gradient(circle at 100% 0%, rgba(219, 234, 254, 0.7), transparent 14rem),
       linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(248, 251, 255, 0.92));
   }
 
@@ -183,9 +183,9 @@
     background: var(--card);
     border: 1px solid var(--border);
     box-shadow:
-      0 18px 45px rgba(15, 23, 42, 0.08),
+      0 12px 28px rgba(15, 23, 42, 0.07),
       0 1px 0 rgba(255, 255, 255, 0.55) inset;
-    backdrop-filter: blur(18px);
+    backdrop-filter: blur(10px);
   }
 
   .dark .surface-panel {
@@ -199,8 +199,8 @@
       linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(219, 234, 254, 0.78)),
       linear-gradient(180deg, rgba(59, 130, 246, 0.05), transparent);
     border: 1px solid rgba(96, 165, 250, 0.24);
-    box-shadow: 0 20px 50px rgba(59, 130, 246, 0.12);
-    backdrop-filter: blur(20px);
+    box-shadow: 0 12px 30px rgba(59, 130, 246, 0.10);
+    backdrop-filter: blur(12px);
   }
 
   .dark .hero-surface {
@@ -217,7 +217,7 @@
       linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(219, 234, 254, 0.42)),
       linear-gradient(135deg, rgba(59, 130, 246, 0.08), transparent 60%);
     border: 1px solid rgba(96, 165, 250, 0.22);
-    box-shadow: 0 16px 40px rgba(59, 130, 246, 0.08);
+    box-shadow: 0 10px 24px rgba(59, 130, 246, 0.07);
   }
 
   .dark .stat-card {
@@ -233,6 +233,26 @@
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(96, 165, 250, 0.08));
     border-color: rgba(96, 165, 250, 0.3);
     color: var(--primary);
+  }
+}
+
+@media (max-width: 1024px) {
+  .page-shell {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(248, 251, 255, 0.9));
+  }
+
+  .surface-panel,
+  .hero-surface {
+    backdrop-filter: blur(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

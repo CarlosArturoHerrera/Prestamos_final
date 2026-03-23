@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
+import { useDebouncedValue } from "@/lib/use-debounced-value"
 
 type NotifRow = {
   id: number
@@ -25,6 +26,7 @@ export default function NotificacionesPage() {
   const [reps, setReps] = useState<{ id: number; nombre: string; apellido: string }[]>([])
   const [filtroRep, setFiltroRep] = useState("")
   const [filtroCedula, setFiltroCedula] = useState("")
+  const filtroCedulaDebounced = useDebouncedValue(filtroCedula, 350)
   const [canal, setCanal] = useState("")
   const [loadingHistorial, setLoadingHistorial] = useState(false)
   const [sendingPreview, setSendingPreview] = useState(false)
@@ -40,7 +42,7 @@ export default function NotificacionesPage() {
     setLoadingHistorial(true)
     const q = new URLSearchParams()
     if (filtroRep) q.set("representanteId", filtroRep)
-    if (filtroCedula) q.set("cedula", filtroCedula)
+    if (filtroCedulaDebounced) q.set("cedula", filtroCedulaDebounced)
     if (canal) q.set("canal", canal)
     const res = await fetchApi<{ data: NotifRow[] }>(`/api/notificaciones?${q}`)
     if (!res.ok) {
@@ -51,14 +53,14 @@ export default function NotificacionesPage() {
       setRows(res.data.data ?? [])
     }
     setLoadingHistorial(false)
-  }, [filtroRep, filtroCedula, canal])
+  }, [filtroRep, filtroCedulaDebounced, canal])
 
   useEffect(() => {
     load()
   }, [load])
 
   useEffect(() => {
-    fetch("/api/representantes?pageSize=500")
+    fetch("/api/representantes?pageSize=200")
       .then((r) => r.json())
       .then((j) => setReps(j.data ?? []))
   }, [])

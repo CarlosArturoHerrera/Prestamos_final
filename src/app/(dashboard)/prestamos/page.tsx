@@ -69,7 +69,7 @@ export default function PrestamosPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetchApi<{ data: PrestamoList[] }>("/api/prestamos")
+    const res = await fetchApi<{ data: PrestamoList[] }>("/api/prestamos?pageSize=50")
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status)
       toast.error(res.message)
@@ -85,7 +85,7 @@ export default function PrestamosPage() {
   }, [load])
 
   useEffect(() => {
-    fetch("/api/clientes?pageSize=500")
+    fetch("/api/clientes?pageSize=200")
       .then((r) => r.json())
       .then((j) => setClientes(j.data ?? []))
   }, [])

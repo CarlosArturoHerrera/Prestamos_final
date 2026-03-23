@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
+import { useDebouncedValue } from "@/lib/use-debounced-value"
 
 type ClienteRow = {
   id: number
@@ -44,6 +45,7 @@ type ClienteRow = {
 export default function ClientesPage() {
   const [rows, setRows] = useState<ClienteRow[]>([])
   const [search, setSearch] = useState("")
+  const searchDebounced = useDebouncedValue(search, 350)
   const [filtroEmpresa, setFiltroEmpresa] = useState("")
   const [filtroRep, setFiltroRep] = useState("")
   const [filtroEstadoValidacion, setFiltroEstadoValidacion] = useState("")
@@ -68,7 +70,7 @@ export default function ClientesPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const q = new URLSearchParams({ search, pageSize: "100" })
+    const q = new URLSearchParams({ search: searchDebounced, pageSize: "50" })
     if (filtroEmpresa) q.set("empresaId", filtroEmpresa)
     if (filtroRep) q.set("representanteId", filtroRep)
     if (filtroEstadoValidacion) q.set("estadoValidacion", filtroEstadoValidacion)
@@ -81,7 +83,7 @@ export default function ClientesPage() {
       setRows(res.data.data ?? [])
     }
     setLoading(false)
-  }, [search, filtroEmpresa, filtroRep, filtroEstadoValidacion])
+  }, [searchDebounced, filtroEmpresa, filtroRep, filtroEstadoValidacion])
 
   useEffect(() => {
     load()
@@ -89,9 +91,9 @@ export default function ClientesPage() {
 
   const loadEmpresasYReps = useCallback(async () => {
     const [e, r] = await Promise.all([
-      fetchApi<{ data: { id: number; nombre: string }[] }>("/api/empresas?pageSize=500"),
+      fetchApi<{ data: { id: number; nombre: string }[] }>("/api/empresas?pageSize=200"),
       fetchApi<{ data: { id: number; nombre: string; apellido: string }[] }>(
-        "/api/representantes?pageSize=500",
+        "/api/representantes?pageSize=200",
       ),
     ])
     if (e.ok) setEmpresas((e.data.data ?? []).map((x) => ({ id: x.id, nombre: x.nombre })))

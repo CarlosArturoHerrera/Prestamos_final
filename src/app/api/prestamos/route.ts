@@ -16,6 +16,10 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const clienteId = searchParams.get("clienteId")
   const estado = searchParams.get("estado")
+  const page = Math.max(1, Number(searchParams.get("page") || 1))
+  const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || 50)))
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
 
   let q = supabase
     .from("prestamos")
@@ -32,6 +36,7 @@ export async function GET(request: Request) {
       ),
       abonos(count)
     `,
+      { count: "exact" },
     )
     .order("created_at", { ascending: false })
 
@@ -42,7 +47,7 @@ export async function GET(request: Request) {
     q = q.eq("estado", estado)
   }
 
-  const { data, error } = await q
+  const { data, error, count } = await q.range(from, to)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 })
@@ -74,7 +79,7 @@ export async function GET(request: Request) {
     }
   })
 
-  return NextResponse.json({ data: rows })
+  return NextResponse.json({ data: rows, page, pageSize, total: count ?? 0 })
 }
 
 export async function POST(request: Request) {

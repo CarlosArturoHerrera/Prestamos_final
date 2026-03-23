@@ -1,7 +1,9 @@
 "use client"
 
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { usePathname, useRouter } from "next/navigation"
+import { useState } from "react"
 import {
   Banknote,
   BarChart3,
@@ -9,13 +11,18 @@ import {
   Building2,
   LayoutDashboard,
   LogOut,
+  Sparkles,
   UserCircle,
   Users,
 } from "lucide-react"
 import { createSupabaseBrowserClient, isSupabaseConfiguredOnClient } from "@/lib/supabase/browser"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { AIChatSidebar } from "@/components/dashboard/chat-sidebar"
+
+const AIChatSidebar = dynamic(
+  () => import("@/components/dashboard/chat-sidebar").then((m) => m.AIChatSidebar),
+  { ssr: false },
+)
 
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -30,6 +37,8 @@ const nav = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [chatMounted, setChatMounted] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
 
   const logout = async () => {
     try {
@@ -87,7 +96,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="page-shell flex-1 p-4 md:p-8">{children}</div>
       </div>
 
-      <AIChatSidebar />
+      {!chatOpen && (
+        <Button
+          className="fixed bottom-6 left-6 z-40 h-12 w-12 rounded-full border border-primary/20 p-0 shadow-[0_10px_28px_rgba(59,130,246,0.26)]"
+          onClick={() => {
+            if (!chatMounted) setChatMounted(true)
+            setChatOpen(true)
+          }}
+          aria-label="Preguntar a la IA"
+        >
+          <Sparkles className="size-5" />
+        </Button>
+      )}
+      {chatMounted && (
+        <AIChatSidebar forceOpen={chatOpen} showLauncher={false} onRequestClose={() => setChatOpen(false)} />
+      )}
     </div>
   )
 }
