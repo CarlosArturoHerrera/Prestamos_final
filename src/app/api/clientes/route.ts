@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const page = Math.max(1, Number(searchParams.get("page") || 1))
   const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || 20)))
-  const search = (searchParams.get("search") || "").trim()
+  const search = (searchParams.get("search") || searchParams.get("q") || "").trim()
   const representanteId = searchParams.get("representanteId")
   const empresaId = searchParams.get("empresaId")
   const estadoValidacion = searchParams.get("estadoValidacion")

@@ -11,22 +11,26 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const page = Math.max(1, Number(searchParams.get("page") || 1))
   const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || 20)))
-  const search = (searchParams.get("search") || "").trim()
+  const search = (searchParams.get("search") || searchParams.get("q") || "").trim()
+  const conRnc = searchParams.get("conRnc") === "true"
+  const sinRnc = searchParams.get("sinRnc") === "true"
 
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let query = supabase
-    .from("empresas")
-    .select("*", { count: "exact" })
-    .order("nombre", { ascending: true })
-    .range(from, to)
+  let query = supabase.from("empresas").select("*", { count: "exact" }).order("nombre", { ascending: true })
 
   if (search) {
-    query = query.ilike("nombre", `%${search}%`)
+    const s = `%${search}%`
+    query = query.or(`nombre.ilike.${s},rnc.ilike.${s},email.ilike.${s}`)
+  }
+  if (sinRnc) {
+    query = query.is("rnc", null)
+  } else if (conRnc) {
+    query = query.not("rnc", "is", null)
   }
 
-  const { data, error, count } = await query
+  const { data, error, count } = await query.range(from, to)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 })

@@ -65,10 +65,45 @@ export async function POST(request: Request, ctx: Ctx) {
     new Decimal(0),
   )
 
-  const nuevoCapital = sumDecimal(String(prestamo.capital_pendiente), total.toFixed(2))
+  if (total.lte(0)) {
+    return badRequest("No hay interés pendiente para aplicar al capital")
+  }
+
+  const capitalAntes = String(prestamo.capital_pendiente)
+  const nuevoCapital = sumDecimal(capitalAntes, total.toFixed(2))
   const hoy = new Date().toISOString().slice(0, 10)
 
   const ids = pendientes.map((p) => p.id)
+
+  const snapshots = pendientes.map((row) => ({
+    id: row.id as number,
+    aplicado: Boolean(row.aplicado),
+    fecha_aplicado: row.fecha_aplicado as string | null,
+    estado: String(row.estado ?? "PENDIENTE"),
+    interes_pendiente: String(row.interes_pendiente ?? row.monto ?? "0"),
+    monto: String(row.monto ?? row.interes_pendiente ?? "0"),
+    interes_pagado: String(row.interes_pagado ?? "0"),
+    interes_generado: String(row.interes_generado ?? "0"),
+    origen_capitalizacion: (row.origen_capitalizacion as string | null) ?? null,
+  }))
+
+  const restoreIntereses = async () => {
+    for (const s of snapshots) {
+      await supabase
+        .from("intereses_atrasados")
+        .update({
+          aplicado: s.aplicado,
+          fecha_aplicado: s.fecha_aplicado,
+          estado: s.estado,
+          interes_pendiente: s.interes_pendiente,
+          monto: s.monto,
+          interes_pagado: s.interes_pagado,
+          interes_generado: s.interes_generado,
+          origen_capitalizacion: s.origen_capitalizacion,
+        })
+        .eq("id", s.id)
+    }
+  }
 
   const { error: ue } = await supabase
     .from("intereses_atrasados")
@@ -78,6 +113,7 @@ export async function POST(request: Request, ctx: Ctx) {
       estado: "CAPITALIZADO",
       interes_pendiente: "0.00",
       monto: "0.00",
+      origen_capitalizacion: "MANUAL",
     })
     .in("id", ids)
 
@@ -93,7 +129,20 @@ export async function POST(request: Request, ctx: Ctx) {
     .single()
 
   if (pe2) {
+    await restoreIntereses()
     return NextResponse.json({ error: pe2.message }, { status: 400 })
+  }
+
+  const { error: re } = await supabase.from("reganches").insert({
+    prestamo_id: id,
+    monto_agregado: total.toFixed(2),
+    notas: `MANUAL: Capitalización interés pendiente (${ids.length} período(s))`,
+  })
+
+  if (re) {
+    await supabase.from("prestamos").update({ capital_pendiente: capitalAntes }).eq("id", id)
+    await restoreIntereses()
+    return NextResponse.json({ error: re.message }, { status: 400 })
   }
 
   return NextResponse.json({ prestamo: updated, aplicados: ids })

@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server"
 import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth"
 import {
-  abonosCountFromRow,
   calcularFechasNuevoPrestamo,
-  proyectarProximaCuota,
+  sincronizarPrestamosListadoSiCorresponde,
 } from "@/lib/prestamo-logic"
+import {
+  createPrestamosListQuery,
+  enrichPrestamoListRowsWithFlags,
+  mapPrestamoListRowFromRaw,
+  resolvePrestamosListPreFilters,
+} from "@/lib/prestamos-list-query"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { prestamoCreateSchema } from "@/lib/validations/schemas"
 
@@ -16,68 +21,32 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const clienteId = searchParams.get("clienteId")
   const estado = searchParams.get("estado")
+  const qText = (searchParams.get("q") || "").trim()
+  const conInteresPendiente = searchParams.get("conInteresPendiente") === "true"
   const page = Math.max(1, Number(searchParams.get("page") || 1))
   const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || 50)))
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let q = supabase
-    .from("prestamos")
-    .select(
-      `
-      *,
-      clientes (
-        id,
-        nombre,
-        apellido,
-        cedula,
-        representantes ( id, nombre, apellido ),
-        empresas ( id, nombre )
-      ),
-      abonos(count)
-    `,
-      { count: "exact" },
-    )
-    .order("created_at", { ascending: false })
-
-  if (clienteId) {
-    q = q.eq("cliente_id", Number(clienteId))
-  }
-  if (estado) {
-    q = q.eq("estado", estado)
+  const pre = await resolvePrestamosListPreFilters(supabase, qText, conInteresPendiente)
+  if (pre.empty) {
+    return NextResponse.json({ data: [], page, pageSize, total: 0 })
   }
 
+  const q = createPrestamosListQuery(supabase, pre, { clienteId, estado }, "exact")
   const { data, error, count } = await q.range(from, to)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
-  const rows = (data ?? []).map((raw) => {
-    const n = abonosCountFromRow(raw as { abonos?: { count?: number }[] | null })
-    const { abonos: _a, ...prestamo } = raw as {
-      abonos?: { count?: number }[] | null
-      capital_pendiente: string | number
-      tasa_interes: string | number
-      plazo: number
-      estado: string
-      [key: string]: unknown
-    }
-    const proj = proyectarProximaCuota(
-      String(prestamo.capital_pendiente),
-      String(prestamo.tasa_interes),
-      Number(prestamo.plazo),
-      n,
-      String(prestamo.estado),
-    )
-    return {
-      ...prestamo,
-      abonos_realizados: n,
-      interes_proximo: proj.interesProximo,
-      capital_debitar_proximo: proj.capitalDebitarSugerido,
-      total_proximo_pago: proj.totalProximoPago,
-    }
-  })
+  const lista = (data ?? []) as Record<string, unknown>[]
+  if (lista.length > 0) {
+    await sincronizarPrestamosListadoSiCorresponde(supabase, lista)
+  }
+
+  const rowsBase = lista.map((raw) => mapPrestamoListRowFromRaw(raw))
+  const rows = await enrichPrestamoListRowsWithFlags(supabase, rowsBase)
 
   return NextResponse.json({ data: rows, page, pageSize, total: count ?? 0 })
 }

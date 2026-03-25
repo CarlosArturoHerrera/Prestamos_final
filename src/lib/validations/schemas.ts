@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { RESULTADOS_GESTION_COBRANZA } from "@/lib/gestion-cobranza"
 
 const moneyString = z.union([
   z.string().regex(/^\d+(\.\d{1,4})?$/, "Monto inválido"),
@@ -53,14 +54,32 @@ export const regancheSchema = z.object({
   notas: z.string().max(5000).optional().nullable(),
 })
 
-export const abonoCreateSchema = z.object({
+const abonoCreateSchemaInner = z.object({
   fechaAbono: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   montoCapitalDebitado: moneyString.optional(),
-  pago: moneyString.optional(),
+  /** Monto de interés que el cliente pagó en este abono (no es un pago mixto). */
+  interesRecibido: moneyString.optional(),
   observaciones: z.string().max(2000).optional().nullable(),
-}).refine((d) => d.montoCapitalDebitado !== undefined || d.pago !== undefined, {
-  message: "Indica al menos Pago o Capital a debitar",
+}).refine((d) => d.montoCapitalDebitado !== undefined || d.interesRecibido !== undefined, {
+  message: "Indica al menos Interés recibido o Capital a debitar",
 })
+
+function emptyToUndefined(v: unknown): unknown {
+  return typeof v === "string" && v.trim() === "" ? undefined : v
+}
+
+/** Acepta `pago` (legado) como alias de `interesRecibido`; ignora strings vacíos. */
+export const abonoCreateSchema = z.preprocess((data) => {
+  if (!data || typeof data !== "object" || data === null) return data
+  const o = { ...(data as Record<string, unknown>) }
+  if ("pago" in o && !("interesRecibido" in o)) {
+    o.interesRecibido = o.pago
+  }
+  delete o.pago
+  o.interesRecibido = emptyToUndefined(o.interesRecibido)
+  o.montoCapitalDebitado = emptyToUndefined(o.montoCapitalDebitado)
+  return o
+}, abonoCreateSchemaInner)
 
 export const notificacionEnviarSchema = z
   .object({
@@ -80,4 +99,22 @@ export const reportesQuerySchema = z.object({
   estado: z.enum(["ACTIVO", "SALDADO", "MORA"]).optional(),
   fechaDesde: z.string().optional(),
   fechaHasta: z.string().optional(),
+})
+
+const fechaOpt = z
+  .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(""), z.null()])
+  .optional()
+  .transform((v) => (v === "" || v === null || v === undefined ? undefined : v))
+
+export const gestionCobranzaCreateSchema = z.object({
+  notas: z.string().max(5000).optional().nullable(),
+  promesaMonto: z
+    .union([moneyString, z.literal(""), z.null()])
+    .optional()
+    .transform((v) => (v === "" || v === null || v === undefined ? undefined : v)),
+  promesaFecha: fechaOpt,
+  proximaFechaContacto: fechaOpt,
+  resultado: z.enum(RESULTADOS_GESTION_COBRANZA),
+  /** Solo en contexto cliente: asociar el seguimiento a un préstamo concreto. */
+  prestamoId: z.coerce.number().int().positive().optional(),
 })

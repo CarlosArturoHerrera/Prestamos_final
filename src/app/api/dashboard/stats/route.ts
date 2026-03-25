@@ -21,6 +21,7 @@ export async function GET() {
     { count: prestamosMora },
     { data: abonosMes },
     { data: proximos },
+    { data: abonosRecientes },
   ] = await Promise.all([
     supabase.from("prestamos").select("*", { count: "exact", head: true }).eq("estado", "MORA"),
     supabase.from("abonos").select("total_pagado").gte("fecha_abono", inicioMes),
@@ -38,6 +39,22 @@ export async function GET() {
       .in("estado", ["ACTIVO", "MORA"])
       .order("fecha_proximo_vencimiento", { ascending: true })
       .limit(8),
+    supabase
+      .from("abonos")
+      .select(
+        `
+        id,
+        fecha_abono,
+        total_pagado,
+        prestamo_id,
+        prestamos (
+          id,
+          clientes ( nombre, apellido )
+        )
+      `,
+      )
+      .order("created_at", { ascending: false })
+      .limit(10),
   ])
 
   const recaudacionMes =
@@ -48,5 +65,6 @@ export async function GET() {
     prestamos_en_mora: prestamosMora ?? 0,
     recaudacion_mes: recaudacionMes.toFixed(2),
     proximos_vencimientos: proximos ?? [],
+    abonos_recientes: abonosRecientes ?? [],
   })
 }

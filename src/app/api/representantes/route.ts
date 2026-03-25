@@ -11,16 +11,29 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const page = Math.max(1, Number(searchParams.get("page") || 1))
   const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || 20)))
-  const search = (searchParams.get("search") || "").trim()
+  const search = (searchParams.get("search") || searchParams.get("q") || "").trim()
+  const conClientes = searchParams.get("conClientes") === "true"
 
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
+
+  let repIdsConClientes: number[] | null = null
+  if (conClientes) {
+    const { data: crs } = await supabase.from("clientes").select("representante_id")
+    repIdsConClientes = [...new Set((crs ?? []).map((r) => r.representante_id as number))]
+    if (repIdsConClientes.length === 0) {
+      return NextResponse.json({ data: [], page, pageSize, total: 0 })
+    }
+  }
 
   let q = supabase
     .from("representantes")
     .select("*", { count: "exact" })
     .order("apellido", { ascending: true })
 
+  if (repIdsConClientes) {
+    q = q.in("id", repIdsConClientes)
+  }
   if (search) {
     const s = `%${search}%`
     q = q.or(`nombre.ilike.${s},apellido.ilike.${s},email.ilike.${s},telefono.ilike.${s}`)

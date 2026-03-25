@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { badRequest, forbidden, getUserAndRole, requireAdmin, unauthorized } from "@/lib/api-auth"
-import { generarInteresesAtrasadosSiCorresponde } from "@/lib/prestamo-logic"
+import { sincronizarInteresesYCapitalizacionAuto } from "@/lib/prestamo-logic"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { z } from "zod"
 
@@ -34,9 +34,7 @@ export async function GET(_request: Request, ctx: Ctx) {
     return NextResponse.json({ error: "Préstamo no encontrado" }, { status: 404 })
   }
 
-  await generarInteresesAtrasadosSiCorresponde(supabase, p)
-
-  const { data: refreshed } = await supabase.from("prestamos").select("*").eq("id", id).single()
+  const merged = await sincronizarInteresesYCapitalizacionAuto(supabase, p)
 
   const { data: abonos } = await supabase
     .from("abonos")
@@ -59,7 +57,7 @@ export async function GET(_request: Request, ctx: Ctx) {
     .order("created_at", { ascending: false })
 
   return NextResponse.json({
-    prestamo: refreshed ? { ...refreshed, clientes: p.clientes } : p,
+    prestamo: { ...merged, clientes: p.clientes },
     abonos: abonos ?? [],
     intereses_atrasados: intereses ?? [],
     reganches: reganches ?? [],

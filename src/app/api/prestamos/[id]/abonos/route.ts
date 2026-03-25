@@ -67,44 +67,32 @@ export async function POST(request: Request, ctx: Ctx) {
 
   const capitalAntes = String(prestamo.capital_pendiente)
   const fechaPeriodo = String(prestamo.fecha_proximo_vencimiento)
-  const interesPeriodoActual = interesPeriodo(capitalAntes, String(prestamo.tasa_interes))
-  const pagoRecibidoStr = parsed.data.pago !== undefined ? String(parsed.data.pago) : undefined
-  const capitalManualStr =
-    parsed.data.montoCapitalDebitado !== undefined ? String(parsed.data.montoCapitalDebitado) : undefined
+  const interesCalculadoStr = interesPeriodo(capitalAntes, String(prestamo.tasa_interes))
+  const interesCalculado = new Decimal(interesCalculadoStr)
 
-  let interesCobrado = new Decimal(0)
-  let capitalDebitado = new Decimal(0)
-  let totalPagado = new Decimal(0)
+  const interesRecibidoStr =
+    parsed.data.interesRecibido !== undefined ? String(parsed.data.interesRecibido) : "0"
+  const interesRecibido = new Decimal(interesRecibidoStr)
 
-  if (pagoRecibidoStr !== undefined) {
-    const pagoRecibido = new Decimal(pagoRecibidoStr)
-    if (pagoRecibido.isNegative()) {
-      return badRequest("El pago no puede ser negativo")
-    }
-    interesCobrado = Decimal.min(new Decimal(interesPeriodoActual), pagoRecibido)
-    totalPagado = pagoRecibido
-    const restanteDespuesInteres = Decimal.max(new Decimal(0), pagoRecibido.minus(interesCobrado))
+  if (interesRecibido.isNegative()) {
+    return badRequest("El interés recibido no puede ser negativo")
+  }
 
-    if (capitalManualStr !== undefined) {
-      capitalDebitado = new Decimal(capitalManualStr)
-      if (capitalDebitado.gt(restanteDespuesInteres)) {
-        return badRequest("El pago no cubre el capital a debitar indicado")
-      }
-    } else {
-      capitalDebitado = restanteDespuesInteres
-    }
-  } else {
-    capitalDebitado = new Decimal(capitalManualStr ?? "0")
-    if (capitalDebitado.isNegative()) {
-      return badRequest("El capital a debitar no puede ser negativo")
-    }
-    interesCobrado = new Decimal(interesPeriodoActual)
-    totalPagado = interesCobrado.plus(capitalDebitado)
+  const interesAplicado = Decimal.min(interesCalculado, interesRecibido)
+  const diferenciaPendiente = Decimal.max(new Decimal(0), interesCalculado.minus(interesAplicado))
+
+  const capitalDebitado = new Decimal(
+    parsed.data.montoCapitalDebitado !== undefined ? String(parsed.data.montoCapitalDebitado) : "0",
+  )
+  if (capitalDebitado.isNegative()) {
+    return badRequest("El capital a debitar no puede ser negativo")
   }
 
   if (capitalDebitado.gt(new Decimal(capitalAntes))) {
     return badRequest("El capital a debitar no puede superar el capital pendiente")
   }
+
+  const totalPagado = interesAplicado.plus(capitalDebitado)
 
   const saldoCapitalRestante = subDecimal(capitalAntes, capitalDebitado.toFixed(2))
   const saldoFinal = capitalPendienteFinal(saldoCapitalRestante)
@@ -117,20 +105,20 @@ export async function POST(request: Request, ctx: Ctx) {
       ? prestamo.fecha_proximo_vencimiento
       : siguienteVencimientoDesde(String(prestamo.fecha_proximo_vencimiento), prestamo.tipo_plazo)
 
-  const { data: abono, error: ae } = await supabase
-    .from("abonos")
-    .insert({
-      prestamo_id: id,
-      fecha_abono: parsed.data.fechaAbono,
-      monto_capital_debitado: capitalDebitado.toFixed(2),
-      interes_cobrado: interesCobrado.toFixed(2),
-      total_pagado: totalPagado.toFixed(2),
-      pago_recibido: pagoRecibidoStr ? toDecimalString(pagoRecibidoStr) : null,
-      saldo_capital_restante: saldoFinal,
-      observaciones: parsed.data.observaciones?.trim() || null,
-    })
-    .select()
-    .single()
+  const insertPayload: Record<string, unknown> = {
+    prestamo_id: id,
+    fecha_abono: parsed.data.fechaAbono,
+    monto_capital_debitado: capitalDebitado.toFixed(2),
+    interes_cobrado: interesAplicado.toFixed(2),
+    total_pagado: totalPagado.toFixed(2),
+    interes_recibido: toDecimalString(interesRecibidoStr),
+    interes_calculado: interesCalculadoStr,
+    diferencia_interes_pendiente: diferenciaPendiente.toFixed(2),
+    saldo_capital_restante: saldoFinal,
+    observaciones: parsed.data.observaciones?.trim() || null,
+  }
+
+  const { data: abono, error: ae } = await supabase.from("abonos").insert(insertPayload).select().single()
 
   if (ae) {
     return NextResponse.json({ error: ae.message }, { status: 400 })
@@ -161,8 +149,8 @@ export async function POST(request: Request, ctx: Ctx) {
   await upsertInteresPendientePeriodo(supabase, {
     prestamoId: id,
     fechaPeriodo,
-    interesGenerado: interesPeriodoActual,
-    interesPagadoIncremental: interesCobrado.toFixed(2),
+    interesGenerado: interesCalculadoStr,
+    interesPagadoIncremental: interesAplicado.toFixed(2),
   })
 
   return NextResponse.json(abono)
