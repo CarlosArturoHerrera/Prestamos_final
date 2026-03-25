@@ -219,7 +219,7 @@ export function GestionCobranzaPanel({ clienteId, prestamoId, prestamosOpciones,
                 value={proximaFechaContacto}
                 onChange={setProximaFechaContacto}
                 placeholder="Cuándo volver a llamar o visitar"
-                className="w-full max-w-xs"
+                className="w-full sm:max-w-xs"
               />
             </div>
           </div>

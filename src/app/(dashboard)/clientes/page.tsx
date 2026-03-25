@@ -606,12 +606,18 @@ export default function ClientesPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="secondary" onClick={() => setOpen(false)} disabled={isSaving}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setOpen(false)}
+                    disabled={isSaving}
+                    className="w-full sm:w-auto"
+                  >
                     Cancelar
                   </Button>
                   <Button
                     onClick={save}
                     disabled={!form.empresaId || !form.representanteId || isSaving}
+                    className="w-full sm:w-auto"
                     title={
                       !form.empresaId || !form.representanteId ? "Elige empresa y representante" : undefined
                     }
@@ -728,8 +734,8 @@ export default function ClientesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end xl:col-span-2">
-              <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
+            <div className="flex items-end xl:col-span-2 w-full sm:w-auto">
+              <Button type="button" variant="outline" size="sm" onClick={resetFilters} className="w-full sm:w-auto">
                 Limpiar filtros
               </Button>
             </div>
@@ -750,7 +756,7 @@ export default function ClientesPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-border/60">
+        <div className="hidden md:block rounded-xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow>
@@ -778,6 +784,77 @@ export default function ClientesPage() {
             </TableHeader>
             <TableBody>{tableRows}</TableBody>
           </Table>
+        </div>
+
+        <div className="md:hidden block space-y-3">
+          {loading ? (
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">Cargando…</div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+              Sin clientes con estos filtros
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rows.map((c) => (
+                <div
+                  key={c.id}
+                  className={cn("rounded-xl border border-border/60 bg-card/80 p-4", rowClass(c))}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs text-muted-foreground">#{c.id}</span>
+                        {validacionBadge(c.estado_validacion)}
+                      </div>
+                      <div className="text-base font-semibold leading-tight">
+                        {c.nombre} {c.apellido}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Cédula: {c.cedula}</p>
+                      <p className="text-sm text-muted-foreground">
+                        <span className="inline-flex items-center gap-2">
+                          <Phone className="size-3.5 text-muted-foreground" />
+                          {c.telefono}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                      <p className="text-xs text-muted-foreground">Último pago</p>
+                      <p className="font-semibold">{c.ultimo_pago ?? "—"}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
+                    <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+                      <span className="text-muted-foreground">Empresa</span>
+                      <span className="font-medium">{c.empresas?.nombre ?? "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+                      <span className="text-muted-foreground">Representante</span>
+                      <span className="font-medium">
+                        {c.representantes ? `${c.representantes.nombre} ${c.representantes.apellido}` : "—"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-2">
+                    <Button asChild variant="secondary" className="w-full justify-center">
+                      <Link href={`/clientes/${c.id}`}>Ver ficha</Link>
+                    </Button>
+                    <Button variant="outline" className="w-full justify-center" onClick={() => void openEdit(c)}>
+                      Editar
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="w-full justify-center"
+                      onClick={() => setDeleteId(c.id)}
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {totalPages > 1 ? (

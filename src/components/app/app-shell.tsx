@@ -93,12 +93,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Salir
           </Button>
         </header>
-        <div className="page-shell flex-1 p-4 md:p-8">{children}</div>
+        <div className="page-shell flex-1 p-4 md:p-8">
+          <div className="mx-auto w-full max-w-7xl">{children}</div>
+        </div>
       </div>
 
       {!chatOpen && (
         <Button
-          className="fixed bottom-6 left-6 z-40 h-12 w-12 rounded-full border border-primary/20 p-0 shadow-[0_10px_28px_rgba(59,130,246,0.26)]"
+          className="fixed bottom-4 left-4 z-40 h-11 w-11 rounded-full border border-primary/20 p-0 shadow-[0_10px_28px_rgba(59,130,246,0.26)] sm:bottom-6 sm:left-6 sm:h-12 sm:w-12"
           onClick={() => {
             if (!chatMounted) setChatMounted(true)
             setChatOpen(true)

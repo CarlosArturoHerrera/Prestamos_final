@@ -401,7 +401,9 @@ export default function PrestamoDetallePage() {
                 onChange={(e) => setRegancheForm({ ...regancheForm, notas: e.target.value })}
               />
             </div>
-            <Button onClick={reganche}>Aplicar reganche</Button>
+            <Button onClick={reganche} className="w-full sm:w-auto">
+              Aplicar reganche
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -478,75 +480,165 @@ export default function PrestamoDetallePage() {
             {applyingIntereses ? "Aplicando..." : "Aplicar todos al capital"}
           </Button>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Período</TableHead>
-                <TableHead className="text-right">Generado</TableHead>
-                <TableHead className="text-right">Pagado</TableHead>
-                <TableHead className="text-right">Pendiente</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Origen</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(data.intereses_atrasados ?? []).length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-muted-foreground">
-                    Sin registros
-                  </TableCell>
+        <CardContent className="space-y-4">
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Período</TableHead>
+                  <TableHead className="text-right">Generado</TableHead>
+                  <TableHead className="text-right">Pagado</TableHead>
+                  <TableHead className="text-right">Pendiente</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Origen</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-              ) : (
-                data.intereses_atrasados.map((i) => {
-                  const est = String(i.estado ?? (i.aplicado ? "CAPITALIZADO" : "PENDIENTE"))
-                  const eb = estadoInteresBadge(est)
-                  return (
-                    <TableRow key={String(i.id)}>
-                      <TableCell className="text-sm font-medium">{String(i.fecha_periodo ?? i.fecha_generado)}</TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {formatRD((i.interes_generado as string) ?? (i.monto as string))}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {formatRD((i.interes_pagado as string) ?? "0")}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {formatRD((i.interes_pendiente as string) ?? (i.monto as string))}
-                      </TableCell>
-                      <TableCell>
+              </TableHeader>
+              <TableBody>
+                {(data.intereses_atrasados ?? []).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-muted-foreground">
+                      Sin registros
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  data.intereses_atrasados.map((i) => {
+                    const est = String(i.estado ?? (i.aplicado ? "CAPITALIZADO" : "PENDIENTE"))
+                    const eb = estadoInteresBadge(est)
+                    return (
+                      <TableRow key={String(i.id)}>
+                        <TableCell className="text-sm font-medium">{String(i.fecha_periodo ?? i.fecha_generado)}</TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">
+                          {formatRD((i.interes_generado as string) ?? (i.monto as string))}
+                        </TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">
+                          {formatRD((i.interes_pagado as string) ?? "0")}
+                        </TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">
+                          {formatRD((i.interes_pendiente as string) ?? (i.monto as string))}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={eb.variant}>{eb.label}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {est.toUpperCase() === "CAPITALIZADO"
+                            ? origenCapitalBadge((i as { origen_capitalizacion?: string | null }).origen_capitalizacion) ?? (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )
+                            : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {String(i.estado ?? "") === "PENDIENTE" && (
+                            <div className="flex flex-col items-end gap-1 sm:flex-row sm:flex-wrap sm:justify-end">
+                              <Button variant="outline" size="sm" onClick={() => aplicarIntereses([Number(i.id)])}>
+                                Capitalizar
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => marcarInteresPagado(Number(i.id))}
+                              >
+                                Marcar pagado
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => anularInteres(Number(i.id))}>
+                                Anular
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="md:hidden block space-y-3">
+            {(data.intereses_atrasados ?? []).length === 0 ? (
+              <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+                Sin registros
+              </div>
+            ) : (
+              data.intereses_atrasados.map((i) => {
+                const est = String(i.estado ?? (i.aplicado ? "CAPITALIZADO" : "PENDIENTE"))
+                const eb = estadoInteresBadge(est)
+                const pendiente = String(i.estado ?? "") === "PENDIENTE"
+                return (
+                  <div key={String(i.id)} className="rounded-xl border border-border/60 bg-card/80 p-4 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Período
+                        </p>
+                        <p className="text-sm font-medium">{String(i.fecha_periodo ?? i.fecha_generado)}</p>
+                      </div>
+                      <div>
                         <Badge variant={eb.variant}>{eb.label}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {est.toUpperCase() === "CAPITALIZADO"
-                          ? origenCapitalBadge((i as { origen_capitalizacion?: string | null }).origen_capitalizacion) ?? (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )
-                          : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {String(i.estado ?? "") === "PENDIENTE" && (
-                          <div className="flex flex-wrap justify-end gap-1">
-                            <Button variant="outline" size="sm" onClick={() => aplicarIntereses([Number(i.id)])}>
-                              Capitalizar
-                            </Button>
-                            <Button variant="secondary" size="sm" onClick={() => marcarInteresPagado(Number(i.id))}>
-                              Marcar pagado
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => anularInteres(Number(i.id))}>
-                              Anular
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Interés pendiente</p>
+                        <p className="text-sm font-semibold tabular-nums">
+                          {formatRD((i.interes_pendiente as string) ?? (i.monto as string))}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Interés generado</p>
+                        <p className="text-sm font-semibold tabular-nums">
+                          {formatRD((i.interes_generado as string) ?? (i.monto as string))}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Interés pagado</p>
+                        <p className="text-sm font-semibold tabular-nums">
+                          {formatRD((i.interes_pagado as string) ?? "0")}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Origen</p>
+                        <div className="text-sm">
+                          {est.toUpperCase() === "CAPITALIZADO"
+                            ? origenCapitalBadge((i as { origen_capitalizacion?: string | null }).origen_capitalizacion) ?? (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )
+                            : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {pendiente ? (
+                      <div className="mt-4 flex flex-col gap-2">
+                        <Button variant="outline" className="w-full justify-center" onClick={() => aplicarIntereses([Number(i.id)])}>
+                          Capitalizar
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          className="w-full justify-center"
+                          onClick={() => marcarInteresPagado(Number(i.id))}
+                        >
+                          Marcar pagado
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-center text-destructive hover:text-destructive"
+                          onClick={() => anularInteres(Number(i.id))}
+                        >
+                          Anular
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -557,37 +649,70 @@ export default function PrestamoDetallePage() {
             Aumentos al capital: reganche manual (formulario) o capitalización de interés (AUTO / MANUAL).
           </CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Fecha</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Monto</TableHead>
-                <TableHead>Detalle</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(data.reganches ?? []).length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-muted-foreground">
-                    Sin movimientos
-                  </TableCell>
+        <CardContent className="space-y-4">
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right">Monto</TableHead>
+                  <TableHead>Detalle</TableHead>
                 </TableRow>
-              ) : (
-                data.reganches.map((r) => (
-                  <TableRow key={String(r.id)}>
-                    <TableCell className="text-sm whitespace-nowrap">{String(r.created_at).slice(0, 10)}</TableCell>
-                    <TableCell>{regancheTipoBadge(r.notas as string | undefined)}</TableCell>
-                    <TableCell className="text-right text-sm font-medium tabular-nums">
-                      {formatRD(r.monto_agregado as string)}
+              </TableHeader>
+              <TableBody>
+                {(data.reganches ?? []).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-muted-foreground">
+                      Sin movimientos
                     </TableCell>
-                    <TableCell className="max-w-md text-sm text-muted-foreground">{(r.notas as string) ?? "—"}</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  data.reganches.map((r) => (
+                    <TableRow key={String(r.id)}>
+                      <TableCell className="text-sm whitespace-nowrap">{String(r.created_at).slice(0, 10)}</TableCell>
+                      <TableCell>{regancheTipoBadge(r.notas as string | undefined)}</TableCell>
+                      <TableCell className="text-right text-sm font-medium tabular-nums">
+                        {formatRD(r.monto_agregado as string)}
+                      </TableCell>
+                      <TableCell className="max-w-md text-sm text-muted-foreground">{(r.notas as string) ?? "—"}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="md:hidden block space-y-3">
+            {(data.reganches ?? []).length === 0 ? (
+              <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+                Sin movimientos
+              </div>
+            ) : (
+              data.reganches.map((r) => (
+                <div key={String(r.id)} className="rounded-xl border border-border/60 bg-card/80 p-4 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fecha</p>
+                      <p className="text-sm font-medium">{String(r.created_at).slice(0, 10)}</p>
+                    </div>
+                    <div>{regancheTipoBadge(r.notas as string | undefined)}</div>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Monto</p>
+                      <p className="text-sm font-semibold tabular-nums">{formatRD(r.monto_agregado as string)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Notas</p>
+                      <p className="text-sm text-muted-foreground line-clamp-3">{(r.notas as string) ?? "—"}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -599,57 +724,117 @@ export default function PrestamoDetallePage() {
             no cubierto en ese movimiento; filas antiguas pueden mostrar «—» si no existían esas columnas.
           </CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Fecha</TableHead>
-                <TableHead className="text-right">Int. calculado</TableHead>
-                <TableHead className="text-right">Int. recibido</TableHead>
-                <TableHead className="text-right">Int. aplicado</TableHead>
-                <TableHead className="text-right">Dif. a pend. interés</TableHead>
-                <TableHead className="text-right">Capital debitado</TableHead>
-                <TableHead className="text-right">Total mov.</TableHead>
-                <TableHead className="text-right">Saldo capital</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(data.abonos ?? []).length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-muted-foreground">
-                    Sin abonos
-                  </TableCell>
+        <CardContent className="space-y-4">
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Fecha</TableHead>
+                  <TableHead className="text-right">Int. calculado</TableHead>
+                  <TableHead className="text-right">Int. recibido</TableHead>
+                  <TableHead className="text-right">Int. aplicado</TableHead>
+                  <TableHead className="text-right">Dif. a pend. interés</TableHead>
+                  <TableHead className="text-right">Capital debitado</TableHead>
+                  <TableHead className="text-right">Total mov.</TableHead>
+                  <TableHead className="text-right">Saldo capital</TableHead>
                 </TableRow>
-              ) : (
-                data.abonos.map((a) => {
-                  const row = a as Record<string, unknown>
-                  const recibido = getInteresRecibidoFromAbono(row)
-                  return (
-                    <TableRow key={String(a.id)}>
-                      <TableCell className="text-sm whitespace-nowrap">{String(a.fecha_abono)}</TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {formatMontoAbonoOGuion(row.interes_calculado)}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {recibido != null ? formatRD(recibido) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">{formatRD(a.interes_cobrado as string)}</TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {formatMontoAbonoOGuion(row.diferencia_interes_pendiente)}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {formatRD(a.monto_capital_debitado as string)}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">{formatRD(a.total_pagado as string)}</TableCell>
-                      <TableCell className="text-right text-sm font-medium tabular-nums">
-                        {formatRD(a.saldo_capital_restante as string)}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {(data.abonos ?? []).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-muted-foreground">
+                      Sin abonos
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  data.abonos.map((a) => {
+                    const row = a as Record<string, unknown>
+                    const recibido = getInteresRecibidoFromAbono(row)
+                    return (
+                      <TableRow key={String(a.id)}>
+                        <TableCell className="text-sm whitespace-nowrap">{String(a.fecha_abono)}</TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">
+                          {formatMontoAbonoOGuion(row.interes_calculado)}
+                        </TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">
+                          {recibido != null ? formatRD(recibido) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">{formatRD(a.interes_cobrado as string)}</TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">
+                          {formatMontoAbonoOGuion(row.diferencia_interes_pendiente)}
+                        </TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">
+                          {formatRD(a.monto_capital_debitado as string)}
+                        </TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">{formatRD(a.total_pagado as string)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium tabular-nums">
+                          {formatRD(a.saldo_capital_restante as string)}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="md:hidden block space-y-3">
+            {(data.abonos ?? []).length === 0 ? (
+              <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+                Sin abonos
+              </div>
+            ) : (
+              data.abonos.map((a) => {
+                const row = a as Record<string, unknown>
+                const recibido = getInteresRecibidoFromAbono(row)
+                return (
+                  <div key={String(a.id)} className="rounded-xl border border-border/60 bg-card/80 p-4 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fecha</p>
+                        <p className="text-sm font-medium">{String(a.fecha_abono)}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Interés calculado</p>
+                        <p className="text-sm font-semibold tabular-nums">{formatMontoAbonoOGuion(row.interes_calculado)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Interés recibido</p>
+                        <p className="text-sm font-semibold tabular-nums">
+                          {recibido != null ? formatRD(recibido) : "—"}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Interés aplicado</p>
+                        <p className="text-sm font-semibold tabular-nums">{formatRD(a.interes_cobrado as string)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Dif. a pend. interés</p>
+                        <p className="text-sm font-semibold tabular-nums">
+                          {formatMontoAbonoOGuion(row.diferencia_interes_pendiente)}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Capital debitado</p>
+                        <p className="text-sm font-semibold tabular-nums">{formatRD(a.monto_capital_debitado as string)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Total mov.</p>
+                        <p className="text-sm font-semibold tabular-nums">{formatRD(a.total_pagado as string)}</p>
+                      </div>
+                      <div className="space-y-1 sm:col-span-2">
+                        <p className="text-xs text-muted-foreground">Saldo capital</p>
+                        <p className="text-sm font-semibold tabular-nums">{formatRD(a.saldo_capital_restante as string)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

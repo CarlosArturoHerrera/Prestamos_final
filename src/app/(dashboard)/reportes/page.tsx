@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -201,12 +202,14 @@ export default function ReportesPage() {
               />
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={load}>Aplicar</Button>
-            <Button variant="outline" onClick={() => exportar("pdf")}>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button onClick={load} className="w-full sm:w-auto">
+              Aplicar
+            </Button>
+            <Button variant="outline" onClick={() => exportar("pdf")} className="w-full sm:w-auto">
               PDF
             </Button>
-            <Button variant="outline" onClick={() => exportar("excel")}>
+            <Button variant="outline" onClick={() => exportar("excel")} className="w-full sm:w-auto">
               Excel
             </Button>
           </div>
@@ -218,7 +221,7 @@ export default function ReportesPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border/60">
+      <div className="hidden md:block rounded-xl border border-border/60">
         <Table>
           <TableHeader>
             <TableRow>
@@ -258,6 +261,53 @@ export default function ReportesPage() {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="md:hidden block space-y-3">
+        {rows.length === 0 ? (
+          <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+            Sin datos
+          </div>
+        ) : (
+          rows.map((r) => {
+            const c = r.clientes as
+              | {
+                  nombre?: string
+                  apellido?: string
+                  empresas?: { nombre?: string }
+                }
+              | undefined
+
+            const estadoU = String(r.estado ?? "").toUpperCase()
+            const badgeVariant = estadoU === "MORA" ? "destructive" : estadoU === "SALDADO" ? "secondary" : "outline"
+
+            return (
+              <div key={String(r.id)} className="rounded-xl border border-border/60 bg-card/80 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs text-muted-foreground">#{String(r.id)}</span>
+                      <Badge variant={badgeVariant} className="uppercase tracking-wide">
+                        {estadoU || "—"}
+                      </Badge>
+                    </div>
+                    <div className="text-sm font-semibold leading-tight">
+                      {c ? `${c.nombre ?? ""} ${c.apellido ?? ""}`.trim() : "—"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Empresa: {c?.empresas?.nombre ?? "—"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs text-muted-foreground">Capital pendiente</p>
+                  <p className="text-lg font-semibold tabular-nums">{formatRD(r.capital_pendiente as string)}</p>
+                </div>
+              </div>
+            )
+          })
+        )}
       </div>
     </div>
   )

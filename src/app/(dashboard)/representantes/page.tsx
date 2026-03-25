@@ -360,10 +360,15 @@ export default function RepresentantesPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="secondary" onClick={() => setOpen(false)} disabled={isSaving}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setOpen(false)}
+                    disabled={isSaving}
+                    className="w-full sm:w-auto"
+                  >
                     Cancelar
                   </Button>
-                  <Button onClick={save} disabled={isSaving}>
+                  <Button onClick={save} disabled={isSaving} className="w-full sm:w-auto">
                     {isSaving ? "Guardando..." : "Guardar"}
                   </Button>
                 </DialogFooter>
@@ -435,7 +440,13 @@ export default function RepresentantesPage() {
                 </Label>
               </div>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={resetFilters}
+              className="w-full sm:w-auto"
+            >
               Limpiar filtros
             </Button>
           </div>
@@ -454,7 +465,7 @@ export default function RepresentantesPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-border/60">
+        <div className="hidden md:block rounded-xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow>
@@ -468,6 +479,105 @@ export default function RepresentantesPage() {
             </TableHeader>
             <TableBody>{tableRows}</TableBody>
           </Table>
+        </div>
+
+        <div className="md:hidden block space-y-3">
+          {loading ? (
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">Cargando…</div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+              Sin representantes con estos filtros
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rows.map((r) => {
+                const n = r.clientes_asignados ?? 0
+                return (
+                  <div
+                    key={r.id}
+                    className={cn(
+                      "rounded-xl border border-border/60 bg-card/80 p-4",
+                      n > 0
+                        ? "border-l-[5px] border-primary/40 bg-primary/[0.04]"
+                        : "border-l-[5px] border-muted-foreground/20",
+                    )}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-xs text-muted-foreground">#{r.id}</span>
+                          <div className="text-base font-semibold leading-tight">
+                            {r.nombre} {r.apellido}
+                          </div>
+                        </div>
+                        <div>
+                          <Badge
+                            variant={n > 0 ? "default" : "secondary"}
+                            className={cn("tabular-nums", n === 0 && "opacity-80")}
+                          >
+                            <Users className="mr-1 size-3" />
+                            {n} cliente{n === 1 ? "" : "s"}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">Teléfono</div>
+                        <div className="text-sm font-medium">
+                          {r.telefono ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <Phone className="size-3.5 text-muted-foreground" />
+                              {r.telefono}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+                      <span className="text-sm text-muted-foreground">Email</span>
+                      <span className="text-sm font-medium break-all">
+                        {r.email ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <Mail className="size-3.5 shrink-0 text-muted-foreground" />
+                            {r.email}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-2">
+                      <Button asChild variant="secondary" className="w-full justify-center">
+                        <Link href="/prestamos">Ver cartera en préstamos</Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-center"
+                        onClick={() => {
+                          setEditing(r)
+                          setForm({
+                            nombre: r.nombre,
+                            apellido: r.apellido,
+                            telefono: r.telefono,
+                            email: r.email,
+                          })
+                          setOpen(true)
+                        }}
+                      >
+                        Editar
+                      </Button>
+                      <Button variant="destructive" className="w-full justify-center" onClick={() => setDeleteId(r.id)}>
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {totalPages > 1 ? (

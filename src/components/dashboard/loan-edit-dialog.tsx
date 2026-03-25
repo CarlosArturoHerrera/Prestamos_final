@@ -156,7 +156,7 @@ export function LoanEditDialog({ trigger, loan, onUpdate }: LoanEditDialogProps)
           </div>
           <div className="grid gap-2">
             <Label>Días de pago</Label>
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
               {Array.from({ length: 31 }, (_, i) => String(i + 1)).map((day) => (
                 <button
                   key={day}
@@ -175,9 +175,11 @@ export function LoanEditDialog({ trigger, loan, onUpdate }: LoanEditDialogProps)
               Selecciona los días del mes en que el cliente paga
             </p>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={!form.amount.trim()}>
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmit} disabled={!form.amount.trim()} className="w-full sm:w-auto">
               Actualizar
             </Button>
           </div>

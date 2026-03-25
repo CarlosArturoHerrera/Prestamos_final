@@ -382,10 +382,15 @@ export default function EmpresasPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="secondary" onClick={() => setOpen(false)} disabled={isSaving}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setOpen(false)}
+                    disabled={isSaving}
+                    className="w-full sm:w-auto"
+                  >
                     Cancelar
                   </Button>
-                  <Button onClick={save} disabled={isSaving}>
+                  <Button onClick={save} disabled={isSaving} className="w-full sm:w-auto">
                     {isSaving ? "Guardando..." : "Guardar"}
                   </Button>
                 </DialogFooter>
@@ -470,7 +475,13 @@ export default function EmpresasPage() {
                 </div>
               </div>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={resetFilters}
+              className="w-full sm:w-auto"
+            >
               Limpiar filtros
             </Button>
           </div>
@@ -489,7 +500,7 @@ export default function EmpresasPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-border/60">
+        <div className="hidden md:block rounded-xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow>
@@ -503,6 +514,113 @@ export default function EmpresasPage() {
             </TableHeader>
             <TableBody>{tableRows}</TableBody>
           </Table>
+        </div>
+
+        <div className="md:hidden block space-y-3">
+          {loading ? (
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">Cargando…</div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+              Sin empresas con estos filtros
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rows.map((e) => {
+                return (
+                  <div
+                    key={e.id}
+                    className={cn(
+                      "rounded-xl border border-border/60 bg-card/80 p-4",
+                      e.rnc
+                        ? "border-l-[5px] border-emerald-500/50 bg-emerald-500/[0.05]"
+                        : "border-l-[5px] border-muted-foreground/20",
+                    )}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">#{e.id}</span>
+                          <div className="text-base font-semibold leading-tight">{e.nombre}</div>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {e.rnc ? (
+                            <Badge variant="secondary" className="font-mono text-[11px]">
+                              <Hash className="mr-1 size-3 opacity-70" />
+                              {e.rnc}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">Sin RNC</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">Dirección</div>
+                        <div className="text-sm font-medium text-foreground line-clamp-2">
+                          {e.direccion ?? "—"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+                        <span className="text-sm text-muted-foreground">Teléfono</span>
+                        <span className="text-sm font-medium">
+                          {e.telefono ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <Phone className="size-3.5 text-muted-foreground" />
+                              {e.telefono}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+                        <span className="text-sm text-muted-foreground">Email</span>
+                        <span className="text-sm font-medium break-all">
+                          {e.email ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <Mail className="size-3.5 shrink-0 text-muted-foreground" />
+                              {e.email}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-2">
+                      <Button
+                        variant="secondary"
+                        className="w-full justify-center"
+                        onClick={() => {
+                          setEditing(e)
+                          setForm({
+                            nombre: e.nombre,
+                            rnc: e.rnc ?? "",
+                            direccion: e.direccion ?? "",
+                            telefono: e.telefono ?? "",
+                            email: e.email ?? "",
+                          })
+                          setOpen(true)
+                        }}
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        className="w-full justify-center"
+                        onClick={() => setDeleteId(e.id)}
+                      >
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {totalPages > 1 ? (

@@ -595,7 +595,7 @@ export default function PrestamosPage() {
                       placeholder="5"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="space-y-2">
                       <Label>Cuotas</Label>
                       <Input value={form.plazo} onChange={(e) => setForm({ ...form, plazo: e.target.value })} />
@@ -637,10 +637,10 @@ export default function PrestamosPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="secondary" onClick={() => setOpen(false)}>
+                  <Button variant="secondary" onClick={() => setOpen(false)} className="w-full sm:w-auto">
                     Cancelar
                   </Button>
-                  <Button onClick={crear} disabled={isCreating}>
+                  <Button onClick={crear} disabled={isCreating} className="w-full sm:w-auto">
                     {isCreating ? "Creando..." : "Crear"}
                   </Button>
                 </DialogFooter>
@@ -811,11 +811,12 @@ export default function PrestamosPage() {
                 </Label>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
+                className="w-full sm:w-auto"
                 disabled={!!exporting}
                 onClick={() => void descargarExport("csv")}
               >
@@ -826,13 +827,20 @@ export default function PrestamosPage() {
                 type="button"
                 variant="secondary"
                 size="sm"
+                className="w-full sm:w-auto"
                 disabled={!!exporting}
                 onClick={() => void descargarExport("xlsx")}
               >
                 <FileSpreadsheet className="mr-1.5 size-4" />
                 {exporting === "xlsx" ? "Excel…" : "Excel"}
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={resetFilters}
+              >
                 Limpiar filtros
               </Button>
             </div>
@@ -857,7 +865,7 @@ export default function PrestamosPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-border/60">
+        <div className="hidden md:block rounded-xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow>
@@ -897,6 +905,103 @@ export default function PrestamosPage() {
             </TableHeader>
             <TableBody>{tableRows}</TableBody>
           </Table>
+        </div>
+
+        <div className="md:hidden block space-y-3">
+          {loading ? (
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">Cargando…</div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+              Sin préstamos con estos filtros
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rows.map((p) => {
+                const saldado = p.estado === "SALDADO"
+                const cli = p.clientes
+                return (
+                  <div
+                    key={p.id}
+                    className={cn("rounded-xl border border-border/60 bg-card/80 p-4", rowVisualClasses(p))}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">#{p.id}</span>
+                          <Badge variant={estBadgeVariant(p.estado)} className="uppercase">
+                            {p.estado}
+                          </Badge>
+                          {p.tiene_interes_pendiente ? (
+                            <Badge
+                              variant="outline"
+                              className="border-amber-600/60 bg-amber-500/20 font-semibold text-amber-950 dark:text-amber-100"
+                            >
+                              Int. pend.
+                            </Badge>
+                          ) : null}
+                        </div>
+                        {!saldado ? atencionVencimientoBadges(p) : null}
+                        <p className="text-sm text-muted-foreground">
+                          Cliente: {cli ? `${cli.nombre} ${cli.apellido}` : "—"}
+                          <span className="ml-1 font-medium text-foreground">{cli?.cedula ? `(${cli.cedula})` : ""}</span>
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        {p.tiene_capitalizacion_auto ? (
+                          <Badge variant="outline" className="border-violet-500/50 bg-violet-500/15 text-violet-950 dark:text-violet-100">
+                            Cap. AUTO
+                          </Badge>
+                        ) : null}
+                        {p.tiene_capitalizacion_manual ? (
+                          <Badge variant="outline" className="border-sky-500/50 bg-sky-500/15 text-sky-950 dark:text-sky-100">
+                            Cap. MANUAL
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Monto original</p>
+                        <p className="font-semibold tabular-nums">{formatRD(p.monto)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Tasa</p>
+                        <p className="font-semibold">{p.tasa_interes}%</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Int. próxima cuota</p>
+                        <p className="font-semibold tabular-nums">{saldado ? "—" : formatRD(p.interes_proximo)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Capital a debitar</p>
+                        <p className="font-semibold tabular-nums">{saldado ? "—" : formatRD(p.capital_debitar_proximo)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Próximo venc.</p>
+                        <p className="font-semibold">{p.fecha_proximo_vencimiento}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Próximo pago</p>
+                        <p className="font-semibold tabular-nums">{saldado ? "—" : formatRD(p.total_proximo_pago)}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-2">
+                      <Button asChild variant="secondary" className="w-full justify-center">
+                        <Link href={`/prestamos/${p.id}`}>Ver préstamo</Link>
+                      </Button>
+                      {cli?.id ? (
+                        <Button asChild variant="outline" className="w-full justify-center">
+                          <Link href={`/clientes/${cli.id}`}>Ficha cliente</Link>
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {totalPages > 1 ? (

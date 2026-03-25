@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
@@ -176,11 +177,11 @@ export default function NotificacionesPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={vistaPrevia} disabled={sendingPreview}>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button variant="secondary" onClick={vistaPrevia} disabled={sendingPreview} className="w-full sm:w-auto">
               {sendingPreview ? "Generando..." : "Vista previa"}
             </Button>
-            <Button onClick={enviar} disabled={sending}>
+            <Button onClick={enviar} disabled={sending} className="w-full sm:w-auto">
               {sending ? "Enviando..." : "Enviar"}
             </Button>
           </div>
@@ -191,9 +192,9 @@ export default function NotificacionesPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <Select value={filtroRep || "all"} onValueChange={(v) => setFiltroRep(v === "all" ? "" : v)}>
-          <SelectTrigger className="w-[240px]">
+          <SelectTrigger className="w-full sm:w-[240px]">
             <SelectValue placeholder="Representante" />
           </SelectTrigger>
           <SelectContent>
@@ -209,10 +210,10 @@ export default function NotificacionesPage() {
           placeholder="Filtrar por cédula"
           value={filtroCedula}
           onChange={(e) => setFiltroCedula(e.target.value)}
-          className="max-w-xs"
+          className="w-full sm:max-w-xs"
         />
         <Select value={canal || "all"} onValueChange={(v) => setCanal(v === "all" ? "" : v)}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Canal" />
           </SelectTrigger>
           <SelectContent>
@@ -222,12 +223,12 @@ export default function NotificacionesPage() {
             <SelectItem value="AMBOS">Ambos</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" onClick={load}>
+        <Button variant="outline" onClick={load} className="w-full sm:w-auto">
           Aplicar filtros
         </Button>
       </div>
 
-      <div className="rounded-xl border border-border/60">
+      <div className="hidden md:block rounded-xl border border-border/60">
         <Table>
           <TableHeader>
             <TableRow>
@@ -271,6 +272,51 @@ export default function NotificacionesPage() {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="md:hidden block space-y-3">
+        {loadingHistorial ? (
+          <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+            Cargando...
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+            Sin historial
+          </div>
+        ) : (
+          rows.map((n) => {
+            const isError = String(n.estado ?? "").toUpperCase() === "ERROR"
+            return (
+              <div key={n.id} className="rounded-xl border border-border/60 bg-card/80 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {new Date(n.fecha_envio).toLocaleString("es-DO")}
+                      </span>
+                      <Badge
+                        variant={isError ? "destructive" : "secondary"}
+                        className="uppercase tracking-wide"
+                      >
+                        {n.estado}
+                      </Badge>
+                    </div>
+                    <div className="text-sm font-semibold">
+                      {n.representantes ? `${n.representantes.nombre} ${n.representantes.apellido}` : "—"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Canal: {n.canal}</div>
+                  </div>
+                </div>
+
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs text-muted-foreground">Mensaje</p>
+                  <p className="text-sm leading-snug line-clamp-4">{n.mensaje}</p>
+                  {n.error_detalle ? <p className="text-xs text-destructive">{n.error_detalle}</p> : null}
+                </div>
+              </div>
+            )
+          })
+        )}
       </div>
     </div>
   )
