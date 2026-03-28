@@ -1,6 +1,5 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Building2,
   ChevronLeft,
@@ -13,8 +12,9 @@ import {
   Plus,
   Search,
   Trash2,
-} from "lucide-react"
-import { toast } from "sonner"
+} from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,11 +24,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -36,132 +42,342 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
-import { useDebouncedValue } from "@/lib/use-debounced-value"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { cn } from "@/lib/utils";
 
 type Empresa = {
-  id: number
-  nombre: string
-  rnc: string | null
-  direccion: string | null
-  telefono: string | null
-  email: string | null
-}
+  id: number;
+  nombre: string;
+  rnc: string | null;
+  direccion: string | null;
+  telefono: string | null;
+  email: string | null;
+};
 
-type ListRes = { data: Empresa[]; page: number; pageSize: number; total: number }
+type ListRes = {
+  data: Empresa[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
 
-type ResumenEmp = { total: number; conRnc: number }
+type ResumenEmp = { total: number; conRnc: number };
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 50;
+
+type EmpresaViewModel = {
+  id: number;
+  nombre: string;
+  rnc: string | null;
+  direccion: string;
+  telefono: string | null;
+  email: string | null;
+  rowClass: string;
+};
+
+const EmpresaDesktopRow = memo(function EmpresaDesktopRow({
+  empresa,
+  onOpenEdit,
+  onDelete,
+}: {
+  empresa: EmpresaViewModel;
+  onOpenEdit: (id: number) => void;
+  onDelete: (id: number) => void;
+}) {
+  return (
+    <TableRow className={empresa.rowClass}>
+      <TableCell className="font-mono text-xs text-muted-foreground">
+        #{empresa.id}
+      </TableCell>
+      <TableCell>
+        <div className="font-semibold leading-tight">{empresa.nombre}</div>
+        {empresa.direccion ? (
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+            {empresa.direccion}
+          </p>
+        ) : null}
+      </TableCell>
+      <TableCell>
+        {empresa.rnc ? (
+          <Badge variant="secondary" className="font-mono text-[11px]">
+            <Hash className="mr-1 size-3 opacity-70" />
+            {empresa.rnc}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">Sin RNC</span>
+        )}
+      </TableCell>
+      <TableCell>
+        {empresa.telefono ? (
+          <span className="inline-flex items-center gap-1.5 text-sm">
+            <Phone className="size-3.5 text-muted-foreground" />
+            {empresa.telefono}
+          </span>
+        ) : (
+          "—"
+        )}
+      </TableCell>
+      <TableCell>
+        {empresa.email ? (
+          <span className="inline-flex items-center gap-1.5 break-all text-sm">
+            <Mail className="size-3.5 shrink-0 text-muted-foreground" />
+            {empresa.email}
+          </span>
+        ) : (
+          "—"
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8"
+              aria-label="Acciones"
+            >
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onOpenEdit(empresa.id)}>
+              <Pencil className="mr-2 size-4 opacity-70" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => onDelete(empresa.id)}
+            >
+              <Trash2 className="mr-2 size-4" />
+              Eliminar
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  );
+});
+
+const EmpresaMobileCard = memo(function EmpresaMobileCard({
+  empresa,
+  onOpenEdit,
+  onDelete,
+}: {
+  empresa: EmpresaViewModel;
+  onOpenEdit: (id: number) => void;
+  onDelete: (id: number) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-border/60 bg-card/80 p-4",
+        empresa.rowClass,
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-muted-foreground">
+              #{empresa.id}
+            </span>
+            <div className="text-base font-semibold leading-tight">
+              {empresa.nombre}
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {empresa.rnc ? (
+              <Badge variant="secondary" className="font-mono text-[11px]">
+                <Hash className="mr-1 size-3 opacity-70" />
+                {empresa.rnc}
+              </Badge>
+            ) : (
+              <span className="text-muted-foreground">Sin RNC</span>
+            )}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-xs text-muted-foreground">Dirección</div>
+          <div className="line-clamp-2 text-sm font-medium text-foreground">
+            {empresa.direccion || "—"}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-2">
+        <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+          <span className="text-sm text-muted-foreground">Teléfono</span>
+          <span className="text-sm font-medium">
+            {empresa.telefono ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Phone className="size-3.5 text-muted-foreground" />
+                {empresa.telefono}
+              </span>
+            ) : (
+              "—"
+            )}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+          <span className="text-sm text-muted-foreground">Email</span>
+          <span className="break-all text-sm font-medium">
+            {empresa.email ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Mail className="size-3.5 shrink-0 text-muted-foreground" />
+                {empresa.email}
+              </span>
+            ) : (
+              "—"
+            )}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2">
+        <Button
+          variant="secondary"
+          className="w-full justify-center"
+          onClick={() => onOpenEdit(empresa.id)}
+        >
+          Editar
+        </Button>
+        <Button
+          variant="destructive"
+          className="w-full justify-center"
+          onClick={() => onDelete(empresa.id)}
+        >
+          Eliminar
+        </Button>
+      </div>
+    </div>
+  );
+});
 
 export default function EmpresasPage() {
-  const [rows, setRows] = useState<Empresa[]>([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [search, setSearch] = useState("")
-  const searchDebounced = useDebouncedValue(search, 350)
-  const [conRnc, setConRnc] = useState(false)
-  const [sinRncFilter, setSinRncFilter] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [resumen, setResumen] = useState<ResumenEmp | null>(null)
-  const [resumenLoading, setResumenLoading] = useState(true)
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<Empresa | null>(null)
-  const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [rows, setRows] = useState<Empresa[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const searchDebounced = useDebouncedValue(search, 350);
+  const [conRnc, setConRnc] = useState(false);
+  const [sinRncFilter, setSinRncFilter] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [resumen, setResumen] = useState<ResumenEmp | null>(null);
+  const [resumenLoading, setResumenLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Empresa | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [viewportReady, setViewportReady] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [form, setForm] = useState({
     nombre: "",
     rnc: "",
     direccion: "",
     telefono: "",
     email: "",
-  })
+  });
+  const isMobile = useIsMobile();
 
-  const urlSynced = useRef(false)
   useEffect(() => {
-    if (urlSynced.current || typeof window === "undefined") return
-    urlSynced.current = true
-    const p = new URLSearchParams(window.location.search)
+    setViewportReady(true);
+  }, []);
+
+  const urlSynced = useRef(false);
+  useEffect(() => {
+    if (urlSynced.current || typeof window === "undefined") return;
+    urlSynced.current = true;
+    const p = new URLSearchParams(window.location.search);
     if (p.get("sinRnc") === "true") {
-      setSinRncFilter(true)
-      setConRnc(false)
+      setSinRncFilter(true);
+      setConRnc(false);
     } else if (p.get("conRnc") === "true") {
-      setConRnc(true)
-      setSinRncFilter(false)
+      setConRnc(true);
+      setSinRncFilter(false);
     }
-  }, [])
+  }, []);
 
   const loadResumen = useCallback(async () => {
-    setResumenLoading(true)
-    const res = await fetchApi<ResumenEmp>("/api/empresas/resumen")
+    setResumenLoading(true);
+    const res = await fetchApi<ResumenEmp>("/api/empresas/resumen");
     if (!res.ok) {
-      redirectToLoginIfUnauthorized(res.status)
-      setResumen(null)
+      redirectToLoginIfUnauthorized(res.status);
+      setResumen(null);
     } else {
-      setResumen(res.data)
+      setResumen(res.data);
     }
-    setResumenLoading(false)
-  }, [])
+    setResumenLoading(false);
+  }, []);
 
   useEffect(() => {
-    void loadResumen()
-  }, [loadResumen])
+    void loadResumen();
+  }, [loadResumen]);
 
   const load = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     const q = new URLSearchParams({
       search: searchDebounced,
       pageSize: String(PAGE_SIZE),
       page: String(page),
-    })
-    if (sinRncFilter) q.set("sinRnc", "true")
-    else if (conRnc) q.set("conRnc", "true")
-    const res = await fetchApi<ListRes>(`/api/empresas?${q}`)
+    });
+    if (sinRncFilter) q.set("sinRnc", "true");
+    else if (conRnc) q.set("conRnc", "true");
+    const res = await fetchApi<ListRes>(`/api/empresas?${q}`);
     if (!res.ok) {
-      redirectToLoginIfUnauthorized(res.status)
-      toast.error(res.message)
-      setRows([])
-      setTotal(0)
+      redirectToLoginIfUnauthorized(res.status);
+      toast.error(res.message);
+      setRows([]);
+      setTotal(0);
     } else {
-      const body = res.data
+      const body = res.data;
       setRows(
         (body.data ?? []).map((x) => ({
           ...x,
           rnc: x.rnc ?? (x as { ruc?: string | null }).ruc ?? null,
         })),
-      )
-      setTotal(body.total ?? 0)
+      );
+      setTotal(body.total ?? 0);
     }
-    setLoading(false)
-  }, [searchDebounced, page, conRnc, sinRncFilter])
+    setLoading(false);
+  }, [searchDebounced, page, conRnc, sinRncFilter]);
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void load();
+  }, [load]);
 
   useEffect(() => {
-    setPage(1)
-  }, [searchDebounced, conRnc, sinRncFilter])
+    void searchDebounced;
+    void conRnc;
+    void sinRncFilter;
+    setPage(1);
+  }, [searchDebounced, conRnc, sinRncFilter]);
 
-  const save = async () => {
-    if (isSaving) return
-    setIsSaving(true)
-    const method = editing ? "PUT" : "POST"
-    const url = editing ? `/api/empresas/${editing.id}` : "/api/empresas"
+  const save = useCallback(async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    const method = editing ? "PUT" : "POST";
+    const url = editing ? `/api/empresas/${editing.id}` : "/api/empresas";
     const res = await fetchApi(url, {
       method,
       headers: { "Content-Type": "application/json" },
@@ -172,47 +388,94 @@ export default function EmpresasPage() {
         telefono: form.telefono || null,
         email: form.email || null,
       }),
-    })
+    });
     if (!res.ok) {
-      redirectToLoginIfUnauthorized(res.status)
-      toast.error(res.message)
-      setIsSaving(false)
-      return
+      redirectToLoginIfUnauthorized(res.status);
+      toast.error(res.message);
+      setIsSaving(false);
+      return;
     }
-    toast.success("Empresa guardada")
-    setOpen(false)
-    setEditing(null)
-    await loadResumen()
-    await load()
-    setIsSaving(false)
-  }
+    toast.success("Empresa guardada");
+    setOpen(false);
+    setEditing(null);
+    await loadResumen();
+    await load();
+    setIsSaving(false);
+  }, [editing, form, isSaving, load, loadResumen]);
 
-  const remove = async () => {
-    if (!deleteId || isDeleting) return
-    setIsDeleting(true)
-    const res = await fetchApi(`/api/empresas/${deleteId}`, { method: "DELETE" })
+  const remove = useCallback(async () => {
+    if (!deleteId || isDeleting) return;
+    setIsDeleting(true);
+    const res = await fetchApi(`/api/empresas/${deleteId}`, {
+      method: "DELETE",
+    });
     if (!res.ok) {
-      redirectToLoginIfUnauthorized(res.status)
-      toast.error(res.message)
+      redirectToLoginIfUnauthorized(res.status);
+      toast.error(res.message);
     } else {
-      toast.success("Eliminada")
-      await loadResumen()
-      await load()
+      toast.success("Eliminada");
+      await loadResumen();
+      await load();
     }
-    setDeleteId(null)
-    setIsDeleting(false)
-  }
+    setDeleteId(null);
+    setIsDeleting(false);
+  }, [deleteId, isDeleting, load, loadResumen]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const startIdx = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
-  const endIdx = Math.min(page * PAGE_SIZE, total)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const startIdx = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const endIdx = Math.min(page * PAGE_SIZE, total);
 
   const resetFilters = () => {
-    setSearch("")
-    setConRnc(false)
-    setSinRncFilter(false)
-    setPage(1)
-  }
+    setSearch("");
+    setConRnc(false);
+    setSinRncFilter(false);
+    setPage(1);
+  };
+
+  const empresasView = useMemo<EmpresaViewModel[]>(
+    () =>
+      rows.map((e) => ({
+        id: e.id,
+        nombre: e.nombre,
+        rnc: e.rnc,
+        direccion: e.direccion ?? "",
+        telefono: e.telefono,
+        email: e.email,
+        rowClass: cn(
+          e.rnc
+            ? "border-l-[5px] border-emerald-500/50 bg-emerald-500/[0.05]"
+            : "border-l-[5px] border-muted-foreground/20",
+        ),
+      })),
+    [rows],
+  );
+
+  const rowsById = useMemo(() => {
+    const map = new Map<number, Empresa>();
+    for (const r of rows) map.set(r.id, r);
+    return map;
+  }, [rows]);
+
+  const openEditById = useCallback(
+    (id: number) => {
+      const e = rowsById.get(id);
+      if (!e) return;
+      setEditing(e);
+      setForm({
+        nombre: e.nombre,
+        rnc: e.rnc ?? "",
+        direccion: e.direccion ?? "",
+        telefono: e.telefono ?? "",
+        email: e.email ?? "",
+      });
+      setOpen(true);
+    },
+    [rowsById],
+  );
+
+  const handleDeleteById = useCallback((id: number) => {
+    setDeleteId(id);
+  }, []);
 
   const tableRows = useMemo(() => {
     if (loading) {
@@ -220,96 +483,24 @@ export default function EmpresasPage() {
         <TableRow>
           <TableCell colSpan={6}>Cargando…</TableCell>
         </TableRow>
-      )
+      );
     }
     if (rows.length === 0) {
       return (
         <TableRow>
           <TableCell colSpan={6}>Sin empresas con estos filtros</TableCell>
         </TableRow>
-      )
+      );
     }
-    return rows.map((e) => (
-      <TableRow
-        key={e.id}
-        className={cn(
-          e.rnc
-            ? "border-l-[5px] border-emerald-500/50 bg-emerald-500/[0.05]"
-            : "border-l-[5px] border-muted-foreground/20",
-        )}
-      >
-        <TableCell className="font-mono text-xs text-muted-foreground">#{e.id}</TableCell>
-        <TableCell>
-          <div className="font-semibold leading-tight">{e.nombre}</div>
-          {e.direccion ? (
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{e.direccion}</p>
-          ) : null}
-        </TableCell>
-        <TableCell>
-          {e.rnc ? (
-            <Badge variant="secondary" className="font-mono text-[11px]">
-              <Hash className="mr-1 size-3 opacity-70" />
-              {e.rnc}
-            </Badge>
-          ) : (
-            <span className="text-xs text-muted-foreground">Sin RNC</span>
-          )}
-        </TableCell>
-        <TableCell>
-          {e.telefono ? (
-            <span className="inline-flex items-center gap-1.5 text-sm">
-              <Phone className="size-3.5 text-muted-foreground" />
-              {e.telefono}
-            </span>
-          ) : (
-            "—"
-          )}
-        </TableCell>
-        <TableCell>
-          {e.email ? (
-            <span className="inline-flex items-center gap-1.5 break-all text-sm">
-              <Mail className="size-3.5 shrink-0 text-muted-foreground" />
-              {e.email}
-            </span>
-          ) : (
-            "—"
-          )}
-        </TableCell>
-        <TableCell className="text-right">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="ghost" className="size-8" aria-label="Acciones">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => {
-                  setEditing(e)
-                  setForm({
-                    nombre: e.nombre,
-                    rnc: e.rnc ?? "",
-                    direccion: e.direccion ?? "",
-                    telefono: e.telefono ?? "",
-                    email: e.email ?? "",
-                  })
-                  setOpen(true)
-                }}
-              >
-                <Pencil className="mr-2 size-4 opacity-70" />
-                Editar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(e.id)}>
-                <Trash2 className="mr-2 size-4" />
-                Eliminar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </TableCell>
-      </TableRow>
-    ))
-  }, [loading, rows])
+    return empresasView.map((empresa) => (
+      <EmpresaDesktopRow
+        key={empresa.id}
+        empresa={empresa}
+        onOpenEdit={openEditById}
+        onDelete={handleDeleteById}
+      />
+    ));
+  }, [empresasView, handleDeleteById, loading, openEditById, rows.length]);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -318,22 +509,29 @@ export default function EmpresasPage() {
           <div>
             <h1 className="text-2xl font-bold">Empresas</h1>
             <p className="text-sm text-muted-foreground">
-              Catálogo de empresas vinculadas a clientes. Búsqueda por nombre, RNC o email.
+              Catálogo de empresas vinculadas a clientes. Búsqueda por nombre,
+              RNC o email.
             </p>
           </div>
           <Dialog
             open={open}
             onOpenChange={(v) => {
-              setOpen(v)
-              if (!v) setEditing(null)
+              setOpen(v);
+              if (!v) setEditing(null);
             }}
           >
             <DialogTrigger asChild>
               <Button
                 onClick={() => {
-                  setEditing(null)
-                  setForm({ nombre: "", rnc: "", direccion: "", telefono: "", email: "" })
-                  setOpen(true)
+                  setEditing(null);
+                  setForm({
+                    nombre: "",
+                    rnc: "",
+                    direccion: "",
+                    telefono: "",
+                    email: "",
+                  });
+                  setOpen(true);
                 }}
               >
                 <Plus className="mr-2 size-4" />
@@ -343,33 +541,46 @@ export default function EmpresasPage() {
             {open && (
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{editing ? "Editar empresa" : "Nueva empresa"}</DialogTitle>
+                  <DialogTitle>
+                    {editing ? "Editar empresa" : "Nueva empresa"}
+                  </DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-3 py-2">
                   <div className="space-y-2">
                     <Label>Nombre</Label>
                     <Input
                       value={form.nombre}
-                      onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, nombre: e.target.value })
+                      }
                       required
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>RNC (opcional)</Label>
-                    <Input value={form.rnc} onChange={(e) => setForm({ ...form, rnc: e.target.value })} />
+                    <Input
+                      value={form.rnc}
+                      onChange={(e) =>
+                        setForm({ ...form, rnc: e.target.value })
+                      }
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Dirección</Label>
                     <Input
                       value={form.direccion}
-                      onChange={(e) => setForm({ ...form, direccion: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, direccion: e.target.value })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Teléfono</Label>
                     <Input
                       value={form.telefono}
-                      onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, telefono: e.target.value })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -377,7 +588,9 @@ export default function EmpresasPage() {
                     <Input
                       type="email"
                       value={form.email}
-                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, email: e.target.value })
+                      }
                     />
                   </div>
                 </div>
@@ -390,7 +603,11 @@ export default function EmpresasPage() {
                   >
                     Cancelar
                   </Button>
-                  <Button onClick={save} disabled={isSaving} className="w-full sm:w-auto">
+                  <Button
+                    onClick={save}
+                    disabled={isSaving}
+                    className="w-full sm:w-auto"
+                  >
                     {isSaving ? "Guardando..." : "Guardar"}
                   </Button>
                 </DialogFooter>
@@ -413,7 +630,9 @@ export default function EmpresasPage() {
                 <CardDescription>Registradas en el sistema</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold tabular-nums">{resumenLoading ? "…" : (resumen?.total ?? "—")}</p>
+                <p className="text-3xl font-bold tabular-nums">
+                  {resumenLoading ? "…" : (resumen?.total ?? "—")}
+                </p>
               </CardContent>
             </Card>
             <Card className="border-border/60 shadow-sm">
@@ -422,7 +641,9 @@ export default function EmpresasPage() {
                 <CardDescription>Identificación fiscal cargada</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold tabular-nums">{resumenLoading ? "…" : (resumen?.conRnc ?? "—")}</p>
+                <p className="text-3xl font-bold tabular-nums">
+                  {resumenLoading ? "…" : (resumen?.conRnc ?? "—")}
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -450,12 +671,15 @@ export default function EmpresasPage() {
                     id="emp-con-rnc"
                     checked={conRnc}
                     onCheckedChange={(c) => {
-                      const on = c === true
-                      setConRnc(on)
-                      if (on) setSinRncFilter(false)
+                      const on = c === true;
+                      setConRnc(on);
+                      if (on) setSinRncFilter(false);
                     }}
                   />
-                  <Label htmlFor="emp-con-rnc" className="cursor-pointer text-sm font-normal">
+                  <Label
+                    htmlFor="emp-con-rnc"
+                    className="cursor-pointer text-sm font-normal"
+                  >
                     Solo con RNC
                   </Label>
                 </div>
@@ -464,12 +688,15 @@ export default function EmpresasPage() {
                     id="emp-sin-rnc"
                     checked={sinRncFilter}
                     onCheckedChange={(c) => {
-                      const on = c === true
-                      setSinRncFilter(on)
-                      if (on) setConRnc(false)
+                      const on = c === true;
+                      setSinRncFilter(on);
+                      if (on) setConRnc(false);
                     }}
                   />
-                  <Label htmlFor="emp-sin-rnc" className="cursor-pointer text-sm font-normal">
+                  <Label
+                    htmlFor="emp-sin-rnc"
+                    className="cursor-pointer text-sm font-normal"
+                  >
                     Sin RNC
                   </Label>
                 </div>
@@ -492,7 +719,8 @@ export default function EmpresasPage() {
               "Sin resultados."
             ) : (
               <>
-                Mostrando <span className="font-medium text-foreground">{startIdx}</span>–
+                Mostrando{" "}
+                <span className="font-medium text-foreground">{startIdx}</span>–
                 <span className="font-medium text-foreground">{endIdx}</span> de{" "}
                 <span className="font-medium text-foreground">{total}</span>
               </>
@@ -500,128 +728,52 @@ export default function EmpresasPage() {
           </p>
         </div>
 
-        <div className="hidden md:block rounded-xl border border-border/60">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[4rem]">ID</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>RNC</TableHead>
-                <TableHead>Teléfono</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead className="w-[3rem] text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>{tableRows}</TableBody>
-          </Table>
-        </div>
-
-        <div className="md:hidden block space-y-3">
-          {loading ? (
-            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">Cargando…</div>
-          ) : rows.length === 0 ? (
-            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
-              Sin empresas con estos filtros
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {rows.map((e) => {
-                return (
-                  <div
-                    key={e.id}
-                    className={cn(
-                      "rounded-xl border border-border/60 bg-card/80 p-4",
-                      e.rnc
-                        ? "border-l-[5px] border-emerald-500/50 bg-emerald-500/[0.05]"
-                        : "border-l-[5px] border-muted-foreground/20",
-                    )}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-muted-foreground">#{e.id}</span>
-                          <div className="text-base font-semibold leading-tight">{e.nombre}</div>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {e.rnc ? (
-                            <Badge variant="secondary" className="font-mono text-[11px]">
-                              <Hash className="mr-1 size-3 opacity-70" />
-                              {e.rnc}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">Sin RNC</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs text-muted-foreground">Dirección</div>
-                        <div className="text-sm font-medium text-foreground line-clamp-2">
-                          {e.direccion ?? "—"}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
-                        <span className="text-sm text-muted-foreground">Teléfono</span>
-                        <span className="text-sm font-medium">
-                          {e.telefono ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <Phone className="size-3.5 text-muted-foreground" />
-                              {e.telefono}
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
-                        <span className="text-sm text-muted-foreground">Email</span>
-                        <span className="text-sm font-medium break-all">
-                          {e.email ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <Mail className="size-3.5 shrink-0 text-muted-foreground" />
-                              {e.email}
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-col gap-2">
-                      <Button
-                        variant="secondary"
-                        className="w-full justify-center"
-                        onClick={() => {
-                          setEditing(e)
-                          setForm({
-                            nombre: e.nombre,
-                            rnc: e.rnc ?? "",
-                            direccion: e.direccion ?? "",
-                            telefono: e.telefono ?? "",
-                            email: e.email ?? "",
-                          })
-                          setOpen(true)
-                        }}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        className="w-full justify-center"
-                        onClick={() => setDeleteId(e.id)}
-                      >
-                        Eliminar
-                      </Button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+        {!viewportReady ? (
+          <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+            Cargando vista…
+          </div>
+        ) : isMobile ? (
+          <div className="space-y-3">
+            {loading ? (
+              <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+                Cargando…
+              </div>
+            ) : rows.length === 0 ? (
+              <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+                Sin empresas con estos filtros
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {empresasView.map((empresa) => (
+                  <EmpresaMobileCard
+                    key={empresa.id}
+                    empresa={empresa}
+                    onOpenEdit={openEditById}
+                    onDelete={handleDeleteById}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border/60">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[4rem]">ID</TableHead>
+                  <TableHead>Empresa</TableHead>
+                  <TableHead>RNC</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="w-[3rem] text-right">
+                    Acciones
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>{tableRows}</TableBody>
+            </Table>
+          </div>
+        )}
 
         {totalPages > 1 ? (
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -653,14 +805,21 @@ export default function EmpresasPage() {
           </div>
         ) : null}
 
-        <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialog
+          open={deleteId !== null}
+          onOpenChange={() => setDeleteId(null)}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>¿Eliminar empresa?</AlertDialogTitle>
-              <AlertDialogDescription>Solo se permite si no hay clientes asociados.</AlertDialogDescription>
+              <AlertDialogDescription>
+                Solo se permite si no hay clientes asociados.
+              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel disabled={isDeleting}>
+                Cancelar
+              </AlertDialogCancel>
               <AlertDialogAction onClick={remove} disabled={isDeleting}>
                 {isDeleting ? "Eliminando..." : "Eliminar"}
               </AlertDialogAction>
@@ -669,5 +828,5 @@ export default function EmpresasPage() {
         </AlertDialog>
       </div>
     </TooltipProvider>
-  )
+  );
 }
