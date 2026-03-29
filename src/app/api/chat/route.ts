@@ -29,13 +29,13 @@ Usa esta información en tiempo real para responder preguntas específicas sobre
 
     // Stream de la respuesta usando Vercel AI SDK
     const result = streamText({
-      model: groq("llama-3.1-8b-instant"),
+      model: groq("llama-3.3-70b-versatile"),
       system: systemPrompt,
       messages: messages.map((msg: any) => ({
         role: msg.role,
         content: msg.content,
       })),
-      temperature: 0.7,
+      temperature: 0.1,
     })
 
     return result.toTextStreamResponse()

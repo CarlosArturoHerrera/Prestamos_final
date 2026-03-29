@@ -621,28 +621,6 @@ export function AIChatSidebar({
           </form>
 
           {/* Voice Input Button */}
-          <Button
-            variant="outline"
-            size="lg"
-            className={cn(
-              "w-full gap-2 rounded-2xl border border-primary/18 bg-surface/76 font-semibold text-base shadow-[0_12px_26px_rgba(15,23,42,0.05)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01]",
-              isListening &&
-                "scale-[1.01] motion-safe:animate-pulse border-primary/40 bg-primary/14 text-primary shadow-lg shadow-primary/25"
-            )}
-            onClick={handleVoiceInput}
-          >
-            {isListening ? (
-              <>
-                <MicOff className="h-5 w-5 motion-safe:animate-pulse" />
-                <span>Detener grabación</span>
-              </>
-            ) : (
-              <>
-                <Mic className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                <span>Habla con la IA</span>
-              </>
-            )}
-          </Button>
 
           {/* Audio Visualizer */}
           {isListening && (
