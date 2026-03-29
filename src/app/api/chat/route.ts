@@ -13,8 +13,9 @@ export async function POST(req: Request) {
       return new Response("Missing GROQ_API_KEY", { status: 400 })
     }
 
-    // Construir contexto con datos de la base de datos
-    const dbContext = await buildAIContext()
+    // Construir contexto con datos de la base de datos — enriquecer según último mensaje del usuario
+    const lastUserMessage = Array.isArray(messages) && messages.length > 0 ? messages[messages.length - 1].content : undefined
+    const dbContext = await buildAIContext(lastUserMessage)
 
     // Combinar mega system prompt con contexto en tiempo real de la BD
     const systemPrompt = `${MEGA_SYSTEM_PROMPT}
