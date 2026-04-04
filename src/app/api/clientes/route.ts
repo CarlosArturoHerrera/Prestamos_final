@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const page = Math.max(1, Number(searchParams.get("page") || 1))
-  const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || 20)))
+  const pageSize = Math.min(200, Math.max(1, Number(searchParams.get("pageSize") || 20)))
   const search = (searchParams.get("search") || searchParams.get("q") || "").trim()
   const representanteId = searchParams.get("representanteId")
   const empresaId = searchParams.get("empresaId")
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
   if (search) {
     const s = `%${search}%`
-    q = q.or(`nombre.ilike.${s},apellido.ilike.${s},cedula.ilike.${s}`)
+    q = q.or(`nombre.ilike.${s},apellido.ilike.${s},cedula.ilike.${s},telefono.ilike.${s}`)
   }
 
   const { data, error, count } = await q.range(from, to)

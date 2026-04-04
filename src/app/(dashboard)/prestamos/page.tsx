@@ -5,8 +5,10 @@ import Link from "next/link"
 import {
   AlertTriangle,
   CalendarClock,
+  Check,
   ChevronLeft,
   ChevronRight,
+  ChevronsUpDown,
   CircleDollarSign,
   Download,
   FileSpreadsheet,
@@ -39,6 +41,15 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { CalendarDatePicker } from "@/components/ui/calendar-date-picker"
@@ -75,6 +86,14 @@ type PrestamosListResponse = {
   page: number
   pageSize: number
   total: number
+}
+
+type ClientePickRow = {
+  id: number
+  nombre: string
+  apellido: string
+  cedula?: string | null
+  telefono?: string | null
 }
 
 type ResumenFin = {
@@ -165,7 +184,12 @@ export default function PrestamosPage() {
   const [resumenLoading, setResumenLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
-  const [clientes, setClientes] = useState<{ id: number; nombre: string; apellido: string }[]>([])
+  const [clientePickerOpen, setClientePickerOpen] = useState(false)
+  const [clienteSearch, setClienteSearch] = useState("")
+  const [debouncedClienteQ, setDebouncedClienteQ] = useState("")
+  const [clienteResults, setClienteResults] = useState<ClientePickRow[]>([])
+  const [clientePickerLoading, setClientePickerLoading] = useState(false)
+  const [clienteLabel, setClienteLabel] = useState("")
 
   const [estadoFiltro, setEstadoFiltro] = useState<string>("")
   const [conInteresPendiente, setConInteresPendiente] = useState(false)
@@ -311,11 +335,31 @@ export default function PrestamosPage() {
   }
 
   useEffect(() => {
-    if (!open || clientes.length > 0) return
-    fetch("/api/clientes?pageSize=200")
+    const t = setTimeout(() => setDebouncedClienteQ(clienteSearch.trim()), 280)
+    return () => clearTimeout(t)
+  }, [clienteSearch])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    setClientePickerLoading(true)
+    const params = new URLSearchParams({ pageSize: "100" })
+    if (debouncedClienteQ) params.set("search", debouncedClienteQ)
+    fetch(`/api/clientes?${params.toString()}`, { credentials: "same-origin" })
       .then((r) => r.json())
-      .then((j) => setClientes(j.data ?? []))
-  }, [open, clientes.length])
+      .then((j) => {
+        if (!cancelled) setClienteResults(Array.isArray(j.data) ? j.data : [])
+      })
+      .catch(() => {
+        if (!cancelled) setClienteResults([])
+      })
+      .finally(() => {
+        if (!cancelled) setClientePickerLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, debouncedClienteQ])
 
   const crear = async () => {
     if (isCreating) return
@@ -346,16 +390,6 @@ export default function PrestamosPage() {
     await load()
     setIsCreating(false)
   }
-
-  const clienteOptions = useMemo(
-    () =>
-      clientes.map((c) => (
-        <SelectItem key={c.id} value={String(c.id)}>
-          {c.nombre} {c.apellido}
-        </SelectItem>
-      )),
-    [clientes],
-  )
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const startIdx = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
@@ -547,7 +581,7 @@ export default function PrestamosPage() {
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button
-                onClick={() =>
+                onClick={() => {
                   setForm({
                     clienteId: "",
                     monto: "",
@@ -558,7 +592,12 @@ export default function PrestamosPage() {
                     fechaProximoPago: "",
                     notas: "",
                   })
-                }
+                  setClienteSearch("")
+                  setDebouncedClienteQ("")
+                  setClienteResults([])
+                  setClienteLabel("")
+                  setClientePickerOpen(false)
+                }}
               >
                 <Plus className="mr-2 size-4" />
                 Nuevo préstamo
@@ -572,12 +611,79 @@ export default function PrestamosPage() {
                 <div className="grid gap-3 py-2">
                   <div className="space-y-2">
                     <Label>Cliente</Label>
-                    <Select value={form.clienteId} onValueChange={(v) => setForm({ ...form, clienteId: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar cliente" />
-                      </SelectTrigger>
-                      <SelectContent>{clienteOptions}</SelectContent>
-                    </Select>
+                    <Popover
+                      modal={false}
+                      open={clientePickerOpen}
+                      onOpenChange={(next) => {
+                        setClientePickerOpen(next)
+                        if (next) {
+                          setClienteSearch("")
+                          setDebouncedClienteQ("")
+                        }
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={clientePickerOpen}
+                          className="h-10 w-full justify-between font-normal"
+                        >
+                          <span className={cn("truncate", !clienteLabel && "text-muted-foreground")}>
+                            {clienteLabel || "Buscar cliente…"}
+                          </span>
+                          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" aria-hidden />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[min(100vw-2rem,var(--radix-popover-trigger-width))] max-w-md p-0" align="start">
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Nombre, apellido, cédula o teléfono…"
+                            value={clienteSearch}
+                            onValueChange={setClienteSearch}
+                          />
+                          <CommandList>
+                            {clientePickerLoading ? (
+                              <div className="py-6 text-center text-sm text-muted-foreground">Buscando…</div>
+                            ) : (
+                              <>
+                                <CommandEmpty>Sin coincidencias</CommandEmpty>
+                                <CommandGroup>
+                                  {clienteResults.map((c) => {
+                                    const title = `${c.nombre ?? ""} ${c.apellido ?? ""}`.trim()
+                                    const meta = [c.cedula, c.telefono].filter(Boolean).join(" · ")
+                                    const selected = form.clienteId === String(c.id)
+                                    return (
+                                      <CommandItem
+                                        key={c.id}
+                                        value={`${c.id}-${title}`}
+                                        onSelect={() => {
+                                          setForm({ ...form, clienteId: String(c.id) })
+                                          setClienteLabel(title)
+                                          setClientePickerOpen(false)
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn("mr-2 size-4 shrink-0", selected ? "opacity-100" : "opacity-0")}
+                                          aria-hidden
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                          <div className="truncate font-medium">{title || `Cliente #${c.id}`}</div>
+                                          {meta ? (
+                                            <div className="truncate text-xs text-muted-foreground">{meta}</div>
+                                          ) : null}
+                                        </div>
+                                      </CommandItem>
+                                    )
+                                  })}
+                                </CommandGroup>
+                              </>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label>Monto (capital inicial)</Label>

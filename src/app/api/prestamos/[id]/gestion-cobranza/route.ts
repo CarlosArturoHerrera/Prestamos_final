@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth"
+import { badRequest, ensureProfileRow, getUserAndRole, unauthorized } from "@/lib/api-auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { gestionCobranzaCreateSchema } from "@/lib/validations/schemas"
 
@@ -60,6 +60,7 @@ export async function POST(request: Request, ctx: Ctx) {
     return NextResponse.json({ error: "Préstamo no encontrado" }, { status: 404 })
   }
 
+  const profileOk = await ensureProfileRow(supabase, session.userId, session.role)
   const insert = {
     cliente_id: pr.cliente_id,
     prestamo_id: prestamoId,
@@ -68,8 +69,10 @@ export async function POST(request: Request, ctx: Ctx) {
     promesa_fecha: promesaFecha ?? null,
     proxima_fecha_contacto: proximaFechaContacto ?? null,
     resultado,
-    creado_por: session.userId,
+    creado_por: profileOk ? session.userId : null,
   }
+
+  console.log("session.userId", session.userId, "creado_por final", insert.creado_por)
 
   const { data: row, error } = await supabase.from("gestion_cobranza").insert(insert).select().single()
 

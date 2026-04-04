@@ -43,3 +43,21 @@ export function serverError(message: string): NextResponse {
 export function requireAdmin(role: AppRole): boolean {
   return role === "ADMIN"
 }
+
+/**
+ * Asegura que exista `public.profiles` para el usuario de auth (`id` = `auth.users.id`).
+ * Sin fila en `profiles`, FKs como `gestion_cobranza.creado_por` fallan aunque la sesión sea válida.
+ */
+export async function ensureProfileRow(
+  supabase: SupabaseClient,
+  userId: string,
+  role: AppRole,
+): Promise<boolean> {
+  const { data: existing } = await supabase.from("profiles").select("id").eq("id", userId).maybeSingle()
+  if (existing) return true
+
+  const { error } = await supabase.from("profiles").insert({ id: userId, role })
+  if (!error) return true
+  if (error.code === "23505") return true
+  return false
+}
