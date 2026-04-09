@@ -3,12 +3,15 @@ import type { NextResponse } from "next/server"
 import { NextResponse as NR } from "next/server"
 
 export type AppRole = "ADMIN" | "OPERADOR"
+export type EnsureProfileResult =
+  | { ok: true; created: boolean }
+  | { ok: false; message: string; code?: string }
 
 export async function getUserAndRole(supabase: SupabaseClient): Promise<{
   userId: string
   role: AppRole
 } | null> {
-  const {
+  const {h
     data: { user },
     error,
   } = await supabase.auth.getUser()
@@ -20,8 +23,22 @@ export async function getUserAndRole(supabase: SupabaseClient): Promise<{
     .eq("id", user.id)
     .maybeSingle()
 
-  const role = (profile?.role as AppRole | undefined) ?? "OPERADOR"
-  return { userId: user.id, role }
+  if (profile) {
+    const role = (profile.role as AppRole | undefined) ?? "OPERADOR"
+    return { userId: user.id, role }
+  }
+
+  // Fix permanente: si por cualquier razón no existe profile, intentamos crearlo automáticamente.
+  const ensured = await ensureProfileRow(supabase, user.id, "OPERADOR")
+  if (!ensured.ok) {
+    console.error("[api-auth] No se pudo asegurar fila en profiles", {
+      userId: user.id,
+      reason: ensured.message,
+      code: ensured.code ?? null,
+    })
+  }
+
+  return { userId: user.id, role: "OPERADOR" }
 }
 
 export function unauthorized(): NextResponse {
@@ -52,12 +69,30 @@ export async function ensureProfileRow(
   supabase: SupabaseClient,
   userId: string,
   role: AppRole,
-): Promise<boolean> {
-  const { data: existing } = await supabase.from("profiles").select("id").eq("id", userId).maybeSingle()
-  if (existing) return true
+): Promise<EnsureProfileResult> {
+  const { data: existing, error: existingError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle()
+
+  if (existingError) {
+    return {
+      ok: false,
+      message: `Error verificando profile: ${existingError.message}`,
+      code: existingError.code,
+    }
+  }
+
+  if (existing) return { ok: true, created: false }
 
   const { error } = await supabase.from("profiles").insert({ id: userId, role })
-  if (!error) return true
-  if (error.code === "23505") return true
-  return false
+  if (!error) return { ok: true, created: true }
+  if (error.code === "23505") return { ok: true, created: false }
+
+  return {
+    ok: false,
+    message: `Error creando profile: ${error.message}`,
+    code: error.code,
+  }
 }

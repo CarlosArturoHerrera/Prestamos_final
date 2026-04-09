@@ -103,9 +103,10 @@ export function GestionCobranzaPanel({ clienteId, prestamoId, prestamosOpciones,
   const enviar = async () => {
     if (saving) return
     setSaving(true)
+    const promesaMontoLimpio = promesaMonto.replace(/\D/g, "")
     const body: Record<string, unknown> = {
       notas: notas.trim() || null,
-      promesaMonto: promesaMonto.trim() || undefined,
+      promesaMonto: promesaMontoLimpio ? Number(promesaMontoLimpio) : undefined,
       promesaFecha: promesaFecha || undefined,
       proximaFechaContacto: proximaFechaContacto || undefined,
       resultado,
@@ -199,8 +200,9 @@ export function GestionCobranzaPanel({ clienteId, prestamoId, prestamosOpciones,
               <Label>Promesa — monto (RD$)</Label>
               <Input
                 value={promesaMonto}
-                onChange={(e) => setPromesaMonto(e.target.value)}
-                inputMode="decimal"
+                onChange={(e) => setPromesaMonto(e.target.value.replace(/\D/g, ""))}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="Opcional"
               />
             </div>

@@ -60,7 +60,22 @@ export async function POST(request: Request, ctx: Ctx) {
     return NextResponse.json({ error: "Préstamo no encontrado" }, { status: 404 })
   }
 
-  const profileOk = await ensureProfileRow(supabase, session.userId, session.role)
+  const ensuredProfile = await ensureProfileRow(supabase, session.userId, session.role)
+  if (!ensuredProfile.ok) {
+    console.error("[gestion-cobranza][prestamo] No se pudo asegurar profile antes del insert", {
+      userId: session.userId,
+      prestamoId,
+      reason: ensuredProfile.message,
+      code: ensuredProfile.code ?? null,
+    })
+    return NextResponse.json(
+      {
+        error:
+          "No se pudo preparar el perfil del usuario autenticado para registrar el seguimiento. Contacta al administrador.",
+      },
+      { status: 500 },
+    )
+  }
   const insert = {
     cliente_id: pr.cliente_id,
     prestamo_id: prestamoId,
@@ -69,7 +84,7 @@ export async function POST(request: Request, ctx: Ctx) {
     promesa_fecha: promesaFecha ?? null,
     proxima_fecha_contacto: proximaFechaContacto ?? null,
     resultado,
-    creado_por: profileOk ? session.userId : null,
+    creado_por: session.userId,
   }
 
   console.log("session.userId", session.userId, "creado_por final", insert.creado_por)
