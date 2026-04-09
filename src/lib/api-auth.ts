@@ -11,7 +11,7 @@ export async function getUserAndRole(supabase: SupabaseClient): Promise<{
   userId: string
   role: AppRole
 } | null> {
-  const {h
+  const {
     data: { user },
     error,
   } = await supabase.auth.getUser()
