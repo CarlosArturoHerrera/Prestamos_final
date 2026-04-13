@@ -5,6 +5,7 @@ const moneyString = z.union([
   z.string().regex(/^\d+(\.\d{1,4})?$/, "Monto inválido"),
   z.number().transform((n) => String(n)),
 ])
+const positiveMoney = moneyString.refine((v) => Number(v) > 0, "Debe ser un monto mayor que 0")
 
 export const empresaCreateSchema = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio").max(500),
@@ -40,8 +41,9 @@ export const tipoPlazoSchema = z.enum(["DIARIO", "SEMANAL", "QUINCENAL", "MENSUA
 
 export const prestamoCreateSchema = z.object({
   clienteId: z.coerce.number().int().positive(),
-  monto: moneyString,
-  tasaInteres: moneyString,
+  monto: positiveMoney,
+  tasaInteres: positiveMoney,
+  capitalADebitar: positiveMoney,
   plazo: z.coerce.number().int().positive(),
   tipoPlazo: tipoPlazoSchema,
   fechaInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (YYYY-MM-DD)"),

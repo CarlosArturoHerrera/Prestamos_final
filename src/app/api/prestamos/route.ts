@@ -81,6 +81,7 @@ export async function POST(request: Request) {
     cliente_id: parsed.data.clienteId,
     monto: montoStr,
     tasa_interes: String(parsed.data.tasaInteres),
+    capital_a_debitar: String(parsed.data.capitalADebitar),
     plazo: parsed.data.plazo,
     tipo_plazo: parsed.data.tipoPlazo,
     fecha_inicio: parsed.data.fechaInicio,

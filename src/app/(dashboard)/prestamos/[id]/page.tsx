@@ -647,6 +647,12 @@ export default function PrestamoDetallePage() {
               <span className="font-medium">{String(p.tasa_interes)}%</span>
             </div>
             <div className="flex justify-between gap-4 border-b border-border/60 py-1.5">
+              <span className="text-muted-foreground">Capital a debitar</span>
+              <span className="font-medium tabular-nums">
+                {formatRD(String(p.capital_a_debitar ?? "0"))}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4 border-b border-border/60 py-1.5">
               <span className="text-muted-foreground">Plazo</span>
               <span className="font-medium">
                 {String(p.plazo)} × {String(p.tipo_plazo)}

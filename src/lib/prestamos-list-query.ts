@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import {
   abonosCountFromRow,
-  proyectarProximaCuota,
 } from "@/lib/prestamo-logic"
+import { interesPeriodo, sumDecimal } from "@/lib/finance"
 import { resolveClienteIdsFromSearch } from "@/lib/prestamos-list-filters"
 
 export const PRESTAMOS_LIST_SELECT = `
@@ -89,25 +89,22 @@ export function mapPrestamoListRowFromRaw(raw: Record<string, unknown>) {
   const { abonos: _a, ...prestamo } = raw as {
     abonos?: { count?: number }[] | null
     capital_pendiente: string | number
+    capital_a_debitar?: string | number | null
     tasa_interes: string | number
-    plazo: number
     estado: string
     id: number
     [key: string]: unknown
   }
-  const proj = proyectarProximaCuota(
-    String(prestamo.capital_pendiente),
-    String(prestamo.tasa_interes),
-    Number(prestamo.plazo),
-    n,
-    String(prestamo.estado),
-  )
+  const saldado = String(prestamo.estado) === "SALDADO"
+  const interesProximo = saldado ? "0.00" : interesPeriodo(String(prestamo.capital_pendiente), String(prestamo.tasa_interes))
+  const capitalDebitar = saldado ? "0.00" : String(prestamo.capital_a_debitar ?? "0")
+  const totalProximoPago = sumDecimal(interesProximo, capitalDebitar)
   return {
     ...prestamo,
     abonos_realizados: n,
-    interes_proximo: proj.interesProximo,
-    capital_debitar_proximo: proj.capitalDebitarSugerido,
-    total_proximo_pago: proj.totalProximoPago,
+    interes_proximo: interesProximo,
+    capital_debitar_proximo: capitalDebitar,
+    total_proximo_pago: totalProximoPago,
   }
 }
 

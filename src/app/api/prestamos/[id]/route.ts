@@ -67,6 +67,10 @@ export async function GET(_request: Request, ctx: Ctx) {
 const putSchema = z.object({
   notas: z.string().max(5000).optional().nullable(),
   estado: z.enum(["ACTIVO", "SALDADO", "MORA"]).optional(),
+  capitalADebitar: z
+    .union([z.string().regex(/^\d+(\.\d{1,4})?$/, "Monto inválido"), z.number()])
+    .optional()
+    .refine((v) => v === undefined || Number(v) > 0, "Capital a debitar debe ser mayor que 0"),
 })
 
 export async function PUT(request: Request, ctx: Ctx) {
@@ -97,6 +101,7 @@ export async function PUT(request: Request, ctx: Ctx) {
   const payload: Record<string, unknown> = {}
   if (parsed.data.notas !== undefined) payload.notas = parsed.data.notas?.trim() || null
   if (parsed.data.estado) payload.estado = parsed.data.estado
+  if (parsed.data.capitalADebitar !== undefined) payload.capital_a_debitar = String(parsed.data.capitalADebitar)
 
   if (Object.keys(payload).length === 0) {
     return badRequest("Nada que actualizar")

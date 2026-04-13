@@ -96,6 +96,83 @@ type ClientePickRow = {
   telefono?: string | null
 }
 
+/** Edición manual de capital a debitar en el listado; persiste con PUT y recarga filas. */
+function CapitalDebitarInline({
+  prestamoId,
+  saldado,
+  valorGuardado,
+  onActualizado,
+  className,
+}: {
+  prestamoId: number
+  saldado: boolean
+  valorGuardado: string
+  onActualizado: () => void | Promise<void>
+  className?: string
+}) {
+  const [draft, setDraft] = useState(valorGuardado)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setDraft(valorGuardado)
+  }, [valorGuardado])
+
+  if (saldado) {
+    return <span className="tabular-nums text-muted-foreground">—</span>
+  }
+
+  const sanitize = (s: string) => {
+    const only = s.replace(/[^\d.]/g, "")
+    const parts = only.split(".")
+    if (parts.length <= 1) return only
+    return `${parts[0]}.${parts.slice(1).join("").replace(/\./g, "")}`
+  }
+
+  const commit = async () => {
+    const s = sanitize(draft)
+    const normalized = s.startsWith(".") ? `0${s}` : s
+    const n = Number(normalized)
+    if (!normalized.trim() || !Number.isFinite(n) || n <= 0) {
+      toast.error("Capital a debitar: indica un número mayor que 0")
+      setDraft(valorGuardado)
+      return
+    }
+    const prev = Number(valorGuardado)
+    if (Number.isFinite(prev) && prev.toFixed(2) === n.toFixed(2)) return
+
+    setSaving(true)
+    const res = await fetchApi(`/api/prestamos/${prestamoId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ capitalADebitar: normalized }),
+    })
+    setSaving(false)
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status)
+      toast.error(res.message)
+      setDraft(valorGuardado)
+      return
+    }
+    toast.success("Capital a debitar guardado")
+    await onActualizado()
+  }
+
+  return (
+    <Input
+      className={cn("h-8 w-[7.25rem] min-w-0 tabular-nums text-sm", className)}
+      value={draft}
+      onChange={(e) => setDraft(sanitize(e.target.value))}
+      onBlur={() => void commit()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+      }}
+      disabled={saving}
+      inputMode="decimal"
+      aria-label="Capital a debitar"
+    />
+  )
+}
+
 type ResumenFin = {
   totalPrestado: string
   capitalPendiente: string
@@ -201,6 +278,7 @@ export default function PrestamosPage() {
     clienteId: "",
     monto: "",
     tasaInteres: "",
+    capitalADebitar: "",
     plazo: "12",
     tipoPlazo: "MENSUAL",
     fechaInicio: new Date().toISOString().slice(0, 10),
@@ -371,6 +449,7 @@ export default function PrestamosPage() {
         clienteId: Number(form.clienteId),
         monto: form.monto,
         tasaInteres: form.tasaInteres,
+        capitalADebitar: form.capitalADebitar,
         plazo: Number(form.plazo),
         tipoPlazo: form.tipoPlazo,
         fechaInicio: form.fechaInicio,
@@ -496,7 +575,14 @@ export default function PrestamosPage() {
           </TableCell>
           <TableCell>{formatRD(p.monto)}</TableCell>
           <TableCell>{saldado ? "—" : formatRD(p.interes_proximo)}</TableCell>
-          <TableCell>{saldado ? "—" : formatRD(p.capital_debitar_proximo)}</TableCell>
+          <TableCell>
+            <CapitalDebitarInline
+              prestamoId={p.id}
+              saldado={saldado}
+              valorGuardado={String(p.capital_debitar_proximo)}
+              onActualizado={load}
+            />
+          </TableCell>
           <TableCell>{p.tasa_interes}%</TableCell>
           <TableCell className="whitespace-nowrap">
             <span
@@ -565,7 +651,7 @@ export default function PrestamosPage() {
         </TableRow>
       )
     })
-  }, [loading, rows])
+  }, [loading, rows, load])
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -586,6 +672,7 @@ export default function PrestamosPage() {
                     clienteId: "",
                     monto: "",
                     tasaInteres: "",
+                    capitalADebitar: "",
                     plazo: "12",
                     tipoPlazo: "MENSUAL",
                     fechaInicio: new Date().toISOString().slice(0, 10),
@@ -692,6 +779,26 @@ export default function PrestamosPage() {
                       onChange={(e) => setForm({ ...form, monto: e.target.value })}
                       placeholder="50000"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Capital a debitar (por cuota)</Label>
+                    <Input
+                      value={form.capitalADebitar}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d.]/g, "")
+                        const parts = raw.split(".")
+                        const next =
+                          parts.length <= 1 ? raw : `${parts[0]}.${parts.slice(1).join("").replace(/\./g, "")}`
+                        setForm({ ...form, capitalADebitar: next })
+                      }}
+                      placeholder="Ej. 2083.33"
+                      inputMode="decimal"
+                      autoComplete="off"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Lo defines tú: es el capital fijo por pago que verás en la tabla; “Próximo pago” suma esto más el
+                      interés calculado.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label>Tasa % por período</Label>
@@ -1081,7 +1188,13 @@ export default function PrestamosPage() {
                       </div>
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">Capital a debitar</p>
-                        <p className="font-semibold tabular-nums">{saldado ? "—" : formatRD(p.capital_debitar_proximo)}</p>
+                        <CapitalDebitarInline
+                          prestamoId={p.id}
+                          saldado={saldado}
+                          valorGuardado={String(p.capital_debitar_proximo)}
+                          onActualizado={load}
+                          className="h-9 w-full max-w-[14rem]"
+                        />
                       </div>
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">Próximo venc.</p>
