@@ -22,9 +22,12 @@ export async function fetchApi<T>(url: string, init?: RequestInit): Promise<ApiR
 
   if (!r.ok) {
     const errMsg = body.error
+    const altMsg = body.message
     let message: string
     if (typeof errMsg === "string" && errMsg.length > 0) {
       message = errMsg
+    } else if (typeof altMsg === "string" && altMsg.length > 0) {
+      message = altMsg
     } else if (r.status === 401) {
       message = "Sesión expirada o no autorizado. Vuelve a iniciar sesión."
     } else if (r.status === 403) {
