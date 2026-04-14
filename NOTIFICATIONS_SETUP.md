@@ -22,7 +22,7 @@ Agrega las siguientes variables:
 # Twilio
 TWILIO_ACCOUNT_SID=your_account_sid
 TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_WHATSAPP_NUMBER=+1234567890
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 
 # Seguridad para Cron Job
 CRON_SECRET=your_secret_key

@@ -20,7 +20,30 @@ Copia `.env.local.example` y define al menos:
 Opcional:
 
 - **Resend (email):** `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (ej. `Cartera <onboarding@tudominio.com>`)
-- **Twilio (WhatsApp):** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER` (formato `+1...` o `whatsapp:+1...`)
+- **Twilio (WhatsApp):** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, **`TWILIO_WHATSAPP_FROM`** (ej. sandbox `whatsapp:+14155238886`). Opcional y deprecado: `TWILIO_WHATSAPP_NUMBER` como respaldo.
+
+### Twilio y Resend (no va en el SQL Editor de Supabase)
+
+Eso se configura en **variables de entorno** del servidor Next.js:
+
+1. **Local:** copia `.env.local.example` → `.env.local` y rellena los valores.
+2. **Vercel (producción):** *Project → Settings → Environment Variables* → añade las mismas claves para *Production* (y *Preview* si aplica) → **Redeploy**.
+
+| Variable | Uso |
+|----------|-----|
+| `TWILIO_ACCOUNT_SID` | SID de la cuenta Twilio |
+| `TWILIO_AUTH_TOKEN` | Token de autenticación Twilio |
+| `TWILIO_WHATSAPP_FROM` | Remitente WhatsApp en Twilio (sandbox: `whatsapp:+14155238886`) |
+| `TWILIO_WHATSAPP_NUMBER` | *(Deprecado)* mismo uso que `FROM` si no definiste `TWILIO_WHATSAPP_FROM` |
+| `RESEND_API_KEY` | API key de Resend |
+| `RESEND_FROM_EMAIL` | Remitente; el dominio del correo debe estar **verificado en Resend** |
+
+Código que las usa: `src/app/api/notificaciones/enviar/route.ts` (microfinanzas) y `src/lib/twilio-whatsapp.ts`.  
+**Importante:** si publicaste el Auth Token o la API key en un chat o captura, **rótalos** en Twilio y Resend y vuelve a pegar los valores nuevos solo en `.env.local` / Vercel.
+
+### Historial de notificaciones (Twilio)
+
+Ejecuta también `supabase/migrations/20260413120000_notificaciones_twilio_meta.sql` para columnas `twilio_from`, `twilio_to`, `twilio_message_sid` y `email_to` en `public.notificaciones` (auditoría de envíos).
 
 ## 3. Primer usuario y rol ADMIN
 

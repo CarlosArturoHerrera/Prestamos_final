@@ -9,10 +9,10 @@ Para que el proyecto funcione correctamente, necesitas crear un archivo `.env.lo
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-clave-anonima
 
-# Twilio (Notificaciones WhatsApp) 
+# Twilio (Notificaciones WhatsApp)
 TWILIO_ACCOUNT_SID=tu-account-sid
 TWILIO_AUTH_TOKEN=tu-auth-token
-TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 
 # Seguridad de Cron Jobs
 CRON_SECRET=una-clave-secreta-aleatoria
@@ -42,7 +42,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3000
 3. Copia las credenciales:
    - **Account SID** → `TWILIO_ACCOUNT_SID`
    - **Auth Token** → `TWILIO_AUTH_TOKEN`
-   - **WhatsApp Number** → `TWILIO_WHATSAPP_NUMBER`
+   - **Sandbox From (WhatsApp)** → `TWILIO_WHATSAPP_FROM=whatsapp:+14155238886`
 
 ### 3. Configurar Cron Jobs (Producción en Vercel)
 

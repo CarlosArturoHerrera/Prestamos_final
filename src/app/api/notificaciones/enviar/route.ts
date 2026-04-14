@@ -2,6 +2,11 @@ import { NextResponse } from "next/server"
 import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth"
 import { construirMensajeReporte, obtenerMorososRepresentante } from "@/lib/cobranza"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import {
+  resolveTwilioWhatsAppFrom,
+  serializeTwilioSendError,
+  toTwilioWhatsAppAddress,
+} from "@/lib/twilio-whatsapp"
 import { notificacionEnviarSchema } from "@/lib/validations/schemas"
 
 async function enviarEmailResend(to: string, subject: string, text: string): Promise<{ ok: boolean; error?: string }> {
@@ -67,16 +72,17 @@ export async function POST(request: Request) {
 
   const resultados: unknown[] = []
 
-  const accountSid = process.env.TWILIO_ACCOUNT_SID
-  const authToken = process.env.TWILIO_AUTH_TOKEN
-  const whatsappFrom = process.env.TWILIO_WHATSAPP_NUMBER
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim()
+  const authToken = process.env.TWILIO_AUTH_TOKEN?.trim()
+  const needsWa = canal === "WHATSAPP" || canal === "AMBOS"
+
+  const fromResolved = needsWa ? resolveTwilioWhatsAppFrom() : null
+  const waFromFinal = fromResolved && fromResolved.ok ? fromResolved.value : null
 
   let twilioClient: ReturnType<typeof import("twilio")> | null = null
-  if (canal === "WHATSAPP" || canal === "AMBOS") {
-    if (accountSid && authToken) {
-      const twilio = (await import("twilio")).default
-      twilioClient = twilio(accountSid, authToken)
-    }
+  if (needsWa && accountSid && authToken) {
+    const twilio = (await import("twilio")).default
+    twilioClient = twilio(accountSid, authToken)
   }
 
   for (const rep of representantes ?? []) {
@@ -110,25 +116,54 @@ export async function POST(request: Request) {
     let waOk = false
     let emOk = false
 
-    if (enviarWa) {
-      if (!twilioClient || !whatsappFrom) {
-        errores.push("Twilio no configurado")
-      } else {
-        try {
-          const rawTo = String(rep.telefono).replace(/\s/g, "")
-          const toNum = rawTo.startsWith("whatsapp:") ? rawTo : `whatsapp:${rawTo}`
-          const fromNum = whatsappFrom.startsWith("whatsapp:")
-            ? whatsappFrom
-            : `whatsapp:${whatsappFrom.replace(/^\+?/, "+")}`
+    let twilioFromDb: string | null = null
+    let twilioToDb: string | null = null
+    let twilioSidDb: string | null = null
+    const emailToDb = enviarEm && rep.email ? String(rep.email).trim() : null
 
-          await twilioClient.messages.create({
-            from: fromNum,
-            to: toNum,
-            body: mensaje,
-          })
-          waOk = true
+    if (enviarWa) {
+      if (!accountSid || !authToken) {
+        errores.push("Twilio: faltan TWILIO_ACCOUNT_SID o TWILIO_AUTH_TOKEN")
+      } else if (!fromResolved || !fromResolved.ok || !waFromFinal) {
+        errores.push(fromResolved && !fromResolved.ok ? fromResolved.reason : "TWILIO_WHATSAPP_FROM no configurado")
+      } else if (!twilioClient) {
+        errores.push("Twilio: cliente no inicializado")
+      } else {
+        let toFinal: string
+        try {
+          toFinal = toTwilioWhatsAppAddress(String(rep.telefono ?? ""))
         } catch (e) {
-          errores.push(e instanceof Error ? e.message : "Error WhatsApp")
+          errores.push(e instanceof Error ? e.message : "Teléfono del representante inválido para WhatsApp")
+          toFinal = ""
+        }
+
+        if (toFinal) {
+          twilioFromDb = waFromFinal
+          twilioToDb = toFinal
+
+          const bodyPreview = mensaje.length > 200 ? `${mensaje.slice(0, 200)}…` : mensaje
+          console.info("[twilio-whatsapp] preflight", {
+            accountSidPresent: Boolean(accountSid),
+            authTokenPresent: Boolean(authToken),
+            from: waFromFinal,
+            to: toFinal,
+            bodyLength: mensaje.length,
+            bodyPreview,
+          })
+
+          try {
+            const sent = await twilioClient.messages.create({
+              from: waFromFinal,
+              to: toFinal,
+              body: mensaje,
+            })
+            twilioSidDb = sent.sid ?? null
+            waOk = true
+          } catch (e) {
+            const detail = serializeTwilioSendError(e)
+            errores.push(detail)
+            console.error("[twilio-whatsapp] messages.create falló", { from: waFromFinal, to: toFinal, detail })
+          }
         }
       }
     }
@@ -146,19 +181,21 @@ export async function POST(request: Request) {
     const estado: "ENVIADO" | "ERROR" = algunoOk ? "ENVIADO" : "ERROR"
     const errorDetalle = errores.length ? errores.join(" | ") : null
 
-    const { data: ins, error: insE } = await supabase
-      .from("notificaciones")
-      .insert({
-        representante_id: rep.id,
-        canal,
-        mensaje,
-        clientes_incluidos: clientesJson,
-        fecha_envio: new Date().toISOString(),
-        estado,
-        error_detalle: errorDetalle,
-      })
-      .select()
-      .single()
+    const insertPayload: Record<string, unknown> = {
+      representante_id: rep.id,
+      canal,
+      mensaje,
+      clientes_incluidos: clientesJson,
+      fecha_envio: new Date().toISOString(),
+      estado,
+      error_detalle: errorDetalle,
+      twilio_from: twilioFromDb,
+      twilio_to: twilioToDb,
+      twilio_message_sid: twilioSidDb,
+      email_to: emailToDb,
+    }
+
+    const { data: ins, error: insE } = await supabase.from("notificaciones").insert(insertPayload).select().single()
 
     if (insE) {
       resultados.push({ representante_id: rep.id, error: insE.message })

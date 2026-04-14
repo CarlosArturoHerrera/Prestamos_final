@@ -19,6 +19,10 @@ type NotifRow = {
   fecha_envio: string
   mensaje: string
   error_detalle: string | null
+  twilio_from?: string | null
+  twilio_to?: string | null
+  twilio_message_sid?: string | null
+  email_to?: string | null
   representantes: { nombre: string; apellido: string } | null
 }
 
@@ -236,17 +240,18 @@ export default function NotificacionesPage() {
               <TableHead>Representante</TableHead>
               <TableHead>Canal</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Envío</TableHead>
               <TableHead>Mensaje</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loadingHistorial ? (
               <TableRow>
-                <TableCell colSpan={5}>Cargando...</TableCell>
+                <TableCell colSpan={6}>Cargando...</TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5}>Sin historial</TableCell>
+                <TableCell colSpan={6}>Sin historial</TableCell>
               </TableRow>
             ) : (
               rows.map((n) => (
@@ -265,6 +270,18 @@ export default function NotificacionesPage() {
                     {n.error_detalle ? (
                       <span className="block text-xs text-destructive">{n.error_detalle}</span>
                     ) : null}
+                  </TableCell>
+                  <TableCell className="max-w-[220px] align-top text-[10px] leading-snug text-muted-foreground">
+                    {n.twilio_from || n.twilio_to ? (
+                      <span className="block font-mono break-all">
+                        {n.twilio_from ?? "—"} → {n.twilio_to ?? "—"}
+                      </span>
+                    ) : null}
+                    {n.twilio_message_sid ? (
+                      <span className="mt-0.5 block font-mono text-[10px]">SID {n.twilio_message_sid}</span>
+                    ) : null}
+                    {n.email_to ? <span className="mt-0.5 block break-all">Email {n.email_to}</span> : null}
+                    {!n.twilio_from && !n.twilio_to && !n.email_to ? "—" : null}
                   </TableCell>
                   <TableCell className="max-w-md truncate text-xs">{n.mensaje}</TableCell>
                 </TableRow>
@@ -309,6 +326,17 @@ export default function NotificacionesPage() {
                 </div>
 
                 <div className="mt-3 space-y-1">
+                  {n.twilio_from || n.twilio_to ? (
+                    <p className="font-mono text-[10px] text-muted-foreground break-all">
+                      WA {n.twilio_from ?? "—"} → {n.twilio_to ?? "—"}
+                    </p>
+                  ) : null}
+                  {n.twilio_message_sid ? (
+                    <p className="font-mono text-[10px] text-muted-foreground">SID {n.twilio_message_sid}</p>
+                  ) : null}
+                  {n.email_to ? (
+                    <p className="text-[10px] text-muted-foreground break-all">Email {n.email_to}</p>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">Mensaje</p>
                   <p className="text-sm leading-snug line-clamp-4">{n.mensaje}</p>
                   {n.error_detalle ? <p className="text-xs text-destructive">{n.error_detalle}</p> : null}

@@ -1,13 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
-
-const twilio = require("twilio")
-
-const accountSid = process.env.TWILIO_ACCOUNT_SID
-const authToken = process.env.TWILIO_AUTH_TOKEN
-const whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER
-
-const client = twilio(accountSid, authToken)
+import { resolveTwilioWhatsAppFrom, serializeTwilioSendError, toTwilioWhatsAppAddress } from "@/lib/twilio-whatsapp"
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +10,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Campos requeridos" }, { status: 400 })
     }
 
-    // Crear registro de notificación
     const { data: notif, error: dbError } = await supabase
       .from("notifications")
       .insert({
@@ -37,16 +29,52 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: dbError.message }, { status: 400 })
     }
 
-    // Enviar por WhatsApp si el tipo es whatsapp
-    if (type === "whatsapp" && whatsappNumber) {
+    if (type === "whatsapp") {
+      const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim()
+      const authToken = process.env.TWILIO_AUTH_TOKEN?.trim()
+      const fromR = resolveTwilioWhatsAppFrom()
+
+      if (!fromR.ok) {
+        await supabase.from("notifications").update({ status: "failed" }).eq("id", notif.id)
+        return NextResponse.json({ error: fromR.reason }, { status: 500 })
+      }
+
+      if (!accountSid || !authToken) {
+        await supabase.from("notifications").update({ status: "failed" }).eq("id", notif.id)
+        return NextResponse.json(
+          { error: "Twilio: faltan TWILIO_ACCOUNT_SID o TWILIO_AUTH_TOKEN" },
+          { status: 500 },
+        )
+      }
+
+      let toAddr: string
       try {
-        const message = await client.messages.create({
-          from: `whatsapp:${whatsappNumber}`,
-          to: `whatsapp:${phone}`,
-          body: `${subject}\n\n${content}`,
+        toAddr = toTwilioWhatsAppAddress(String(phone))
+      } catch (e) {
+        await supabase.from("notifications").update({ status: "failed" }).eq("id", notif.id)
+        return NextResponse.json({ error: e instanceof Error ? e.message : "Teléfono inválido" }, { status: 400 })
+      }
+
+      const bodyText = `${subject}\n\n${content}`
+      const bodyPreview = bodyText.length > 200 ? `${bodyText.slice(0, 200)}…` : bodyText
+      console.info("[twilio-whatsapp] preflight (legacy /api/notifications/send)", {
+        accountSidPresent: Boolean(accountSid),
+        authTokenPresent: Boolean(authToken),
+        from: fromR.value,
+        to: toAddr,
+        bodyLength: bodyText.length,
+        bodyPreview,
+      })
+
+      try {
+        const twilio = (await import("twilio")).default
+        const client = twilio(accountSid, authToken)
+        await client.messages.create({
+          from: fromR.value,
+          to: toAddr,
+          body: bodyText,
         })
 
-        // Actualizar estado a enviado
         await supabase
           .from("notifications")
           .update({
@@ -57,12 +85,10 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ ok: true, notification: notif })
       } catch (twilioError) {
-        console.error("Twilio error:", twilioError)
-        await supabase
-          .from("notifications")
-          .update({ status: "failed" })
-          .eq("id", notif.id)
-        return NextResponse.json({ error: "Error enviando mensaje" }, { status: 500 })
+        const detail = serializeTwilioSendError(twilioError)
+        console.error("[twilio-whatsapp] legacy route error", { from: fromR.value, to: toAddr, detail })
+        await supabase.from("notifications").update({ status: "failed" }).eq("id", notif.id)
+        return NextResponse.json({ error: detail }, { status: 500 })
       }
     }
 
