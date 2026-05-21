@@ -11,11 +11,13 @@ import {
   Building2,
   LayoutDashboard,
   LogOut,
-  PanelLeft,
+  Menu,
+  MoreHorizontal,
   Sparkles,
-  X,
+  TrendingUp,
   UserCircle,
   Users,
+  X,
 } from "lucide-react"
 import { createSupabaseBrowserClient, isSupabaseConfiguredOnClient } from "@/lib/supabase/browser"
 import { cn } from "@/lib/utils"
@@ -30,12 +32,15 @@ const AIChatSidebar = dynamic(
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/empresas", label: "Empresas", icon: Building2 },
-  { href: "/representantes", label: "Representantes", icon: Users },
+  { href: "/representantes", label: "Reps.", icon: Users },
   { href: "/clientes", label: "Clientes", icon: UserCircle },
   { href: "/prestamos", label: "Préstamos", icon: Banknote },
-  { href: "/notificaciones", label: "Notificaciones", icon: Bell },
+  { href: "/notificaciones", label: "Notifs.", icon: Bell },
   { href: "/reportes", label: "Reportes", icon: BarChart3 },
 ] as const
+
+/* Bottom nav shows first 4 items + "Más" */
+const BOTTOM_NAV_ITEMS = 4
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -80,34 +85,60 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const navItemClass = (active: boolean, collapsed = false) =>
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href)
+
+  const sideNavItemClass = (active: boolean, collapsed = false) =>
     cn(
-      "flex items-center rounded-lg text-sm font-medium transition-colors",
-      collapsed ? "justify-center px-2.5 py-2.5" : "gap-2 px-3 py-2",
-      active ? "bg-primary/12 text-primary" : "text-muted-foreground hover:bg-muted/60",
+      "flex items-center rounded-xl text-sm font-medium transition-all duration-150",
+      collapsed ? "justify-center px-2.5 py-2.5" : "gap-3 px-3 py-2.5",
+      active
+        ? "bg-sidebar-accent text-sidebar-primary font-semibold shadow-sm"
+        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
     )
 
   return (
     <div className="relative flex min-h-screen w-full bg-background">
+      {/* ── Desktop sidebar ── */}
       <aside
         className={cn(
-          "hidden shrink-0 border-r border-border/60 bg-card/40 p-3 transition-[width,padding] duration-300 md:flex md:flex-col",
-          sidebarCollapsed ? "w-[74px]" : "w-56 p-4",
+          "hidden shrink-0 border-r border-sidebar-border bg-sidebar p-3 transition-[width,padding] duration-300 md:flex md:flex-col",
+          sidebarCollapsed ? "w-[68px]" : "w-56 p-4",
         )}
       >
-        <div className={cn("mb-4", sidebarCollapsed ? "px-0" : "px-1")}>
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Cartera</p>
-          {!sidebarCollapsed && <p className="text-lg font-bold text-foreground">Microfinanzas</p>}
+        {/* Brand */}
+        <div className={cn("mb-5", sidebarCollapsed ? "flex justify-center" : "px-1")}>
+          {sidebarCollapsed ? (
+            <div className="flex size-9 items-center justify-center rounded-xl bg-sidebar-primary/20 text-sidebar-primary">
+              <TrendingUp className="size-5" />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sidebar-primary/20 text-sidebar-primary">
+                <TrendingUp className="size-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">
+                  Cartera
+                </p>
+                <p className="text-base font-bold leading-tight text-sidebar-foreground">Microfinanzas</p>
+              </div>
+            </div>
+          )}
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1">
+        {/* Nav links */}
+        <nav className="flex flex-1 flex-col gap-0.5">
           {nav.map((item) => {
             const Icon = item.icon
-            const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
+            const active = isActive(item.href)
             const linkNode = (
-              <Link key={item.href} href={item.href} className={navItemClass(active, sidebarCollapsed)}>
+              <Link key={item.href} href={item.href} className={sideNavItemClass(active, sidebarCollapsed)}>
                 <Icon className="size-4 shrink-0" />
                 {!sidebarCollapsed && <span>{item.label}</span>}
+                {!sidebarCollapsed && active && (
+                  <span className="ml-auto size-1.5 rounded-full bg-sidebar-primary" />
+                )}
               </Link>
             )
 
@@ -121,95 +152,208 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
+        {/* Logout */}
         {sidebarCollapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" className="mt-4 self-center" onClick={logout}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mt-4 self-center text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                onClick={logout}
+              >
                 <LogOut className="size-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">Salir</TooltipContent>
           </Tooltip>
         ) : (
-          <Button variant="outline" className="mt-4 gap-2" onClick={logout}>
+          <Button
+            variant="ghost"
+            className="mt-4 gap-2 text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            onClick={logout}
+          >
             <LogOut className="size-4" />
             Salir
           </Button>
         )}
       </aside>
 
+      {/* ── Main content area ── */}
       <div className="flex min-h-screen flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur">
-          <div className="flex items-center gap-2">
+        {/* Header */}
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/40 bg-background/90 px-4 py-3 backdrop-blur-xl">
+          <div className="flex items-center gap-2.5">
+            {/* Desktop: toggle sidebar | Mobile: open drawer */}
             <Button
               variant="ghost"
               size="icon"
+              className="size-9 rounded-xl md:flex hidden"
               aria-label="Abrir/cerrar menú lateral"
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+            >
+              <Menu className="size-4.5" />
+            </Button>
+
+            {/* Brand mark in header */}
+            <div className="flex items-center gap-2">
+              <div className="flex size-8 items-center justify-center rounded-xl bg-primary/12 text-primary md:hidden">
+                <TrendingUp className="size-4" />
+              </div>
+              <p className="font-bold text-foreground">Microfinanzas</p>
+            </div>
+          </div>
+
+          {/* Header right actions */}
+          <div className="flex items-center gap-1">
+            {/* AI chat button — visible on desktop in header too */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden size-9 rounded-xl md:flex"
+              aria-label="Asistente IA"
               onClick={() => {
-                if (window.innerWidth < 768) {
-                  setMobileSidebarOpen((prev) => !prev)
-                } else {
-                  setSidebarCollapsed((prev) => !prev)
-                }
+                if (!chatMounted) setChatMounted(true)
+                setChatOpen((o) => !o)
               }}
             >
-              <PanelLeft className="size-5" />
+              <Sparkles className="size-4 text-primary" />
             </Button>
-            <p className="font-semibold">Microfinanzas</p>
+
+            {/* Mobile: hamburger for full menu drawer */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9 rounded-xl md:hidden"
+              aria-label="Más opciones"
+              onClick={() => setMobileSidebarOpen(true)}
+            >
+              <MoreHorizontal className="size-5" />
+            </Button>
           </div>
-          <Button size="sm" variant="ghost" className="md:hidden" onClick={logout}>
-            Salir
-          </Button>
         </header>
 
-        <div className="page-shell flex-1 p-4 md:p-8">
+        {/* Page content */}
+        <div className="page-shell flex-1 p-4 pb-safe md:p-8 md:pb-8">
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </div>
       </div>
 
+      {/* ── Mobile drawer overlay ── */}
       <div
         className={cn(
-          "fixed inset-0 z-40 bg-black/60 transition-opacity duration-300 md:hidden",
+          "fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300 md:hidden",
           mobileSidebarOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
         )}
         onClick={() => setMobileSidebarOpen(false)}
       />
+      {/* Mobile full sidebar drawer */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[18rem] flex-col border-r border-border/60 bg-card/95 p-4 shadow-2xl backdrop-blur transition-transform duration-300 md:hidden",
+          "fixed inset-y-0 left-0 z-50 flex w-[17rem] flex-col border-r border-sidebar-border bg-sidebar p-4 shadow-2xl transition-transform duration-300 md:hidden",
           mobileSidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Cartera</p>
-            <p className="text-lg font-bold text-foreground">Microfinanzas</p>
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-sidebar-primary/20 text-sidebar-primary">
+              <TrendingUp className="size-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">Cartera</p>
+              <p className="text-base font-bold text-sidebar-foreground">Microfinanzas</p>
+            </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setMobileSidebarOpen(false)} aria-label="Cerrar menú">
-            <X className="size-5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-label="Cerrar menú"
+          >
+            <X className="size-4" />
           </Button>
         </div>
-        <nav className="flex flex-1 flex-col gap-1">
+
+        <nav className="flex flex-1 flex-col gap-0.5">
           {nav.map((item) => {
             const Icon = item.icon
-            const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
+            const active = isActive(item.href)
             return (
-              <Link key={item.href} href={item.href} className={navItemClass(active)}>
+              <Link key={item.href} href={item.href} className={sideNavItemClass(active)}>
                 <Icon className="size-4 shrink-0" />
                 <span>{item.label}</span>
+                {active && <span className="ml-auto size-1.5 rounded-full bg-sidebar-primary" />}
               </Link>
             )
           })}
         </nav>
-        <Button variant="outline" className="mt-4 gap-2" onClick={logout}>
-          <LogOut className="size-4" />
-          Salir
-        </Button>
+
+        <div className="mt-4 space-y-2 border-t border-sidebar-border pt-4">
+          <Button
+            variant="ghost"
+            className="w-full gap-2 text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            onClick={() => {
+              setMobileSidebarOpen(false)
+              if (!chatMounted) setChatMounted(true)
+              setChatOpen(true)
+            }}
+          >
+            <Sparkles className="size-4 text-sidebar-primary" />
+            Asistente IA
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full gap-2 text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            onClick={logout}
+          >
+            <LogOut className="size-4" />
+            Salir
+          </Button>
+        </div>
       </aside>
 
+      {/* ── Mobile bottom navigation bar ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-border/60 bg-white/95 shadow-[0_-4px_20px_rgba(99,102,241,0.1)] backdrop-blur-xl dark:bg-surface/95 md:hidden">
+        {nav.slice(0, BOTTOM_NAV_ITEMS).map((item) => {
+          const Icon = item.icon
+          const active = isActive(item.href)
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "bottom-nav-item",
+                active ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              <div className={cn("bottom-nav-item-icon", active && "bg-primary/12 text-primary")}>
+                <Icon className="size-5" />
+              </div>
+              <span className={cn(active && "font-semibold")}>{item.label}</span>
+            </Link>
+          )
+        })}
+        {/* "Más" button opens full drawer */}
+        <button
+          type="button"
+          onClick={() => setMobileSidebarOpen(true)}
+          className={cn(
+            "bottom-nav-item",
+            "text-muted-foreground",
+          )}
+        >
+          <div className="bottom-nav-item-icon">
+            <MoreHorizontal className="size-5" />
+          </div>
+          <span>Más</span>
+        </button>
+      </nav>
+
+      {/* ── AI chat FAB (desktop only) ── */}
       {!chatOpen && (
         <Button
-          className="fixed bottom-4 left-4 z-40 h-11 w-11 rounded-full border border-primary/20 p-0 shadow-[0_10px_28px_rgba(59,130,246,0.26)] sm:bottom-6 sm:left-6 sm:h-12 sm:w-12"
+          className="fixed bottom-6 right-6 z-40 hidden h-12 w-12 rounded-full border border-primary/20 p-0 shadow-[0_10px_30px_rgba(99,102,241,0.32)] md:flex"
           onClick={() => {
             if (!chatMounted) setChatMounted(true)
             setChatOpen(true)
