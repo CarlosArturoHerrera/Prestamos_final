@@ -8,9 +8,23 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       type={type}
       data-slot="input"
       className={cn(
-        "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground border-input h-10 w-full min-w-0 rounded-xl border bg-surface/75 px-3.5 py-2 text-base shadow-[0_1px_0_rgba(255,255,255,0.4)_inset,0_10px_24px_rgba(15,23,42,0.04)] transition-[border-color,box-shadow,background-color] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted/60 md:text-sm",
-        "focus-visible:border-primary/50 focus-visible:bg-surface focus-visible:ring-[3px] focus-visible:ring-ring/35",
-        "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+        /* base */
+        "w-full min-w-0 rounded-xl border border-border h-10 px-3.5 py-2 text-base md:text-sm",
+        /* colores: blanco en light, índigo oscuro en dark */
+        "bg-white text-foreground placeholder:text-muted-foreground",
+        "dark:bg-surface dark:text-foreground dark:placeholder:text-muted-foreground",
+        /* sombra interna sutil */
+        "shadow-[0_1px_3px_rgba(79,70,229,0.06)]",
+        /* transiciones */
+        "transition-[border-color,box-shadow,background-color] outline-none",
+        /* focus */
+        "focus-visible:border-primary/60 focus-visible:ring-[3px] focus-visible:ring-primary/20",
+        /* file input */
+        "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
+        /* disabled */
+        "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted/40",
+        /* validación */
+        "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/30",
         className
       )}
       {...props}
