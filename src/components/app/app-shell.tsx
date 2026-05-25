@@ -98,11 +98,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     )
 
   return (
-    <div className="relative flex min-h-screen w-full bg-background">
+    <div className="relative flex h-screen w-full overflow-hidden bg-background">
       {/* ── Desktop sidebar ── */}
       <aside
         className={cn(
-          "hidden shrink-0 border-r border-sidebar-border bg-sidebar p-3 transition-[width,padding] duration-300 md:flex md:flex-col",
+          "hidden shrink-0 border-r border-sidebar-border bg-sidebar p-3 transition-[width,padding] duration-300 md:flex md:flex-col overflow-y-auto",
           sidebarCollapsed ? "w-[68px]" : "w-56 p-4",
         )}
       >
@@ -180,9 +180,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ── Main content area ── */}
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/40 bg-background/90 px-4 py-3 backdrop-blur-xl">
+        <header className="z-30 flex shrink-0 items-center justify-between border-b border-border/40 bg-background/90 px-4 py-3 backdrop-blur-xl">
           <div className="flex items-center gap-2.5">
             {/* Desktop: toggle sidebar | Mobile: open drawer */}
             <Button
@@ -234,7 +234,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <div className="page-shell flex-1 p-4 pb-safe md:p-8 md:pb-8">
+        <div className="page-shell flex-1 overflow-y-auto p-4 pb-safe md:p-8 md:pb-8">
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </div>
       </div>
