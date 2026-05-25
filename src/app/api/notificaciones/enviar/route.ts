@@ -178,7 +178,7 @@ export async function POST(request: Request) {
     const estado: "ENVIADO" | "ERROR" = algunoOk ? "ENVIADO" : "ERROR"
     const errorDetalle = errores.length ? errores.join(" | ") : null
 
-    const insertPayload: Record<string, unknown> = {
+    const basePayload = {
       representante_id: rep.id,
       canal,
       mensaje,
@@ -186,16 +186,46 @@ export async function POST(request: Request) {
       fecha_envio: new Date().toISOString(),
       estado,
       error_detalle: errorDetalle,
+    }
+
+    const extendedPayload: Record<string, unknown> = {
+      ...basePayload,
       twilio_from: twilioFromDb,
       twilio_to: twilioToDb,
       twilio_message_sid: twilioSidDb,
       email_to: emailToDb,
     }
 
-    const { data: ins, error: insE } = await supabase.from("notificaciones").insert(insertPayload).select().single()
+    let { data: ins, error: insE } = await supabase
+      .from("notificaciones")
+      .insert(extendedPayload)
+      .select()
+      .single()
 
     if (insE) {
-      resultados.push({ representante_id: rep.id, error: insE.message })
+      // Si el error es por columnas que no existen aún, reintentamos con campos base
+      const isColumnError =
+        insE.code === "42703" ||
+        insE.message.toLowerCase().includes("column") ||
+        insE.message.toLowerCase().includes("schema cache")
+      console.error("[notificaciones/enviar] insert error", {
+        code: insE.code,
+        message: insE.message,
+        willRetry: isColumnError,
+      })
+
+      if (isColumnError) {
+        const retry = await supabase.from("notificaciones").insert(basePayload).select().single()
+        ins = retry.data
+        insE = retry.error
+        if (retry.error) {
+          console.error("[notificaciones/enviar] retry insert also failed", retry.error.message)
+        }
+      }
+    }
+
+    if (insE) {
+      resultados.push({ representante_id: rep.id, estado: "ERROR", error: insE.message })
     } else {
       resultados.push(ins)
     }
