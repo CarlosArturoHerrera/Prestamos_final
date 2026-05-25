@@ -72,17 +72,18 @@ export async function POST(request: Request) {
 
   const resultados: unknown[] = []
 
-  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim()
-  const authToken = process.env.TWILIO_AUTH_TOKEN?.trim()
   const needsWa = canal === "WHATSAPP" || canal === "AMBOS"
 
   const fromResolved = needsWa ? resolveTwilioWhatsAppFrom() : null
   const waFromFinal = fromResolved && fromResolved.ok ? fromResolved.value : null
 
-  let twilioClient: ReturnType<typeof import("twilio")> | null = null
-  if (needsWa && accountSid && authToken) {
-    const twilio = (await import("twilio")).default
-    twilioClient = twilio(accountSid, authToken)
+  // Inicializar cliente con API Key (no TWILIO_AUTH_TOKEN)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let twilioClient: any = null
+  if (needsWa) {
+    const { createTwilioClient } = await import("@/lib/twilio-whatsapp")
+    const cr = await createTwilioClient()
+    if (cr.ok) twilioClient = cr.client
   }
 
   for (const rep of representantes ?? []) {
@@ -122,12 +123,10 @@ export async function POST(request: Request) {
     const emailToDb = enviarEm && rep.email ? String(rep.email).trim() : null
 
     if (enviarWa) {
-      if (!accountSid || !authToken) {
-        errores.push("Twilio: faltan TWILIO_ACCOUNT_SID o TWILIO_AUTH_TOKEN")
-      } else if (!fromResolved || !fromResolved.ok || !waFromFinal) {
+      if (!fromResolved || !fromResolved.ok || !waFromFinal) {
         errores.push(fromResolved && !fromResolved.ok ? fromResolved.reason : "TWILIO_WHATSAPP_FROM no configurado")
       } else if (!twilioClient) {
-        errores.push("Twilio: cliente no inicializado")
+        errores.push("Twilio: faltan TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID o TWILIO_API_KEY_SECRET")
       } else {
         let toFinal: string
         try {
@@ -143,8 +142,6 @@ export async function POST(request: Request) {
 
           const bodyPreview = mensaje.length > 200 ? `${mensaje.slice(0, 200)}…` : mensaje
           console.info("[twilio-whatsapp] preflight", {
-            accountSidPresent: Boolean(accountSid),
-            authTokenPresent: Boolean(authToken),
             from: waFromFinal,
             to: toFinal,
             bodyLength: mensaje.length,

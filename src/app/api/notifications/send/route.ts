@@ -1,100 +1,95 @@
+/**
+ * POST /api/notifications/send
+ *
+ * Route legada usada por los cron jobs. Envía un mensaje WhatsApp y
+ * registra el resultado en la tabla `notifications`.
+ *
+ * Autenticación: usa API Key de Twilio (TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET).
+ * No usa TWILIO_AUTH_TOKEN.
+ */
+
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
-import { resolveTwilioWhatsAppFrom, serializeTwilioSendError, toTwilioWhatsAppAddress } from "@/lib/twilio-whatsapp"
+import { sendWhatsAppMessage, serializeTwilioSendError } from "@/lib/twilio-whatsapp"
 
 export async function POST(request: Request) {
+  let body: Record<string, unknown>
   try {
-    const { loanId, clientId, phone, email, subject, content, type } = await request.json()
-
-    if (!loanId || !clientId || !phone || !subject || !content || !type) {
-      return NextResponse.json({ error: "Campos requeridos" }, { status: 400 })
-    }
-
-    const { data: notif, error: dbError } = await supabase
-      .from("notifications")
-      .insert({
-        loan_id: loanId,
-        client_id: clientId,
-        type: "whatsapp",
-        phone_or_email: phone,
-        subject,
-        content,
-        notification_type: type,
-        status: "pending",
-      })
-      .select()
-      .single()
-
-    if (dbError) {
-      return NextResponse.json({ error: dbError.message }, { status: 400 })
-    }
-
-    if (type === "whatsapp") {
-      const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim()
-      const authToken = process.env.TWILIO_AUTH_TOKEN?.trim()
-      const fromR = resolveTwilioWhatsAppFrom()
-
-      if (!fromR.ok) {
-        await supabase.from("notifications").update({ status: "failed" }).eq("id", notif.id)
-        return NextResponse.json({ error: fromR.reason }, { status: 500 })
-      }
-
-      if (!accountSid || !authToken) {
-        await supabase.from("notifications").update({ status: "failed" }).eq("id", notif.id)
-        return NextResponse.json(
-          { error: "Twilio: faltan TWILIO_ACCOUNT_SID o TWILIO_AUTH_TOKEN" },
-          { status: 500 },
-        )
-      }
-
-      let toAddr: string
-      try {
-        toAddr = toTwilioWhatsAppAddress(String(phone))
-      } catch (e) {
-        await supabase.from("notifications").update({ status: "failed" }).eq("id", notif.id)
-        return NextResponse.json({ error: e instanceof Error ? e.message : "Teléfono inválido" }, { status: 400 })
-      }
-
-      const bodyText = `${subject}\n\n${content}`
-      const bodyPreview = bodyText.length > 200 ? `${bodyText.slice(0, 200)}…` : bodyText
-      console.info("[twilio-whatsapp] preflight (legacy /api/notifications/send)", {
-        accountSidPresent: Boolean(accountSid),
-        authTokenPresent: Boolean(authToken),
-        from: fromR.value,
-        to: toAddr,
-        bodyLength: bodyText.length,
-        bodyPreview,
-      })
-
-      try {
-        const twilio = (await import("twilio")).default
-        const client = twilio(accountSid, authToken)
-        await client.messages.create({
-          from: fromR.value,
-          to: toAddr,
-          body: bodyText,
-        })
-
-        await supabase
-          .from("notifications")
-          .update({
-            status: "sent",
-            sent_at: new Date().toISOString(),
-          })
-          .eq("id", notif.id)
-
-        return NextResponse.json({ ok: true, notification: notif })
-      } catch (twilioError) {
-        const detail = serializeTwilioSendError(twilioError)
-        console.error("[twilio-whatsapp] legacy route error", { from: fromR.value, to: toAddr, detail })
-        await supabase.from("notifications").update({ status: "failed" }).eq("id", notif.id)
-        return NextResponse.json({ error: detail }, { status: 500 })
-      }
-    }
-
-    return NextResponse.json({ ok: true, notification: notif })
-  } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: "Error procesando solicitud" }, { status: 500 })
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 })
   }
+
+  const { loanId, clientId, phone, email, subject, content, type } = body as Record<string, unknown>
+
+  if (!loanId || !clientId || !phone || !subject || !content || !type) {
+    return NextResponse.json({ error: "Campos requeridos: loanId, clientId, phone, subject, content, type" }, { status: 400 })
+  }
+
+  // Validación temprana: teléfono no puede estar vacío
+  const phoneStr = String(phone).trim()
+  if (!phoneStr) {
+    return NextResponse.json({ error: "El teléfono del cliente está vacío" }, { status: 400 })
+  }
+
+  // Registrar notificación como pendiente
+  const { data: notif, error: dbError } = await supabase
+    .from("notifications")
+    .insert({
+      loan_id: loanId,
+      client_id: clientId,
+      type: "whatsapp",
+      phone_or_email: phoneStr,
+      subject,
+      content,
+      notification_type: type,
+      status: "pending",
+    })
+    .select()
+    .single()
+
+  if (dbError) {
+    return NextResponse.json({ error: dbError.message }, { status: 400 })
+  }
+
+  if (String(type) === "whatsapp") {
+    const messageBody = `${String(subject)}\n\n${String(content)}`
+
+    const result = await sendWhatsAppMessage({ to: phoneStr, message: messageBody })
+
+    if (!result.ok) {
+      console.error("[notifications/send] sendWhatsAppMessage falló", {
+        phone: phoneStr,
+        reason: result.reason,
+      })
+      await supabase
+        .from("notifications")
+        .update({ status: "failed", error_detail: result.reason })
+        .eq("id", notif.id)
+
+      const isConfigError =
+        result.reason.includes("TWILIO_") || result.reason.includes("Faltan variables")
+      return NextResponse.json({ error: result.reason }, { status: isConfigError ? 500 : 400 })
+    }
+
+    console.info("[notifications/send] enviado", {
+      sid: result.sid,
+      to: result.to,
+      from: result.from,
+    })
+
+    await supabase
+      .from("notifications")
+      .update({
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        twilio_message_sid: result.sid,
+      })
+      .eq("id", notif.id)
+
+    return NextResponse.json({ ok: true, notification: notif, sid: result.sid })
+  }
+
+  // Canal distinto a whatsapp (email, etc.) — no se procesa aquí
+  return NextResponse.json({ ok: true, notification: notif })
 }
