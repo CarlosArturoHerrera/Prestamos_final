@@ -109,7 +109,7 @@ export default function NotificacionesPage() {
     if (!form.enviarATodos && form.representanteId) {
       body.representanteIds = [Number(form.representanteId)]
     }
-    const res = await fetchApi("/api/notificaciones/enviar", {
+    const res = await fetchApi<{ data: { estado?: string; error?: string }[] }>("/api/notificaciones/enviar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -120,7 +120,21 @@ export default function NotificacionesPage() {
       setSending(false)
       return
     }
-    toast.success("Proceso de envío terminado")
+    const resultados = res.data?.data ?? []
+    const enviados = resultados.filter((r) => String(r.estado ?? "").toUpperCase() === "ENVIADO").length
+    const errores = resultados.filter((r) => String(r.estado ?? "").toUpperCase() === "ERROR" || r.error).length
+    const total = resultados.length
+
+    if (total === 0) {
+      toast.message("Sin representantes para enviar")
+    } else if (errores === 0) {
+      toast.success(`Proceso terminado: ${enviados} enviado${enviados !== 1 ? "s" : ""}`)
+    } else if (enviados === 0) {
+      toast.error(`Proceso terminado: ${errores} error${errores !== 1 ? "es" : ""} — ninguno enviado`)
+    } else {
+      toast.warning(`Proceso terminado: ${enviados} enviado${enviados !== 1 ? "s" : ""}, ${errores} error${errores !== 1 ? "es" : ""}`)
+    }
+
     await load()
     setSending(false)
   }
@@ -266,9 +280,24 @@ export default function NotificacionesPage() {
                   </TableCell>
                   <TableCell>{n.canal}</TableCell>
                   <TableCell>
-                    {n.estado}
+                    <Badge
+                      variant={
+                        String(n.estado).toUpperCase() === "ENVIADO"
+                          ? "default"
+                          : String(n.estado).toUpperCase() === "ERROR"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                      className={
+                        String(n.estado).toUpperCase() === "ENVIADO"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase"
+                          : "uppercase"
+                      }
+                    >
+                      {n.estado}
+                    </Badge>
                     {n.error_detalle ? (
-                      <span className="block text-xs text-destructive">{n.error_detalle}</span>
+                      <span className="mt-1 block text-xs text-destructive">{n.error_detalle}</span>
                     ) : null}
                   </TableCell>
                   <TableCell className="max-w-[220px] align-top text-[10px] leading-snug text-muted-foreground">
