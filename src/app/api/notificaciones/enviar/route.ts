@@ -3,6 +3,7 @@ import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth"
 import { construirMensajeReporte, obtenerMorososRepresentante } from "@/lib/cobranza"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import {
+  resolveMoraTemplateSid,
   resolveTwilioWhatsAppFrom,
   serializeTwilioSendError,
   toTwilioWhatsAppAddress,
@@ -120,6 +121,7 @@ export async function POST(request: Request) {
     let twilioFromDb: string | null = null
     let twilioToDb: string | null = null
     let twilioSidDb: string | null = null
+    let twilioStatusDb: string | null = null
     const emailToDb = enviarEm && rep.email ? String(rep.email).trim() : null
 
     if (enviarWa) {
@@ -140,26 +142,50 @@ export async function POST(request: Request) {
           twilioFromDb = waFromFinal
           twilioToDb = toFinal
 
-          const bodyPreview = mensaje.length > 200 ? `${mensaje.slice(0, 200)}…` : mensaje
-          console.info("[twilio-whatsapp] preflight", {
-            from: waFromFinal,
-            to: toFinal,
-            bodyLength: mensaje.length,
-            bodyPreview,
-          })
+          const templateResult = resolveMoraTemplateSid()
+          if (!templateResult.ok) {
+            errores.push(templateResult.reason)
+          } else {
+            const fechaReporte = new Intl.DateTimeFormat("es-DO", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }).format(new Date())
 
-          try {
-            const sent = await twilioClient.messages.create({
+            const createParams: Record<string, unknown> = {
               from: waFromFinal,
               to: toFinal,
-              body: mensaje,
+              contentSid: templateResult.sid,
+              contentVariables: JSON.stringify({
+                "1": nombreRep,
+                "2": fechaReporte,
+                "3": lineas.length.toString(),
+              }),
+            }
+
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
+            if (appUrl) {
+              createParams.statusCallback = `${appUrl}/api/twilio/status`
+            }
+
+            console.info("[twilio-whatsapp] template preflight", {
+              from: waFromFinal,
+              to: toFinal,
+              contentSid: templateResult.sid,
+              clientesMora: lineas.length,
+              statusCallback: createParams.statusCallback ?? "(sin callback)",
             })
-            twilioSidDb = sent.sid ?? null
-            waOk = true
-          } catch (e) {
-            const detail = serializeTwilioSendError(e)
-            errores.push(detail)
-            console.error("[twilio-whatsapp] messages.create falló", { from: waFromFinal, to: toFinal, detail })
+
+            try {
+              const sent = await twilioClient.messages.create(createParams)
+              twilioSidDb = sent.sid ?? null
+              twilioStatusDb = String(sent.status ?? "queued").toUpperCase()
+              waOk = true
+            } catch (e) {
+              const detail = serializeTwilioSendError(e)
+              errores.push(detail)
+              console.error("[twilio-whatsapp] messages.create falló", { from: waFromFinal, to: toFinal, detail })
+            }
           }
         }
       }
@@ -175,7 +201,12 @@ export async function POST(request: Request) {
     }
 
     const algunoOk = waOk || emOk
-    const estado: "ENVIADO" | "ERROR" = algunoOk ? "ENVIADO" : "ERROR"
+    // Para WA: estado inicial real de Twilio (QUEUED, ACCEPTED). Para email: ENVIADO. Si nada: ERROR.
+    const estado: string = waOk
+      ? (twilioStatusDb ?? "QUEUED")
+      : emOk
+      ? "ENVIADO"
+      : "ERROR"
     const errorDetalle = errores.length ? errores.join(" | ") : null
 
     const basePayload = {

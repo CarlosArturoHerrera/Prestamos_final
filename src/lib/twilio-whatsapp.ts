@@ -10,6 +10,27 @@
 
 const WHATSAPP_PREFIX = "whatsapp:"
 
+// ─── Resolución del template de mora ──────────────────────────────────────────
+
+export type ResolveMoraTemplateResult =
+  | { ok: true; sid: string }
+  | { ok: false; reason: string }
+
+/**
+ * Lee TWILIO_MORA_TEMPLATE_SID y valida su formato.
+ * Los Content Template SIDs de Twilio empiezan con "HX".
+ */
+export function resolveMoraTemplateSid(): ResolveMoraTemplateResult {
+  const sid = process.env.TWILIO_MORA_TEMPLATE_SID?.trim()
+  if (!sid) {
+    return { ok: false, reason: "TWILIO_MORA_TEMPLATE_SID no configurado en variables de entorno" }
+  }
+  if (!sid.startsWith("HX")) {
+    return { ok: false, reason: `TWILIO_MORA_TEMPLATE_SID inválido (debe empezar con HX): ${sid}` }
+  }
+  return { ok: true, sid }
+}
+
 // ─── Normalización de teléfonos ───────────────────────────────────────────────
 
 function onlyDigits(s: string): string {

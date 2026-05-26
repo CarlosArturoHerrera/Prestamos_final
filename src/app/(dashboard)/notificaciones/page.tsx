@@ -26,6 +26,17 @@ type NotifRow = {
   representantes: { nombre: string; apellido: string } | null
 }
 
+function estadoBadge(estado: string) {
+  const s = String(estado ?? "").toUpperCase()
+  if (["DELIVERED", "READ", "ENVIADO"].includes(s))
+    return { variant: "default" as const, className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase" }
+  if (["QUEUED", "ACCEPTED", "SENDING", "SENT"].includes(s))
+    return { variant: "secondary" as const, className: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 uppercase" }
+  if (["FAILED", "UNDELIVERED", "ERROR"].includes(s))
+    return { variant: "destructive" as const, className: "uppercase" }
+  return { variant: "secondary" as const, className: "uppercase" }
+}
+
 export default function NotificacionesPage() {
   const [rows, setRows] = useState<NotifRow[]>([])
   const [reps, setReps] = useState<{ id: number; nombre: string; apellido: string }[]>([])
@@ -280,22 +291,7 @@ export default function NotificacionesPage() {
                   </TableCell>
                   <TableCell>{n.canal}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant={
-                        String(n.estado).toUpperCase() === "ENVIADO"
-                          ? "default"
-                          : String(n.estado).toUpperCase() === "ERROR"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                      className={
-                        String(n.estado).toUpperCase() === "ENVIADO"
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase"
-                          : "uppercase"
-                      }
-                    >
-                      {n.estado}
-                    </Badge>
+                    <Badge {...estadoBadge(n.estado)}>{n.estado}</Badge>
                     {n.error_detalle ? (
                       <span className="mt-1 block text-xs text-destructive">{n.error_detalle}</span>
                     ) : null}
@@ -331,7 +327,6 @@ export default function NotificacionesPage() {
           </div>
         ) : (
           rows.map((n) => {
-            const isError = String(n.estado ?? "").toUpperCase() === "ERROR"
             return (
               <div key={n.id} className="rounded-xl border border-border/60 bg-card/80 p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -340,10 +335,7 @@ export default function NotificacionesPage() {
                       <span className="font-mono text-xs text-muted-foreground">
                         {new Date(n.fecha_envio).toLocaleString("es-DO")}
                       </span>
-                      <Badge
-                        variant={isError ? "destructive" : "secondary"}
-                        className="uppercase tracking-wide"
-                      >
+                      <Badge {...estadoBadge(n.estado)} className={`${estadoBadge(n.estado).className} tracking-wide`}>
                         {n.estado}
                       </Badge>
                     </div>
