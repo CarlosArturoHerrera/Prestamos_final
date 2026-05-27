@@ -152,35 +152,43 @@ export async function POST(request: Request) {
               year: "numeric",
             }).format(new Date())
 
+            const cvars = {
+              "1": nombreRep,
+              "2": fechaReporte,
+              "3": lineas.length.toString(),
+            }
+
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
+            const statusCallback = appUrl ? `${appUrl}/api/twilio/status` : undefined
+
             const createParams: Record<string, unknown> = {
               from: waFromFinal,
               to: toFinal,
               contentSid: templateResult.sid,
-              contentVariables: JSON.stringify({
-                "1": nombreRep,
-                "2": fechaReporte,
-                "3": lineas.length.toString(),
-              }),
+              contentVariables: JSON.stringify(cvars),
+              // body intencionalmente ausente — se usa Content Template
             }
+            if (statusCallback) createParams.statusCallback = statusCallback
 
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
-            if (appUrl) {
-              createParams.statusCallback = `${appUrl}/api/twilio/status`
-            }
-
-            console.info("[twilio-whatsapp] template preflight", {
+            console.info("[twilio-whatsapp] PREFLIGHT — usando contentSid, SIN body", {
               from: waFromFinal,
               to: toFinal,
               contentSid: templateResult.sid,
-              clientesMora: lineas.length,
-              statusCallback: createParams.statusCallback ?? "(sin callback)",
+              contentVariables: cvars,
+              statusCallback: statusCallback ?? "(sin callback — NEXT_PUBLIC_APP_URL no configurado)",
+              usaBody: false,
             })
 
             try {
               const sent = await twilioClient.messages.create(createParams)
               twilioSidDb = sent.sid ?? null
-              twilioStatusDb = String(sent.status ?? "queued").toUpperCase()
+              twilioStatusDb = "PROCESANDO"
               waOk = true
+              console.info("[twilio-whatsapp] mensaje aceptado por Twilio", {
+                sid: sent.sid,
+                status: sent.status,
+                to: toFinal,
+              })
             } catch (e) {
               const detail = serializeTwilioSendError(e)
               errores.push(detail)
@@ -200,10 +208,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const algunoOk = waOk || emOk
-    // Para WA: estado inicial real de Twilio (QUEUED, ACCEPTED). Para email: ENVIADO. Si nada: ERROR.
+    // Para WA: PROCESANDO (esperando callback de Twilio). Para email: ENVIADO. Si nada: ERROR.
     const estado: string = waOk
-      ? (twilioStatusDb ?? "QUEUED")
+      ? (twilioStatusDb ?? "PROCESANDO")
       : emOk
       ? "ENVIADO"
       : "ERROR"

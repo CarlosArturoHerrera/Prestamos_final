@@ -30,7 +30,7 @@ function estadoBadge(estado: string) {
   const s = String(estado ?? "").toUpperCase()
   if (["DELIVERED", "READ", "ENVIADO"].includes(s))
     return { variant: "default" as const, className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase" }
-  if (["QUEUED", "ACCEPTED", "SENDING", "SENT"].includes(s))
+  if (["QUEUED", "ACCEPTED", "SENDING", "SENT", "PROCESANDO"].includes(s))
     return { variant: "secondary" as const, className: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 uppercase" }
   if (["FAILED", "UNDELIVERED", "ERROR"].includes(s))
     return { variant: "destructive" as const, className: "uppercase" }
