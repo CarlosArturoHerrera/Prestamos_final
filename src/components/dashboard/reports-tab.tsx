@@ -140,7 +140,7 @@ export const ReportsTab = forwardRef<ReportsTabRef>((_, ref) => {
         heightLeft -= 297
       }
       
-      const fileName = `reporte-cartera-${formatSafeDate(new Date(), "dd-MM-yyyy")}.pdf`
+      const fileName = `prestamos-elicar-reporte-${formatSafeDate(new Date(), "dd-MM-yyyy")}.pdf`
       pdf.save(fileName)
     } catch (error) {
       console.error("Error generando PDF:", error)
@@ -230,7 +230,7 @@ export const ReportsTab = forwardRef<ReportsTabRef>((_, ref) => {
       <div ref={reportRef} data-report-content className="space-y-6 rounded-[2rem] border border-border/70 bg-background p-8 text-foreground shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
         {/* Encabezado del reporte */}
         <div className="border-b border-border/80 pb-4">
-          <h1 className="text-2xl font-bold text-foreground">Reporte de Cartera</h1>
+          <h1 className="text-2xl font-bold text-foreground">Préstamos Elicar — Reporte de Préstamos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {isMounted ? `Generado el ${formatSafeDate(new Date(), "dd 'de' MMMM 'de' yyyy")}` : "Generando reporte..."}
           </p>

@@ -119,9 +119,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">
-                  Cartera
+                  Préstamos
                 </p>
-                <p className="text-base font-bold leading-tight text-sidebar-foreground">Microfinanzas</p>
+                <p className="text-base font-bold leading-tight text-sidebar-foreground">Elicar</p>
               </div>
             </div>
           )}
@@ -200,7 +200,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="flex size-8 items-center justify-center rounded-xl bg-primary/12 text-primary md:hidden">
                 <TrendingUp className="size-4" />
               </div>
-              <p className="font-bold text-foreground">Microfinanzas</p>
+              <p className="font-bold text-foreground">Préstamos Elicar</p>
             </div>
           </div>
 
@@ -260,8 +260,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <TrendingUp className="size-5" />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">Cartera</p>
-              <p className="text-base font-bold text-sidebar-foreground">Microfinanzas</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">Préstamos</p>
+              <p className="text-base font-bold text-sidebar-foreground">Elicar</p>
             </div>
           </div>
           <Button

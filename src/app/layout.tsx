@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Prestamos App",
-  description: "Sistema de gestion de prestamos con panel operativo y analitica.",
+  title: "Préstamos Elicar",
+  description: "Préstamos Elicar — Microfinanzas y Soluciones Crediticias. Panel operativo de gestión de cartera.",
 };
 
 export default function RootLayout({

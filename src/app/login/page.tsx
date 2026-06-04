@@ -82,8 +82,8 @@ export default function LoginPage() {
               </div>
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white">Microfinanzas</h1>
-              <p className="mt-1 text-sm text-indigo-300/80">Panel de gestión de cartera</p>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Préstamos Elicar</h1>
+              <p className="mt-1 text-sm text-indigo-300/80">Microfinanzas y Soluciones Crediticias</p>
             </div>
           </div>
 
@@ -172,7 +172,7 @@ export default function LoginPage() {
 
           {/* Footer */}
           <p className="mt-4 text-center text-[11px] text-indigo-400/50">
-            Sistema de gestión de microfinanzas · Acceso restringido
+            Préstamos Elicar · Acceso restringido
           </p>
         </div>
       </div>
