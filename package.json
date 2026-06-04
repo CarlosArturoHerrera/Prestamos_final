@@ -53,6 +53,7 @@
     "decimal.js": "^10.6.0",
     "elevenlabs": "^1.59.0",
     "embla-carousel-react": "^8.6.0",
+    "exceljs": "^4.4.0",
     "html-to-image": "^1.11.13",
     "input-otp": "^1.4.2",
     "jspdf": "^4.0.0",
