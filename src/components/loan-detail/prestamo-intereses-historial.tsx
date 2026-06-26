@@ -56,10 +56,10 @@ export function PrestamoInteresesHistorial({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-2">
-        <div>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+        <div className="min-w-0">
           <CardTitle className="text-base">Intereses por período</CardTitle>
-          <CardDescription className="mt-1 max-w-2xl">
+          <CardDescription className="mt-1">
             Generadas por cada fecha de pago. Si pasan más de 3 días desde el período sin cubrir el interés,
             al abrir este detalle puede capitalizarse automáticamente al capital (origen AUTO). Puedes
             capitalizar manualmente, marcar como pagado o anular.
@@ -68,18 +68,18 @@ export function PrestamoInteresesHistorial({
         <Button
           variant="secondary"
           size="sm"
-          className="shrink-0"
+          className="shrink-0 self-start"
           disabled={applyingIntereses || pendientes.length === 0}
           onClick={() => onAplicarIntereses()}
         >
           {applyingIntereses ? "Aplicando…" : "Aplicar todos al capital"}
         </Button>
       </CardHeader>
-      <CardContent className="overflow-x-auto p-0 sm:p-6">
+      <CardContent className="p-0 sm:p-6">
         {intereses.length === 0 ? (
           <p className="px-6 pb-6 text-sm text-muted-foreground">Sin registros de interés por período.</p>
         ) : (
-          <Table>
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Período</TableHead>

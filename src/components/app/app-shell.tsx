@@ -291,7 +291,7 @@ export function AppShell({ children, role }: AppShellProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-background p-4 pb-safe md:p-6 md:pb-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 pb-safe md:p-6 md:pb-6">
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>

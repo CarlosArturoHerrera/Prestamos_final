@@ -209,7 +209,7 @@ export default function ClienteDetallePage() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="rounded-xl border border-border/60">
+          <div className="overflow-x-auto rounded-xl border border-border/60">
             <Table>
               <TableHeader>
                 <TableRow>

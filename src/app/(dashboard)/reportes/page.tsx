@@ -221,7 +221,7 @@ export default function ReportesPage() {
         </div>
       </div>
 
-      <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+      <div className="hidden lg:block overflow-x-auto rounded-xl border border-border/60">
         <Table className="min-w-[520px]">
           <TableHeader>
             <TableRow>
@@ -263,7 +263,7 @@ export default function ReportesPage() {
         </Table>
       </div>
 
-      <div className="md:hidden block space-y-3">
+      <div className="lg:hidden block space-y-3">
         {rows.length === 0 ? (
           <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
             Sin datos

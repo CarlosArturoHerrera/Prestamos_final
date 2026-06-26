@@ -140,11 +140,11 @@ const EmpresaDesktopRow = memo(function EmpresaDesktopRow({
           "—"
         )}
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden xl:table-cell max-w-[180px]">
         {empresa.email ? (
-          <span className="inline-flex items-center gap-1.5 break-all text-sm">
+          <span className="inline-flex items-center gap-1.5 text-sm">
             <Mail className="size-3.5 shrink-0 text-muted-foreground" />
-            {empresa.email}
+            <span className="truncate">{empresa.email}</span>
           </span>
         ) : (
           "—"
@@ -756,23 +756,21 @@ export default function EmpresasPage() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border/60">
-            <Table className="min-w-[560px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[4rem]">ID</TableHead>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead className="w-32">RNC</TableHead>
-                  <TableHead className="w-36">Teléfono</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="w-[3rem] text-right">
-                    Acciones
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>{tableRows}</TableBody>
-            </Table>
-          </div>
+          <Table className="min-w-[480px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[4rem]">ID</TableHead>
+                <TableHead>Empresa</TableHead>
+                <TableHead className="w-32">RNC</TableHead>
+                <TableHead className="w-36">Teléfono</TableHead>
+                <TableHead className="hidden xl:table-cell">Email</TableHead>
+                <TableHead className="w-[3rem] text-right">
+                  Acciones
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>{tableRows}</TableBody>
+          </Table>
         )}
 
         {totalPages > 1 ? (

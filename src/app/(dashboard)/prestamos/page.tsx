@@ -1135,7 +1135,7 @@ export default function PrestamosPage() {
         </div>
 
         {/* ── Desktop table ── */}
-        <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+        <div className="hidden lg:block overflow-x-auto rounded-xl border border-border/60">
           <Table className="min-w-[560px]">
             <TableHeader>
               <TableRow className="bg-muted/30">
@@ -1154,7 +1154,7 @@ export default function PrestamosPage() {
         </div>
 
         {/* ── Mobile cards ── */}
-        <div className="md:hidden space-y-3">
+        <div className="lg:hidden space-y-3">
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (

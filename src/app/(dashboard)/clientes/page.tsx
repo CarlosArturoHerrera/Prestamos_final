@@ -345,23 +345,25 @@ export default function ClientesPage() {
           </Link>
         </TableCell>
         <TableCell className="font-mono text-sm">{formatCedula(c.cedula)}</TableCell>
-        <TableCell>
+        <TableCell className="hidden xl:table-cell">
           <span className="inline-flex items-center gap-1.5 text-sm">
             <Phone className="size-3.5 text-muted-foreground" />
             {formatPhone(c.telefono)}
           </span>
         </TableCell>
-        <TableCell>
+        <TableCell className="hidden xl:table-cell max-w-[140px]">
           <span className="inline-flex items-center gap-1.5 text-sm">
             <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
-            {c.empresas?.nombre ?? "—"}
+            <span className="truncate">{c.empresas?.nombre ?? "—"}</span>
           </span>
         </TableCell>
-        <TableCell className="text-sm">
-          {c.representantes ? `${c.representantes.nombre} ${c.representantes.apellido}` : "—"}
+        <TableCell className="hidden xl:table-cell text-sm max-w-[140px]">
+          <span className="block truncate">
+            {c.representantes ? `${c.representantes.nombre} ${c.representantes.apellido}` : "—"}
+          </span>
         </TableCell>
         <TableCell>{validacionBadge(c.estado_validacion)}</TableCell>
-        <TableCell>
+        <TableCell className="hidden xl:table-cell">
           {c.ultimo_pago ? (
             <span className="inline-flex items-center gap-1.5 text-sm">
               <CalendarClock className="size-3.5 text-muted-foreground" />
@@ -738,16 +740,16 @@ export default function ClientesPage() {
           </p>
         </div>
 
-        <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
-          <Table className="min-w-[900px]">
+        <div className="hidden lg:block overflow-x-auto rounded-xl border border-border/60">
+          <Table className="min-w-[500px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[4rem]">ID</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead className="w-32">Cédula</TableHead>
-                <TableHead className="w-36">Teléfono</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Representante</TableHead>
+                <TableHead className="hidden xl:table-cell w-36">Teléfono</TableHead>
+                <TableHead className="hidden xl:table-cell">Empresa</TableHead>
+                <TableHead className="hidden xl:table-cell">Representante</TableHead>
                 <TableHead className="w-28">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -760,7 +762,7 @@ export default function ClientesPage() {
                     </TooltipContent>
                   </Tooltip>
                 </TableHead>
-                <TableHead className="w-28">Último pago</TableHead>
+                <TableHead className="hidden xl:table-cell w-28">Último pago</TableHead>
                 <TableHead className="w-16 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -768,7 +770,7 @@ export default function ClientesPage() {
           </Table>
         </div>
 
-        <div className="md:hidden block space-y-3">
+        <div className="lg:hidden block space-y-3">
           {loading ? (
             <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">Cargando…</div>
           ) : rows.length === 0 ? (

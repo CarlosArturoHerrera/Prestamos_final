@@ -39,11 +39,11 @@ export function PrestamoAbonosHistorial({ abonos }: Props) {
           columnas.
         </CardDescription>
       </CardHeader>
-      <CardContent className="overflow-x-auto p-0 sm:p-6">
+      <CardContent className="p-0 sm:p-6">
         {abonos.length === 0 ? (
           <p className="px-6 pb-6 text-sm text-muted-foreground">Sin abonos registrados.</p>
         ) : (
-          <Table>
+          <Table className="min-w-[720px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Fecha</TableHead>

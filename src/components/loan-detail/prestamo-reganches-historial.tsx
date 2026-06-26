@@ -30,11 +30,11 @@ export function PrestamoReganchesHistorial({ reganches }: Props) {
           Aumentos al capital: reganche manual (formulario) o capitalización de interés (AUTO / MANUAL).
         </CardDescription>
       </CardHeader>
-      <CardContent className="overflow-x-auto p-0 sm:p-6">
+      <CardContent className="p-0 sm:p-6">
         {reganches.length === 0 ? (
           <p className="px-6 pb-6 text-sm text-muted-foreground">Sin reganches.</p>
         ) : (
-          <Table>
+          <Table className="min-w-[320px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Fecha</TableHead>

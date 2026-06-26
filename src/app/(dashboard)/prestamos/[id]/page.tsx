@@ -313,8 +313,8 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
           </span>
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2">
             <Label>Fecha</Label>
             <CalendarDatePicker
@@ -338,7 +338,7 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
               placeholder="Monto de interés que pagó el cliente"
               inputMode="decimal"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground leading-snug">
               Si es menor que el interés calculado, la diferencia queda en
               intereses pendientes.
             </p>
@@ -365,10 +365,10 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
               }
             />
           </div>
-          <Button onClick={submit} disabled={saving}>
-            {saving ? "Registrando..." : "Registrar abono"}
-          </Button>
         </div>
+        <Button onClick={submit} disabled={saving} className="w-full sm:w-auto">
+          {saving ? "Registrando..." : "Registrar abono"}
+        </Button>
       </CardContent>
     </Card>
   );
@@ -695,12 +695,12 @@ export default function PrestamoDetallePage() {
           />
         ) : (
           <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-2">
-              <div>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+              <div className="min-w-0">
                 <CardTitle className="text-base">
                   Intereses por período
                 </CardTitle>
-                <CardDescription className="mt-1 max-w-2xl">
+                <CardDescription className="mt-1">
                   Generadas por cada fecha de pago. Si pasan más de 3 días desde
                   el período sin cubrir el interés, al abrir este detalle puede
                   capitalizarse automáticamente al capital (origen AUTO). Puedes
@@ -710,7 +710,7 @@ export default function PrestamoDetallePage() {
               <Button
                 variant="secondary"
                 size="sm"
-                className="shrink-0"
+                className="shrink-0 self-start"
                 disabled
               >
                 Aplicar todos al capital

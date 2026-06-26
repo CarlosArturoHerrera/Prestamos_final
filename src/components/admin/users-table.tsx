@@ -30,6 +30,7 @@ import {
 } from "@/lib/authorization"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -321,17 +322,122 @@ export function UsersTable({
         </span>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <Table className="min-w-[700px]">
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card/60 p-4 text-center text-sm text-muted-foreground">
+            No se encontraron usuarios
+          </div>
+        ) : (
+          filtered.map((user) => {
+            const isCurrentUser = user.id === currentUserId
+            const isSuperAdminRow = user.role === "super_admin"
+            const target: AuthTarget = { id: user.id, role: user.role }
+            const showActions = canShowRowActions(actor, target)
+            const showToggle  = canToggleUser(actor, target)
+            const showDelete  = canDeleteUser(actor, target)
+            return (
+              <div
+                key={user.id}
+                className={cn(
+                  "rounded-xl border border-border bg-card/80 p-4",
+                  !user.is_active && "opacity-60",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-foreground">
+                        {user.full_name ?? (
+                          <span className="italic text-muted-foreground">Sin nombre</span>
+                        )}
+                      </span>
+                      {isCurrentUser && (
+                        <Badge variant="outline" className="px-1.5 py-0 text-[10px]">Tú</Badge>
+                      )}
+                    </div>
+                    <p className="truncate text-sm text-muted-foreground">{user.email ?? "—"}</p>
+                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                      <Badge variant={getRoleBadgeVariant(user.role)}>
+                        {isSuperAdminRow && <ShieldAlert className="mr-1 size-3" />}
+                        {getRoleLabel(user.role)}
+                      </Badge>
+                      {user.is_active ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600">
+                          <CheckCircle2 className="size-3.5" /> Activo
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-red-500">
+                          <XCircle className="size-3.5" /> Inactivo
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {showActions && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-8 shrink-0">
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEdit(user)}>
+                          <UserCog className="mr-2 size-4" />
+                          {isCurrentUser ? "Editar mi perfil" : "Editar"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDialog({ type: "reset_password", user })}>
+                          <KeyRound className="mr-2 size-4" />
+                          {isCurrentUser ? "Restablecer mi contraseña" : "Restablecer contraseña"}
+                        </DropdownMenuItem>
+                        {showToggle && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setDialog({ type: "toggle", user })}>
+                              {user.is_active ? (
+                                <><UserX className="mr-2 size-4" />Desactivar</>
+                              ) : (
+                                <><CheckCircle2 className="mr-2 size-4" />Reactivar</>
+                              )}
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {showDelete && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDialog({ type: "delete", user })}
+                            >
+                              <Trash2 className="mr-2 size-4" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+                <div className="mt-3 space-y-0.5 border-t border-border/60 pt-2 text-xs text-muted-foreground">
+                  <p>Creado: {fmtDate(user.created_at)}</p>
+                  <p>Último acceso: {fmtDate(user.last_sign_in_at)}</p>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
+        <Table className="min-w-[380px]">
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead>Nombre</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead className="hidden lg:table-cell">Email</TableHead>
               <TableHead>Rol</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead>Creado</TableHead>
-              <TableHead>Último acceso</TableHead>
+              <TableHead className="hidden xl:table-cell">Creado</TableHead>
+              <TableHead className="hidden xl:table-cell">Último acceso</TableHead>
               <TableHead className="w-[48px]" />
             </TableRow>
           </TableHeader>
@@ -366,8 +472,8 @@ export function UsersTable({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {user.email ?? "—"}
+                    <TableCell className="hidden lg:table-cell text-muted-foreground text-sm max-w-[200px]">
+                      <span className="block truncate">{user.email ?? "—"}</span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={getRoleBadgeVariant(user.role)}>
@@ -386,10 +492,10 @@ export function UsersTable({
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
+                    <TableCell className="hidden xl:table-cell text-muted-foreground text-sm">
                       {fmtDate(user.created_at)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
+                    <TableCell className="hidden xl:table-cell text-muted-foreground text-sm">
                       {fmtDate(user.last_sign_in_at)}
                     </TableCell>
                     <TableCell>
