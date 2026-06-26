@@ -118,10 +118,7 @@ export function PrestamoInteresesHistorial({
         <div className="min-w-0">
           <CardTitle className="text-base">Intereses por período</CardTitle>
           <CardDescription className="mt-1">
-            Generadas por cada fecha de pago. Si pasan más de 3 días desde el período
-            sin cubrir el interés, al abrir este detalle puede capitalizarse
-            automáticamente al capital (origen AUTO). Puedes capitalizar manualmente,
-            marcar como pagado o anular.
+            Intereses generados por período, que pueden ser pagados, capitalizados o eliminados.
           </CardDescription>
         </div>
         <Button

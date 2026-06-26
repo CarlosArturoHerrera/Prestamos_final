@@ -50,8 +50,7 @@ export function PrestamoReganchesHistorial({ reganches }: Props) {
       <CardHeader>
         <CardTitle className="text-base">Historial de reganches</CardTitle>
         <CardDescription>
-          Aumentos al capital: reganche manual (formulario) o capitalización de
-          interés (AUTO / MANUAL).
+          Reganches son montos agregados al capital del préstamo, que aumentan el saldo pendiente.
         </CardDescription>
       </CardHeader>
 

@@ -85,9 +85,7 @@ export function PrestamoAbonosHistorial({ abonos }: Props) {
       <CardHeader>
         <CardTitle className="text-base">Historial de abonos</CardTitle>
         <CardDescription>
-          El capital pendiente solo baja por «Capital debitado». La columna «Dif. a
-          pendiente» refleja el interés no cubierto en ese movimiento; filas antiguas
-          pueden mostrar «—» si no existían esas columnas.
+          Pagos realizados por el cliente para reducir el capital del préstamo.
         </CardDescription>
       </CardHeader>
 
