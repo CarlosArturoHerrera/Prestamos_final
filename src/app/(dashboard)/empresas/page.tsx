@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   Building2,
@@ -61,8 +61,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
+import { formatPhone } from "@/lib/formatters";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { cn } from "@/lib/utils";
 
@@ -132,7 +134,7 @@ const EmpresaDesktopRow = memo(function EmpresaDesktopRow({
         {empresa.telefono ? (
           <span className="inline-flex items-center gap-1.5 text-sm">
             <Phone className="size-3.5 text-muted-foreground" />
-            {empresa.telefono}
+            {formatPhone(empresa.telefono)}
           </span>
         ) : (
           "—"
@@ -232,7 +234,7 @@ const EmpresaMobileCard = memo(function EmpresaMobileCard({
             {empresa.telefono ? (
               <span className="inline-flex items-center gap-1.5">
                 <Phone className="size-3.5 text-muted-foreground" />
-                {empresa.telefono}
+                {formatPhone(empresa.telefono)}
               </span>
             ) : (
               "—"
@@ -507,7 +509,7 @@ export default function EmpresasPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Empresas</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Empresas</h1>
             <p className="text-sm text-muted-foreground">
               Catálogo de empresas vinculadas a clientes. Búsqueda por nombre,
               RNC o email.
@@ -576,11 +578,9 @@ export default function EmpresasPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Teléfono</Label>
-                    <Input
+                    <PhoneInput
                       value={form.telefono}
-                      onChange={(e) =>
-                        setForm({ ...form, telefono: e.target.value })
-                      }
+                      onChange={(raw) => setForm({ ...form, telefono: raw })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -621,7 +621,7 @@ export default function EmpresasPage() {
             Panel
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Card className="border-border/60 shadow-sm">
+            <Card className="border-border shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                   <Building2 className="size-4 text-primary" />
@@ -635,7 +635,7 @@ export default function EmpresasPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-border/60 shadow-sm">
+            <Card className="border-border shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold">Con RNC</CardTitle>
                 <CardDescription>Identificación fiscal cargada</CardDescription>
@@ -649,7 +649,7 @@ export default function EmpresasPage() {
           </div>
         </section>
 
-        <div className="rounded-xl border border-border/60 bg-card/50 p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1 space-y-2">
@@ -756,14 +756,14 @@ export default function EmpresasPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-xl border border-border/60">
-            <Table>
+          <div className="overflow-x-auto rounded-xl border border-border/60">
+            <Table className="min-w-[560px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[4rem]">ID</TableHead>
                   <TableHead>Empresa</TableHead>
-                  <TableHead>RNC</TableHead>
-                  <TableHead>Teléfono</TableHead>
+                  <TableHead className="w-32">RNC</TableHead>
+                  <TableHead className="w-36">Teléfono</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead className="w-[3rem] text-right">
                     Acciones
@@ -830,3 +830,4 @@ export default function EmpresasPage() {
     </TooltipProvider>
   );
 }
+

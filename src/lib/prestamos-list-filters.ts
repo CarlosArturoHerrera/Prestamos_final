@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { normalizeSearchTerm } from "@/lib/formatters"
 
 /** Normaliza el término para ilike (evita comodines accidentales). */
 function ilikeTerm(raw: string): string {
@@ -16,12 +17,13 @@ export async function resolveClienteIdsFromSearch(
   if (!term) return []
 
   const s = `%${term}%`
+  const sn = `%${normalizeSearchTerm(term)}%`
   const ids = new Set<number>()
 
   const { data: direct } = await supabase
     .from("clientes")
     .select("id")
-    .or(`nombre.ilike.${s},apellido.ilike.${s},cedula.ilike.${s}`)
+    .or(`nombre.ilike.${s},apellido.ilike.${s},cedula.ilike.${sn}`)
   for (const r of direct ?? []) ids.add(r.id)
 
   const { data: empRows } = await supabase.from("empresas").select("id").ilike("nombre", s)

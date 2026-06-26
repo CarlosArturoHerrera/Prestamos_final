@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
+import { unformatPhone } from "@/lib/formatters"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Client } from "@/lib/types/client"
@@ -66,7 +68,7 @@ export function ClientCreateDialog({ trigger, onCreate }: ClientCreateDialogProp
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
-          phone: form.phone.trim(),
+          phone: unformatPhone(form.phone),
           segment: form.segment.trim(),
           email: form.email.trim() || null,
           location: form.location.trim() || null,
@@ -135,12 +137,11 @@ export function ClientCreateDialog({ trigger, onCreate }: ClientCreateDialogProp
           <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
             <div className="grid gap-2">
               <Label htmlFor="phone">Teléfono <span className="text-destructive">*</span></Label>
-              <Input
+              <PhoneInput
                 id="phone"
                 required
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="+1 809 ..."
+                onChange={(raw) => setForm({ ...form, phone: raw })}
               />
             </div>
             <div className="grid gap-2">

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useCallback, useEffect, useState } from "react"
 import dynamic from "next/dynamic"
@@ -92,7 +92,7 @@ export default function ReportesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">Reportes</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Reportes</h1>
         <p className="text-sm text-muted-foreground">Cartera filtrable y exportación PDF / Excel.</p>
       </div>
 
@@ -221,15 +221,15 @@ export default function ReportesPage() {
         </div>
       </div>
 
-      <div className="hidden md:block rounded-xl border border-border/60">
-        <Table>
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+        <Table className="min-w-[520px]">
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
+              <TableHead className="w-16">ID</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Empresa</TableHead>
-              <TableHead>Capital pend.</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead className="w-36">Capital pend.</TableHead>
+              <TableHead className="w-28">Estado</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -265,7 +265,7 @@ export default function ReportesPage() {
 
       <div className="md:hidden block space-y-3">
         {rows.length === 0 ? (
-          <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+          <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
             Sin datos
           </div>
         ) : (
@@ -282,7 +282,7 @@ export default function ReportesPage() {
             const badgeVariant = estadoU === "MORA" ? "destructive" : estadoU === "SALDADO" ? "secondary" : "outline"
 
             return (
-              <div key={String(r.id)} className="rounded-xl border border-border/60 bg-card/80 p-4">
+              <div key={String(r.id)} className="rounded-xl border border-border bg-card/80 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -312,3 +312,4 @@ export default function ReportesPage() {
     </div>
   )
 }
+

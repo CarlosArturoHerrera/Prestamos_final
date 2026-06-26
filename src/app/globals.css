@@ -1,262 +1,538 @@
+/* ─────────────────────────────────────────────────────────
+   globals.css
+   Estructura obligatoria para Tailwind v4 + Next.js 16:
+
+     1.  @charset      (si existe)
+     2.  @import       (solo de paquetes locales — sin url() remotas)
+     3.  @custom-variant / @plugin
+     4.  @theme
+     5.  :root / .dark / @layer base|components|utilities
+     6.  @media
+
+   Las fuentes se cargan a través de next/font/google en layout.tsx.
+   No usar @import url() aquí: viola el CSS spec con Turbopack.
+   ───────────────────────────────────────────────────────── */
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─────────────────────────────────────────────────────────
+   THEME TOKENS
+   Mapea custom properties a utilidades Tailwind.
+   --font-sans usa la variable inyectada por next/font/google
+   en layout.tsx (Inter → --font-sans CSS var).
+   ───────────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-surface-foreground: var(--surface-foreground);
-  --color-brand-secondary: var(--brand-secondary);
-  --color-soft: var(--soft);
-  --color-hover: var(--hover);
-  --color-focus: var(--focus);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Typography */
+  --font-sans: var(--font-sans-variable), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-variable), ui-monospace, monospace;
+
+  /* Radii */
+  --radius-sm:  calc(var(--radius) - 4px);
+  --radius-md:  calc(var(--radius) - 2px);
+  --radius-lg:  var(--radius);
+  --radius-xl:  calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Semantic color map */
+  --color-background:            var(--background);
+  --color-foreground:            var(--foreground);
+  --color-surface:               var(--surface);
+  --color-surface-foreground:    var(--surface-foreground);
+  --color-brand-secondary:       var(--brand-secondary);
+  --color-soft:                  var(--soft);
+  --color-hover:                 var(--hover);
+  --color-focus:                 var(--focus);
+
+  --color-card:                  var(--card);
+  --color-card-foreground:       var(--card-foreground);
+  --color-popover:               var(--popover);
+  --color-popover-foreground:    var(--popover-foreground);
+
+  --color-primary:               var(--primary);
+  --color-primary-foreground:    var(--primary-foreground);
+  --color-secondary:             var(--secondary);
+  --color-secondary-foreground:  var(--secondary-foreground);
+  --color-muted:                 var(--muted);
+  --color-muted-foreground:      var(--muted-foreground);
+  --color-accent:                var(--accent);
+  --color-accent-foreground:     var(--accent-foreground);
+  --color-destructive:           var(--destructive);
+
+  --color-border:                var(--border);
+  --color-input:                 var(--input);
+  --color-ring:                  var(--ring);
+
+  /* Charts */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Sidebar */
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
 }
 
-/* ═══════════════════════════════════════════
-   LIGHT MODE
-   Fondo: azul-índigo visible (no blanco)
-   Tarjetas: blancas sólidas → contrastan bien
-   Texto: casi negro
-   ═══════════════════════════════════════════ */
+/* ─────────────────────────────────────────────────────────
+   LIGHT MODE  (Corporate — Préstamos Elicar)
+   Background: #FFFFFF  |  Cards: #FFFFFF (elevated by shadow)
+   Primary: #0052CC  |  Accent: #00D2FF
+   Sidebar: white with brand-blue active state
+   ───────────────────────────────────────────────────────── */
 :root {
-  --radius: 0.875rem;
-  --background: #c8d4f5;           /* azul-índigo saturado — definitivamente no blanco */
-  --foreground: #0f0e2a;
-  --surface: #ffffff;
-  --surface-foreground: #0f0e2a;
-  --card: #ffffff;                 /* tarjetas blancas sólidas, resaltan sobre el fondo */
-  --card-foreground: #0f0e2a;
-  --popover: #ffffff;
-  --popover-foreground: #0f0e2a;
-  --primary: #4f46e5;              /* índigo 600 */
-  --primary-foreground: #ffffff;
-  --secondary: #7c3aed;            /* violeta */
-  --secondary-foreground: #ffffff;
-  --brand-secondary: #7c3aed;
-  --muted: #eef2ff;
-  --muted-foreground: #374151;     /* gris oscuro para buen contraste sobre blanco */
-  --accent: #e0e7ff;
-  --accent-foreground: #3730a3;
-  --soft: #e0e7ff;
-  --hover: #c7d2fe;
-  --focus: #a5b4fc;
-  --destructive: #dc2626;
-  --border: rgba(79, 70, 229, 0.2);
-  --input: rgba(255, 255, 255, 0.9);
-  --ring: #818cf8;
-  --chart-1: #4f46e5;
-  --chart-2: #7c3aed;
-  --chart-3: #059669;
-  --chart-4: #d97706;
-  --chart-5: #e11d48;
-  /* Sidebar: índigo profundo */
-  --sidebar: #1e1b4b;
-  --sidebar-foreground: #e0e7ff;
-  --sidebar-primary: #818cf8;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(129, 140, 248, 0.22);
-  --sidebar-accent-foreground: #e0e7ff;
-  --sidebar-border: rgba(224, 231, 255, 0.14);
-  --sidebar-ring: #818cf8;
+  --radius: 0.75rem;
+
+  /* Surfaces — white dominates, cards elevated by shadow */
+  --background:         #FFFFFF;
+  --foreground:         #0A0E17;
+  --surface:            #FFFFFF;
+  --surface-foreground: #0A0E17;
+
+  /* Card — pure white, separated from page by shadow */
+  --card:               #FFFFFF;
+  --card-foreground:    #0A0E17;
+
+  /* Popover */
+  --popover:            #FFFFFF;
+  --popover-foreground: #0A0E17;
+
+  /* Primary — Brand Blue #0052CC */
+  --primary:            #0052CC;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary — lighter brand blue */
+  --secondary:          #3385FF;
+  --secondary-foreground: #FFFFFF;
+  --brand-secondary:    #3385FF;
+
+  /* Muted — light gray distinct from white bg */
+  --muted:              #F1F5F9;
+  --muted-foreground:   #5C6B89;
+
+  /* Accent — very light brand blue tint for hover/chip states */
+  --accent:             #EFF4FF;
+  --accent-foreground:  #0052CC;
+
+  /* State helpers */
+  --soft:   #DBEAFE;
+  --hover:  #EFF4FF;
+  --focus:  rgba(0, 210, 255, 0.2);
+
+  /* Semantic */
+  --destructive: #DC2626;
+
+  /* Chrome */
+  --border: #E2E8F0;
+  --input:  #F8FAFC;
+  --ring:   #00D2FF;
+
+  /* Charts */
+  --chart-1: #0052CC;
+  --chart-2: #3385FF;
+  --chart-3: #10b981;
+  --chart-4: #f59e0b;
+  --chart-5: #ef4444;
+
+  /* Sidebar — WHITE in light mode (brand blue active state) */
+  --sidebar:                    #FFFFFF;
+  --sidebar-foreground:         #0A0E17;
+  --sidebar-primary:            #0052CC;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent:             rgba(0, 82, 204, 0.07);
+  --sidebar-accent-foreground:  #0052CC;
+  --sidebar-border:             #E2E8F0;
+  --sidebar-ring:               #00D2FF;
+
+  /* ── Animation timing tokens ── */
+  --dur-fast:  150ms;
+  --dur-base:  220ms;
+  --dur-page:  280ms;
+  --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-std:  cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Shimmer highlight — bright sweep on light bg ── */
+  --shimmer-highlight: rgba(255, 255, 255, 0.72);
 }
 
-/* ═══════════════════════════════════════════
-   DARK MODE
-   Fondo: casi negro (#07061a)
-   Tarjetas: índigo oscuro SÓLIDO (#1c1a52)
-   — diferencia clara con el fondo
-   Texto: casi blanco
-   ═══════════════════════════════════════════ */
+/* ─────────────────────────────────────────────────────────
+   DARK MODE  (Corporate dark — Préstamos Elicar)
+   Background: #0A0E17  |  Card: #161F30 (elevated)
+   Sidebar: #0D1525 (subtle separation from main bg)
+   Primary: #3385FF  |  Accent: #00D2FF
+   ───────────────────────────────────────────────────────── */
 .dark {
-  --background: #07061a;
-  --foreground: #eef2ff;
-  --surface: #14123c;
-  --surface-foreground: #eef2ff;
-  --card: #1c1a52;                 /* índigo oscuro visible vs fondo negro */
-  --card-foreground: #eef2ff;
-  --popover: #1c1a52;
-  --popover-foreground: #eef2ff;
-  --primary: #818cf8;
-  --primary-foreground: #1e1b4b;
-  --secondary: #a78bfa;
-  --secondary-foreground: #1e1b4b;
-  --brand-secondary: #818cf8;
-  --muted: rgba(129, 140, 248, 0.14);
-  --muted-foreground: #a0aec0;
-  --accent: rgba(129, 140, 248, 0.18);
-  --accent-foreground: #c7d2fe;
-  --soft: rgba(224, 231, 255, 0.1);
-  --hover: rgba(129, 140, 248, 0.26);
-  --focus: rgba(129, 140, 248, 0.44);
-  --destructive: #fb7185;
-  --border: rgba(129, 140, 248, 0.22);
-  --input: rgba(28, 26, 82, 0.9);
-  --ring: #818cf8;
-  --chart-1: #818cf8;
-  --chart-2: #a78bfa;
-  --chart-3: #34d399;
-  --chart-4: #fbbf24;
-  --chart-5: #fb7185;
-  --sidebar: #0e0c2e;
-  --sidebar-foreground: #e0e7ff;
-  --sidebar-primary: #818cf8;
-  --sidebar-primary-foreground: #1e1b4b;
-  --sidebar-accent: rgba(129, 140, 248, 0.18);
-  --sidebar-accent-foreground: #e0e7ff;
-  --sidebar-border: rgba(224, 231, 255, 0.08);
-  --sidebar-ring: #818cf8;
+  --background:         #0A0E17;
+  --foreground:         #E8EDF5;
+  --surface:            #161F30;
+  --surface-foreground: #E8EDF5;
+
+  --card:               #161F30;
+  --card-foreground:    #E8EDF5;
+
+  --popover:            #1A2540;
+  --popover-foreground: #E8EDF5;
+
+  --primary:            #3385FF;
+  --primary-foreground: #FFFFFF;
+
+  --secondary:          #1A2540;
+  --secondary-foreground: #3385FF;
+  --brand-secondary:    #3385FF;
+
+  --muted:              #1E2A40;
+  --muted-foreground:   #94A3B8;
+
+  --accent:             #1A2C4A;
+  --accent-foreground:  #00D2FF;
+
+  --soft:  rgba(0, 210, 255, 0.07);
+  --hover: rgba(0, 210, 255, 0.11);
+  --focus: rgba(0, 210, 255, 0.25);
+
+  --destructive: #F87171;
+
+  --border: #1E2A40;
+  --input:  #1A2540;
+  --ring:   #00D2FF;
+
+  --chart-1: #3385FF;
+  --chart-2: #00D2FF;
+  --chart-3: #34D399;
+  --chart-4: #FBBF24;
+  --chart-5: #F87171;
+
+  /* Sidebar — slightly darker than bg for visual depth */
+  --sidebar:                    #0D1525;
+  --sidebar-foreground:         #8FA3BF;
+  --sidebar-primary:            #00D2FF;
+  --sidebar-primary-foreground: #0D1525;
+  --sidebar-accent:             rgba(0, 210, 255, 0.09);
+  --sidebar-accent-foreground:  #C5D4E8;
+  --sidebar-border:             rgba(255, 255, 255, 0.05);
+  --sidebar-ring:               #00D2FF;
+
+  /* ── Shimmer highlight — subtle sweep on dark bg ── */
+  --shimmer-highlight: rgba(255, 255, 255, 0.055);
 }
 
+/* ─────────────────────────────────────────────────────────
+   BASE LAYER
+   ───────────────────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  html { color-scheme: light; }
+
+  html {
+    color-scheme: light;
+    /* Optimizaciones tipográficas de Inter */
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
   html.dark { color-scheme: dark; }
 
   body {
     @apply bg-background text-foreground;
     min-height: 100vh;
+    /* next/font inyecta --font-sans-variable en <body> via className.
+       Tailwind mapea --font-sans → var(--font-sans-variable). */
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
   }
 
-  /* Dark mode: fondo con sutil gradiente radial para profundidad */
+  /* Dark: sutil gradiente radial para profundidad */
   .dark body {
-    background-image:
-      radial-gradient(ellipse at top left, rgba(79, 70, 229, 0.18) 0%, transparent 40%),
-      radial-gradient(ellipse at bottom right, rgba(124, 58, 237, 0.12) 0%, transparent 40%);
+    background-image: radial-gradient(
+      ellipse at 20% 0%,
+      rgba(0, 210, 255, 0.05) 0%,
+      transparent 50%
+    );
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.025em;
+    font-weight: 600;
   }
 
   ::selection {
-    background: rgba(79, 70, 229, 0.3);
+    background: rgba(0, 82, 204, 0.2);
     color: var(--foreground);
   }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Scrollbar personalizado */
+  ::-webkit-scrollbar          { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track    { background: transparent; }
+  ::-webkit-scrollbar-thumb    { background: var(--border); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 }
 
+/* ─────────────────────────────────────────────────────────
+   COMPONENTS LAYER
+   ───────────────────────────────────────────────────────── */
 @layer components {
-  /* ─── Contenedor de página ─── */
+
+  /* ── Page shell ── */
   .page-shell {
     @apply min-h-screen w-full;
     background: var(--background);
   }
 
-  /* ─── Superficies generales (cards, popovers) ─── */
+  /* ── Surface / card panel ── */
   .surface-panel {
     background: var(--card);
     border: 1px solid var(--border);
-    box-shadow:
-      0 2px 8px rgba(79, 70, 229, 0.08),
-      0 1px 2px rgba(0, 0, 0, 0.05);
+    border-radius: var(--radius);
+    /* Stronger shadow needed on white-on-white to define card edges */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.05), 0 0 0 0.5px rgba(0, 0, 0, 0.03);
   }
   .dark .surface-panel {
-    box-shadow:
-      0 4px 20px rgba(7, 6, 26, 0.55),
-      0 1px 0 rgba(129, 140, 248, 0.06) inset;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+    border-color: rgba(255, 255, 255, 0.04);
   }
 
-  /* ─── Hero banner (fondo degradado, texto blanco) ─── */
+  /* ── Hero gradient banner ── */
   .hero-surface {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    background: linear-gradient(135deg, #0052CC 0%, #0044AA 100%);
     border: none;
-    box-shadow: 0 8px 28px rgba(79, 70, 229, 0.38);
+    box-shadow: 0 8px 24px rgba(0, 82, 204, 0.3);
   }
   .dark .hero-surface {
-    background: linear-gradient(135deg, #3730a3 0%, #5b21b6 100%);
-    box-shadow: 0 8px 28px rgba(7, 6, 26, 0.7);
+    background: linear-gradient(135deg, #0A1428 0%, #111B35 100%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   }
 
-  /* ─── KPI / Stat cards ─── */
+  /* ── KPI Stat cards ── */
   .stat-card {
-    @apply rounded-2xl p-4 md:p-5;
+    @apply rounded-xl p-4 md:p-5;
     background: var(--card);
     border: 1px solid var(--border);
-    border-left: 4px solid var(--primary);
-    box-shadow:
-      0 2px 12px rgba(79, 70, 229, 0.1),
-      0 1px 3px rgba(0, 0, 0, 0.06);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    /* Base shadow to lift card from white background */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: box-shadow 0.2s var(--ease-out), transform 0.2s var(--ease-out), border-color 0.18s ease;
   }
   .stat-card:hover {
-    box-shadow:
-      0 8px 24px rgba(79, 70, 229, 0.18),
-      0 2px 6px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 20px rgba(0, 82, 204, 0.10), 0 1px 3px rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 82, 204, 0.18);
     transform: translateY(-1px);
   }
   .dark .stat-card {
-    border-left-color: #818cf8;
-    box-shadow: 0 4px 16px rgba(7, 6, 26, 0.5);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   }
   .dark .stat-card:hover {
-    box-shadow: 0 8px 28px rgba(7, 6, 26, 0.65);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
+    border-color: rgba(0, 210, 255, 0.15);
   }
 
-  /* ─── Icono de métrica ─── */
+  /* ── Metric icon container ── */
   .metric-icon {
-    @apply flex size-10 shrink-0 items-center justify-center rounded-xl;
-    background: rgba(79, 70, 229, 0.1);
-    color: var(--primary);
+    @apply flex size-9 shrink-0 items-center justify-center rounded-lg;
+    background: linear-gradient(135deg, #E8F0FE 0%, rgba(0, 210, 255, 0.12) 100%);
+    color: #0052CC;
+    border: 1px solid rgba(0, 82, 204, 0.10);
   }
   .dark .metric-icon {
-    background: rgba(129, 140, 248, 0.18);
-    color: var(--primary);
+    background: rgba(0, 210, 255, 0.10);
+    color: #00D2FF;
+    border: 1px solid rgba(0, 210, 255, 0.15);
   }
 
-  /* ─── Bottom navigation bar (móvil) ─── */
+  /* ── Section header ── */
+  .section-header { @apply flex items-center justify-between mb-4; }
+  .section-title  { @apply text-sm font-semibold text-foreground/80 uppercase tracking-wider; }
+
+  /* ── Mobile bottom nav ── */
   .bottom-nav-item {
     @apply flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-all duration-200;
   }
   .bottom-nav-item-icon {
     @apply flex size-8 items-center justify-center rounded-xl transition-all duration-200;
   }
+
+  /* ── Estado badges ── */
+  .badge-activo {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    background: #dcfce7; color: #166534;
+  }
+  .badge-activo::before {
+    content: ''; display: block; flex-shrink: 0;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #22c55e;
+    animation: dot-pulse 2.2s ease-in-out infinite;
+  }
+  .dark .badge-activo  { background: rgba(34, 197, 94, 0.12); color: #4ade80; }
+  .dark .badge-activo::before { background: #4ade80; }
+
+  .badge-mora {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    background: #fee2e2; color: #991b1b;
+  }
+  .badge-mora::before {
+    content: ''; display: block; flex-shrink: 0;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #ef4444;
+    animation: dot-pulse 1.4s ease-in-out infinite;
+  }
+  .dark .badge-mora    { background: rgba(239, 68, 68, 0.12); color: #f87171; }
+  .dark .badge-mora::before { background: #f87171; }
+
+  .badge-saldado {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+    background: #E8F0FE; color: #0052CC;
+  }
+  .dark .badge-saldado { background: rgba(0, 82, 204, 0.15); color: #3385FF; }
+
+  /* ── Status chip — inline color indicator ── */
+  .status-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+    background: var(--accent);
+    color: var(--primary);
+    border: 1px solid rgba(0, 82, 204, 0.15);
+  }
+  .dark .status-chip {
+    background: rgba(0, 210, 255, 0.08);
+    color: #00D2FF;
+    border: 1px solid rgba(0, 210, 255, 0.18);
+  }
+
+  /* ── Sidebar active left indicator ── */
+  .nav-active-indicator {
+    @apply absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full;
+    background: var(--sidebar-primary);
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    @apply flex flex-col items-center justify-center gap-3 py-16 text-center;
+  }
+  .empty-state-icon {
+    @apply flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground;
+  }
+
+  /* ── Gradient text ── */
+  .gradient-text {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Shimmer skeleton ── */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--muted) 0%,
+      var(--shimmer-highlight) 50%,
+      var(--muted) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s linear infinite;
+  }
+
+  /* ── Card with hover elevation ── */
+  .card-hover {
+    @apply transition-all duration-[200ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:shadow-md hover:-translate-y-0.5 cursor-pointer;
+  }
+
+  /* ── Input group label ── */
+  .input-group-label {
+    @apply block text-sm font-medium text-foreground mb-1.5;
+  }
+
+  /* ── Table styles — clean SaaS table ── */
+  .table-row-hover {
+    @apply hover:bg-accent/40 transition-colors duration-[100ms] ease-[cubic-bezier(0.16,1,0.3,1)] cursor-default;
+  }
+  .table-header-row {
+    @apply border-b border-border bg-muted/40;
+  }
+  .table-header-cell {
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground;
+  }
+  .table-body-cell {
+    @apply px-4 py-3 text-sm text-foreground;
+  }
+  .table-body-row {
+    @apply border-b border-border/60 last:border-0;
+  }
+  .dark .table-header-row {
+    @apply bg-muted/20;
+  }
+
+  /* ── Sidebar divider ── */
+  .sidebar-divider {
+    @apply my-1 border-t border-sidebar-border;
+  }
 }
 
-/* ─── Mobile: simplificar sombras para rendimiento ─── */
+/* ─────────────────────────────────────────────────────────
+   UTILITIES LAYER
+   ───────────────────────────────────────────────────────── */
+@layer utilities {
+  .delay-75  { animation-delay: 75ms; }
+  .delay-100 { animation-delay: 100ms; }
+  .delay-150 { animation-delay: 150ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+
+  /* Bottom nav safe-area */
+  .pb-safe {
+    padding-bottom: max(4.5rem, calc(4.5rem + env(safe-area-inset-bottom)));
+  }
+
+  /* Wrapping de texto balanceado */
+  .text-balance { text-wrap: balance; }
+
+  /* Números tabulares para datos financieros */
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  /* Transición suave estándar */
+  .transition-smooth {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   KEYFRAMES  (fuera de @layer para compatibilidad máxima)
+   ───────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position:  200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Breathing dot for status badges */
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1);    }
+  50%       { opacity: 0.5; transform: scale(0.78); }
+}
+
+/* ─────────────────────────────────────────────────────────
+   MEDIA QUERIES
+   ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .page-shell {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  .surface-panel {
-    box-shadow: 0 1px 6px rgba(79, 70, 229, 0.1);
-  }
+  .page-shell    { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .surface-panel { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+  .stat-card     { transform: none !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -265,15 +541,5 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-}
-
-@layer utilities {
-  .delay-100 { animation-delay: 100ms; }
-  .delay-200 { animation-delay: 200ms; }
-
-  /* Padding inferior que respeta el bottom nav + safe area */
-  .pb-safe {
-    padding-bottom: max(4.5rem, calc(4.5rem + env(safe-area-inset-bottom)));
   }
 }

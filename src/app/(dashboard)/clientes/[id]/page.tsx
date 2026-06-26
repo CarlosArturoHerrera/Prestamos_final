@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { GestionCobranzaPanel } from "@/components/gestion-cobranza-panel"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
+import { formatCedula, formatPhone } from "@/lib/formatters"
 import { formatRD } from "@/lib/format-currency"
 import { cn } from "@/lib/utils"
 
@@ -109,7 +110,7 @@ export default function ClienteDetallePage() {
             <Link href="/clientes">← Volver al listado</Link>
           </Button>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
               {String(data.nombre)} {String(data.apellido)}
             </h1>
             {validacionClienteBadge(estadoVal)}
@@ -133,14 +134,14 @@ export default function ClienteDetallePage() {
           <CardContent className="space-y-3 text-sm">
             <div className="flex items-start gap-2">
               <span className="min-w-[5.5rem] text-muted-foreground">Cédula</span>
-              <span className="font-mono font-medium">{String(data.cedula)}</span>
+              <span className="font-mono font-medium">{formatCedula(String(data.cedula))}</span>
             </div>
             <Separator />
             <div className="flex items-start gap-2">
               <Phone className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               <div>
                 <p className="text-muted-foreground">Teléfono</p>
-                <p className="font-medium">{String(data.telefono)}</p>
+                <p className="font-medium">{formatPhone(String(data.telefono))}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
@@ -182,7 +183,7 @@ export default function ClienteDetallePage() {
                 {rep ? `${rep.nombre ?? ""} ${rep.apellido ?? ""}`.trim() : "—"}
               </p>
               {rep?.telefono ? (
-                <p className="text-xs text-muted-foreground">Tel. {rep.telefono}</p>
+                <p className="text-xs text-muted-foreground">Tel. {formatPhone(rep.telefono)}</p>
               ) : null}
               {rep?.email ? (
                 <p className="text-xs text-muted-foreground">{rep.email}</p>

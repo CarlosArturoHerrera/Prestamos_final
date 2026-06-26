@@ -42,7 +42,7 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "text-foreground/76 inline-flex h-full flex-1 items-center justify-center gap-1.5 rounded-xl border border-transparent px-3 py-2 text-sm font-semibold whitespace-nowrap transition-[color,box-shadow,background-color,transform] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-primary/20 data-[state=active]:bg-linear-to-r data-[state=active]:from-primary/10 data-[state=active]:to-secondary/14 data-[state=active]:text-foreground data-[state=active]:shadow-[0_10px_24px_rgba(59,130,246,0.12)] data-[state=active]:-translate-y-px [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "text-foreground/76 inline-flex h-full flex-1 items-center justify-center gap-1.5 rounded-xl border border-transparent px-3 py-2 text-sm font-semibold whitespace-nowrap transition-[color,box-shadow,background-color,transform] duration-[180ms] ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-primary/20 data-[state=active]:bg-linear-to-r data-[state=active]:from-primary/10 data-[state=active]:to-secondary/14 data-[state=active]:text-foreground data-[state=active]:shadow-[0_10px_24px_rgba(59,130,246,0.12)] data-[state=active]:-translate-y-px [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}

@@ -55,6 +55,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { CalendarDatePicker } from "@/components/ui/calendar-date-picker"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
+import { formatCedula, formatPhone } from "@/lib/formatters"
 import { formatRD } from "@/lib/format-currency"
 import { cn } from "@/lib/utils"
 
@@ -159,7 +160,7 @@ function CapitalDebitarInline({
 
   return (
     <Input
-      className={cn("h-8 w-[7.25rem] min-w-0 tabular-nums text-sm", className)}
+      className={cn("h-8 w-24 min-w-0 tabular-nums text-sm", className)}
       value={draft}
       onChange={(e) => setDraft(sanitize(e.target.value))}
       onBlur={() => void commit()}
@@ -248,6 +249,13 @@ function atencionVencimientoBadges(p: PrestamoList): ReactNode {
     )
   }
   return null
+}
+
+/** Convierte "2026-04-21" → "21/04/26" */
+function fmtFecha(iso: string): string {
+  const parts = iso.split("-")
+  if (parts.length < 3) return iso
+  return `${parts[2]}/${parts[1]}/${parts[0].slice(2)}`
 }
 
 const PAGE_SIZE = 50
@@ -475,107 +483,156 @@ export default function PrestamosPage() {
   const endIdx = Math.min(page * PAGE_SIZE, total)
 
   const tableRows = useMemo(() => {
+    // ── Skeleton loading ─────────────────────────────────────────────
     if (loading) {
-      return (
-        <TableRow>
-          <TableCell colSpan={11}>Cargando…</TableCell>
+      return Array.from({ length: 7 }).map((_, i) => (
+        <TableRow key={`sk-${i}`} className="animate-pulse">
+          <TableCell className="py-3">
+            <div className="space-y-1.5">
+              <div className="h-4 w-36 rounded bg-muted" />
+              <div className="h-3 w-24 rounded bg-muted" />
+            </div>
+          </TableCell>
+          <TableCell className="hidden lg:table-cell">
+            <div className="h-4 w-20 rounded bg-muted" />
+          </TableCell>
+          <TableCell className="py-2">
+            <div className="h-8 w-24 rounded bg-muted" />
+          </TableCell>
+          <TableCell className="hidden xl:table-cell">
+            <div className="h-4 w-10 rounded bg-muted" />
+          </TableCell>
+          <TableCell>
+            <div className="h-4 w-16 rounded bg-muted" />
+          </TableCell>
+          <TableCell>
+            <div className="space-y-1">
+              <div className="h-4 w-20 rounded bg-muted" />
+              <div className="h-3 w-14 rounded bg-muted" />
+            </div>
+          </TableCell>
+          <TableCell>
+            <div className="h-5 w-16 rounded-full bg-muted" />
+          </TableCell>
+          <TableCell className="w-10" />
         </TableRow>
-      )
+      ))
     }
+
+    // ── Empty state ──────────────────────────────────────────────────
     if (rows.length === 0) {
       return (
         <TableRow>
-          <TableCell colSpan={11}>Sin préstamos con estos filtros</TableCell>
+          <TableCell colSpan={8} className="py-14 text-center">
+            <div className="mx-auto flex max-w-xs flex-col items-center gap-3">
+              <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+                <Search className="size-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Sin préstamos</p>
+                <p className="text-sm text-muted-foreground">No hay coincidencias con los filtros actuales.</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEstadoFiltro("")
+                  setConInteresPendiente(false)
+                  setSearchInput("")
+                  setPage(1)
+                }}
+              >
+                Limpiar filtros
+              </Button>
+            </div>
+          </TableCell>
         </TableRow>
       )
     }
+
+    // ── Data rows ────────────────────────────────────────────────────
     return rows.map((p) => {
       const saldado = p.estado === "SALDADO"
       const cli = p.clientes
-      const rep = cli?.representantes
-        ? `${cli.representantes.nombre ?? ""} ${cli.representantes.apellido ?? ""}`.trim()
-        : ""
       const atencionFecha = requiereAtencionFecha(p)
+
       return (
-        <TableRow key={p.id} className={cn(rowVisualClasses(p), "transition-colors")}>
-          <TableCell className="w-14 align-top">
-            <div className="flex flex-col items-center gap-1.5 py-0.5">
-              {p.estado === "MORA" ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex rounded-md bg-destructive/15 p-1">
-                      <AlertTriangle className="size-5 text-destructive" aria-hidden />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>En mora</TooltipContent>
-                </Tooltip>
-              ) : null}
-              {p.tiene_interes_pendiente ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex rounded-md bg-amber-500/20 p-1 ring-1 ring-amber-500/40">
-                      <CircleDollarSign className="size-4 text-amber-800 dark:text-amber-200" aria-hidden />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Interés pendiente (histórico)</TooltipContent>
-                </Tooltip>
-              ) : null}
-              {atencionFecha ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex rounded-md bg-amber-500/15 p-1">
-                      <CalendarClock className="size-4 text-amber-700 dark:text-amber-300" aria-hidden />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Vencimiento próximo o atrasado (sin mora)</TooltipContent>
-                </Tooltip>
-              ) : null}
-              {p.tiene_capitalizacion_auto ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex rounded-md bg-violet-500/15 p-1">
-                      <Zap className="size-4 text-violet-700 dark:text-violet-300" aria-hidden />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Hubo capitalización automática (reganche AUTO)</TooltipContent>
-                </Tooltip>
-              ) : null}
-              {p.tiene_capitalizacion_manual ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex rounded-md bg-sky-500/15 p-1">
-                      <PenLine className="size-4 text-sky-800 dark:text-sky-200" aria-hidden />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Hubo capitalización manual (reganche MANUAL)</TooltipContent>
-                </Tooltip>
-              ) : null}
+        <TableRow key={p.id} className={cn(rowVisualClasses(p), "group transition-colors")}>
+
+          {/* Col 1 — Cliente: nombre + #ID·cédula·empresa + señales inline */}
+          <TableCell className="py-2.5">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="font-medium leading-snug">
+                  {cli ? `${cli.nombre} ${cli.apellido}` : "—"}
+                </span>
+                {p.estado === "MORA" && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded bg-destructive/15">
+                        <AlertTriangle className="size-2.5 text-destructive" aria-hidden />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>En mora</TooltipContent>
+                  </Tooltip>
+                )}
+                {p.tiene_interes_pendiente && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded bg-amber-500/20">
+                        <CircleDollarSign className="size-2.5 text-amber-700 dark:text-amber-300" aria-hidden />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Interés pendiente</TooltipContent>
+                  </Tooltip>
+                )}
+                {atencionFecha && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded bg-amber-400/15">
+                        <CalendarClock className="size-2.5 text-amber-700 dark:text-amber-300" aria-hidden />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Vencimiento próximo o atrasado</TooltipContent>
+                  </Tooltip>
+                )}
+                {p.tiene_capitalizacion_auto && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded bg-[rgba(0,210,255,0.10)]">
+                        <Zap className="size-2.5 text-[#0044AA] dark:text-[#00D2FF]" aria-hidden />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Capitalización AUTO</TooltipContent>
+                  </Tooltip>
+                )}
+                {p.tiene_capitalizacion_manual && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded bg-sky-500/15">
+                        <PenLine className="size-2.5 text-sky-700 dark:text-sky-200" aria-hidden />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Capitalización MANUAL</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+              <p className="mt-0.5 max-w-[28ch] truncate text-[11px] text-muted-foreground">
+                #{p.id}
+                {cli?.cedula ? ` · ${formatCedula(cli.cedula)}` : ""}
+                {cli?.empresas?.nombre ? ` · ${cli.empresas.nombre}` : ""}
+              </p>
             </div>
           </TableCell>
-          <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">#{p.id}</TableCell>
-          <TableCell>
-            <div className="font-medium">
-              {cli ? `${cli.nombre} ${cli.apellido}` : "—"}
-            </div>
-            <div className="mt-0.5 text-xs text-muted-foreground">
-              Cédula: {cli?.cedula ?? "—"}
-              {cli?.empresas?.nombre ? (
-                <>
-                  <span className="hidden sm:inline"> · </span>
-                  <span className="block sm:inline">Empresa: {cli.empresas.nombre}</span>
-                </>
-              ) : null}
-              {rep ? (
-                <>
-                  <span className="hidden sm:inline"> · </span>
-                  <span className="block sm:inline">Rep.: {rep}</span>
-                </>
-              ) : null}
-            </div>
+
+          {/* Col 2 — Monto: visible lg+ */}
+          <TableCell className="hidden lg:table-cell whitespace-nowrap tabular-nums text-sm">
+            {formatRD(p.monto)}
           </TableCell>
-          <TableCell>{formatRD(p.monto)}</TableCell>
-          <TableCell>{saldado ? "—" : formatRD(p.interes_proximo)}</TableCell>
-          <TableCell>
+
+          {/* Col 3 — Capital a debitar: siempre visible, input compacto */}
+          <TableCell className="py-2">
             <CapitalDebitarInline
               prestamoId={p.id}
               saldado={saldado}
@@ -583,53 +640,59 @@ export default function PrestamosPage() {
               onActualizado={load}
             />
           </TableCell>
-          <TableCell>{p.tasa_interes}%</TableCell>
+
+          {/* Col 4 — Tasa: visible xl+ */}
+          <TableCell className="hidden xl:table-cell whitespace-nowrap tabular-nums text-sm">
+            {p.tasa_interes}%
+          </TableCell>
+
+          {/* Col 5 — Próximo vencimiento: formato corto, resaltado si urgente */}
           <TableCell className="whitespace-nowrap">
-            <span
-              className={cn(
-                !saldado && atencionFecha && "rounded-md bg-amber-500/20 px-2 py-0.5 font-semibold text-amber-950 dark:text-amber-100",
-              )}
-            >
-              {p.fecha_proximo_vencimiento}
+            <span className={cn(
+              "text-sm tabular-nums",
+              !saldado && atencionFecha && "rounded-md bg-amber-500/20 px-1.5 py-0.5 font-semibold text-amber-950 dark:text-amber-100",
+            )}>
+              {fmtFecha(p.fecha_proximo_vencimiento)}
             </span>
           </TableCell>
-          <TableCell className="font-medium">{saldado ? "—" : formatRD(p.total_proximo_pago)}</TableCell>
-          <TableCell>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge
-                variant={estBadgeVariant(p.estado)}
-                className={cn(
-                  "text-[11px] uppercase tracking-wide shadow-sm",
-                  p.estado === "MORA" && "ring-2 ring-destructive/50",
-                )}
-              >
-                {p.estado}
-              </Badge>
-              {p.tiene_interes_pendiente ? (
-                <Badge
-                  variant="outline"
-                  className="border-amber-600/60 bg-amber-500/20 font-semibold text-amber-950 dark:text-amber-100"
-                >
-                  Int. pend.
-                </Badge>
-              ) : null}
-              {p.tiene_capitalizacion_auto ? (
-                <Badge variant="outline" className="border-violet-500/50 bg-violet-500/15 text-violet-950 dark:text-violet-100">
-                  Cap. AUTO
-                </Badge>
-              ) : null}
-              {p.tiene_capitalizacion_manual ? (
-                <Badge variant="outline" className="border-sky-500/50 bg-sky-500/15 text-sky-950 dark:text-sky-100">
-                  Cap. MANUAL
-                </Badge>
-              ) : null}
-              {!saldado ? atencionVencimientoBadges(p) : null}
-            </div>
+
+          {/* Col 6 — Próximo pago total + interés como subtítulo */}
+          <TableCell className="whitespace-nowrap">
+            {saldado ? (
+              <span className="text-muted-foreground">—</span>
+            ) : (
+              <div>
+                <div className="font-medium tabular-nums">{formatRD(p.total_proximo_pago)}</div>
+                <div className="text-[10px] text-muted-foreground tabular-nums">
+                  Int: {formatRD(p.interes_proximo)}
+                </div>
+              </div>
+            )}
           </TableCell>
+
+          {/* Col 7 — Estado: badge compacto */}
+          <TableCell>
+            <Badge
+              variant={estBadgeVariant(p.estado)}
+              className={cn(
+                "text-[10px] uppercase tracking-wide",
+                p.estado === "MORA" && "ring-1 ring-destructive/40",
+              )}
+            >
+              {p.estado}
+            </Badge>
+          </TableCell>
+
+          {/* Col 8 — Acciones: aparece al hover */}
           <TableCell className="text-right">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="icon" variant="ghost" className="size-8" aria-label="Acciones">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-8 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                  aria-label="Acciones"
+                >
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -658,10 +721,9 @@ export default function PrestamosPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Préstamos</h1>
-            <p className="text-sm text-muted-foreground">
-              Seguimiento diario: filtros, búsqueda y métricas del portafolio. Colores de fila: mora · vence
-              pronto o atrasado · al día.
+            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Préstamos</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Seguimiento diario del portafolio: filtros, búsqueda y métricas.
             </p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
@@ -739,7 +801,7 @@ export default function PrestamosPage() {
                                 <CommandGroup>
                                   {clienteResults.map((c) => {
                                     const title = `${c.nombre ?? ""} ${c.apellido ?? ""}`.trim()
-                                    const meta = [c.cedula, c.telefono].filter(Boolean).join(" · ")
+                                    const meta = [c.cedula ? formatCedula(c.cedula) : null, c.telefono ? formatPhone(c.telefono) : null].filter(Boolean).join(" · ")
                                     const selected = form.clienteId === String(c.id)
                                     return (
                                       <CommandItem
@@ -904,19 +966,13 @@ export default function PrestamosPage() {
                 value: resumen ? formatRD(resumen.capitalizacionManual) : "—",
               },
             ].map((k) => (
-              <Card key={k.title} className="border-border/60 shadow-sm">
-                <CardHeader className="pb-1 pt-3">
-                  <CardTitle className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {k.title}
-                  </CardTitle>
-                  <CardDescription className="text-[10px] leading-tight">{k.desc}</CardDescription>
-                </CardHeader>
-                <CardContent className="pb-3 pt-0">
-                  <p className="text-lg font-semibold tabular-nums sm:text-xl">
-                    {resumenLoading ? "…" : k.value}
-                  </p>
-                </CardContent>
-              </Card>
+              <div key={k.title} className="stat-card">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{k.title}</p>
+                <p className="mt-1 text-lg font-semibold tabular sm:text-xl">
+                  {resumenLoading ? "…" : k.value}
+                </p>
+                <p className="text-[10px] text-muted-foreground">{k.desc}</p>
+              </div>
             ))}
           </div>
           {resumen ? (
@@ -959,31 +1015,31 @@ export default function PrestamosPage() {
                 desc: "Reganches AUTO en los últimos 7 días",
                 value: resumen?.alertas?.capitalizacionesAutoUltimos7Dias,
                 icon: Zap,
-                className: "border-violet-500/25 bg-violet-500/5",
+                className: "border-[rgba(0,210,255,0.20)] bg-[rgba(0,210,255,0.04)]",
               },
             ].map((a) => {
               const Icon = a.icon
               return (
-                <Card key={a.title} className={cn("border shadow-sm", a.className)}>
-                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4">
-                    <div>
-                      <CardTitle className="text-sm font-semibold leading-tight">{a.title}</CardTitle>
-                      <CardDescription className="text-[11px] leading-snug">{a.desc}</CardDescription>
+                <div key={a.title} className="stat-card">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-muted-foreground">{a.title}</p>
+                      <p className="mt-1 text-2xl font-bold tabular">
+                        {resumenLoading ? "…" : String(a.value ?? "—")}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">{a.desc}</p>
                     </div>
-                    <Icon className="size-5 shrink-0 opacity-70" aria-hidden />
-                  </CardHeader>
-                  <CardContent className="pb-4 pt-0">
-                    <p className="text-3xl font-bold tabular-nums">
-                      {resumenLoading ? "…" : String(a.value ?? "—")}
-                    </p>
-                  </CardContent>
-                </Card>
+                    <div className="metric-icon shrink-0">
+                      <Icon className="size-4" />
+                    </div>
+                  </div>
+                </div>
               )
             })}
           </div>
         </section>
 
-        <div className="rounded-xl border border-border/60 bg-card/50 p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="grid w-full gap-3 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-4">
               <div className="space-y-2 sm:col-span-2">
@@ -1078,141 +1134,160 @@ export default function PrestamosPage() {
           </p>
         </div>
 
-        <div className="hidden md:block rounded-xl border border-border/60">
-          <Table>
+        {/* ── Desktop table ── */}
+        <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+          <Table className="min-w-[560px]">
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-14 text-center">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help">Señales</span>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      Iconos: mora, interés pendiente, vencimiento, capitalización AUTO/MANUAL en historial.
-                    </TooltipContent>
-                  </Tooltip>
-                </TableHead>
-                <TableHead className="w-[4.5rem]">ID</TableHead>
+              <TableRow className="bg-muted/30">
                 <TableHead>Cliente</TableHead>
-                <TableHead>Monto original</TableHead>
-                <TableHead>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help border-b border-dotted border-muted-foreground/50">
-                        Int. próx. cuota
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      Interés del período sobre capital pendiente (próxima cuota estimada). No es el total
-                      histórico de intereses atrasados.
-                    </TooltipContent>
-                  </Tooltip>
-                </TableHead>
-                <TableHead className="min-w-[9rem]">Capital a debitar</TableHead>
-                <TableHead>Tasa %</TableHead>
-                <TableHead>Próximo venc.</TableHead>
-                <TableHead>Próximo pago</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="w-[3rem] text-right"> </TableHead>
+                <TableHead className="hidden lg:table-cell whitespace-nowrap">Monto</TableHead>
+                <TableHead className="whitespace-nowrap">Capital deb.</TableHead>
+                <TableHead className="hidden xl:table-cell w-12">Tasa</TableHead>
+                <TableHead className="w-20">Venc.</TableHead>
+                <TableHead className="w-28">Próx. pago</TableHead>
+                <TableHead className="w-24">Estado</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>{tableRows}</TableBody>
           </Table>
         </div>
 
-        <div className="md:hidden block space-y-3">
+        {/* ── Mobile cards ── */}
+        <div className="md:hidden space-y-3">
           {loading ? (
-            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">Cargando…</div>
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="animate-pulse rounded-xl border border-border bg-card p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-2">
+                      <div className="h-4 w-40 rounded bg-muted" />
+                      <div className="h-3 w-28 rounded bg-muted" />
+                    </div>
+                    <div className="h-5 w-14 rounded-full bg-muted" />
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div className="h-3 w-20 rounded bg-muted" />
+                    <div className="h-3 w-20 rounded bg-muted" />
+                    <div className="h-8 w-full rounded bg-muted" />
+                    <div className="h-3 w-20 rounded bg-muted" />
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <div className="h-8 flex-1 rounded bg-muted" />
+                    <div className="h-8 w-24 rounded bg-muted" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : rows.length === 0 ? (
-            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
-              Sin préstamos con estos filtros
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-14 text-center">
+              <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+                <Search className="size-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Sin préstamos</p>
+                <p className="text-sm text-muted-foreground">No hay coincidencias con los filtros actuales.</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
+                Limpiar filtros
+              </Button>
             </div>
           ) : (
             <div className="space-y-3">
               {rows.map((p) => {
                 const saldado = p.estado === "SALDADO"
                 const cli = p.clientes
+                const atencionFecha = requiereAtencionFecha(p)
                 return (
                   <div
                     key={p.id}
-                    className={cn("rounded-xl border border-border/60 bg-card/80 p-4", rowVisualClasses(p))}
+                    className={cn("rounded-xl border border-border bg-card p-4", rowVisualClasses(p))}
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-muted-foreground">#{p.id}</span>
-                          <Badge variant={estBadgeVariant(p.estado)} className="uppercase">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-semibold leading-snug">
+                            {cli ? `${cli.nombre} ${cli.apellido}` : "—"}
+                          </span>
+                          <Badge variant={estBadgeVariant(p.estado)} className="text-[10px] uppercase tracking-wide">
                             {p.estado}
                           </Badge>
-                          {p.tiene_interes_pendiente ? (
-                            <Badge
-                              variant="outline"
-                              className="border-amber-600/60 bg-amber-500/20 font-semibold text-amber-950 dark:text-amber-100"
-                            >
+                          {p.tiene_interes_pendiente && (
+                            <Badge variant="outline" className="border-amber-600/60 bg-amber-500/20 text-[10px] font-semibold text-amber-950 dark:text-amber-100">
                               Int. pend.
                             </Badge>
-                          ) : null}
+                          )}
                         </div>
-                        {!saldado ? atencionVencimientoBadges(p) : null}
-                        <p className="text-sm text-muted-foreground">
-                          Cliente: {cli ? `${cli.nombre} ${cli.apellido}` : "—"}
-                          <span className="ml-1 font-medium text-foreground">{cli?.cedula ? `(${cli.cedula})` : ""}</span>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          #{p.id}
+                          {cli?.cedula ? ` · ${formatCedula(cli.cedula)}` : ""}
+                          {cli?.empresas?.nombre ? ` · ${cli.empresas.nombre}` : ""}
                         </p>
                       </div>
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {p.tiene_capitalizacion_auto ? (
-                          <Badge variant="outline" className="border-violet-500/50 bg-violet-500/15 text-violet-950 dark:text-violet-100">
-                            Cap. AUTO
-                          </Badge>
-                        ) : null}
-                        {p.tiene_capitalizacion_manual ? (
-                          <Badge variant="outline" className="border-sky-500/50 bg-sky-500/15 text-sky-950 dark:text-sky-100">
-                            Cap. MANUAL
-                          </Badge>
-                        ) : null}
+                      {/* Signal icons */}
+                      <div className="flex shrink-0 items-center gap-1">
+                        {p.tiene_capitalizacion_auto && (
+                          <span className="inline-flex size-6 items-center justify-center rounded bg-[rgba(0,210,255,0.10)]">
+                            <Zap className="size-3.5 text-[#0044AA] dark:text-[#00D2FF]" />
+                          </span>
+                        )}
+                        {p.tiene_capitalizacion_manual && (
+                          <span className="inline-flex size-6 items-center justify-center rounded bg-sky-500/15">
+                            <PenLine className="size-3.5 text-sky-700 dark:text-sky-200" />
+                          </span>
+                        )}
+                        {!saldado && atencionFecha && (
+                          <span className="inline-flex size-6 items-center justify-center rounded bg-amber-400/15">
+                            <CalendarClock className="size-3.5 text-amber-700 dark:text-amber-300" />
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Monto original</p>
+                    {/* Metrics 2×2 */}
+                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Monto</p>
                         <p className="font-semibold tabular-nums">{formatRD(p.monto)}</p>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Tasa</p>
-                        <p className="font-semibold">{p.tasa_interes}%</p>
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Próx. pago</p>
+                        <p className="font-semibold tabular-nums">{saldado ? "—" : formatRD(p.total_proximo_pago)}</p>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Int. próxima cuota</p>
-                        <p className="font-semibold tabular-nums">{saldado ? "—" : formatRD(p.interes_proximo)}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Capital a debitar</p>
+                      <div>
+                        <p className="mb-1 text-[11px] text-muted-foreground">Capital a debitar</p>
                         <CapitalDebitarInline
                           prestamoId={p.id}
                           saldado={saldado}
                           valorGuardado={String(p.capital_debitar_proximo)}
                           onActualizado={load}
-                          className="h-9 w-full max-w-[14rem]"
+                          className="h-9 w-full"
                         />
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Próximo venc.</p>
-                        <p className="font-semibold">{p.fecha_proximo_vencimiento}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Próximo pago</p>
-                        <p className="font-semibold tabular-nums">{saldado ? "—" : formatRD(p.total_proximo_pago)}</p>
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Vencimiento</p>
+                        <p className={cn(
+                          "font-semibold tabular-nums",
+                          !saldado && atencionFecha && "text-amber-700 dark:text-amber-400",
+                        )}>
+                          {fmtFecha(p.fecha_proximo_vencimiento)}
+                        </p>
+                        {!saldado && <div className="mt-0.5">{atencionVencimientoBadges(p)}</div>}
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-col gap-2">
-                      <Button asChild variant="secondary" className="w-full justify-center">
+                    {/* Actions */}
+                    <div className="mt-4 flex gap-2">
+                      <Button asChild variant="secondary" size="sm" className="flex-1">
                         <Link href={`/prestamos/${p.id}`}>Ver préstamo</Link>
                       </Button>
                       {cli?.id ? (
-                        <Button asChild variant="outline" className="w-full justify-center">
-                          <Link href={`/clientes/${cli.id}`}>Ficha cliente</Link>
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/clientes/${cli.id}`} className="flex items-center gap-1.5">
+                            <User className="size-3.5" />
+                            Cliente
+                          </Link>
                         </Button>
                       ) : null}
                     </div>

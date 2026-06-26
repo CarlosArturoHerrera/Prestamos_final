@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { normalizeSearchTerm } from "@/lib/formatters"
 import { representanteCreateSchema } from "@/lib/validations/schemas"
 
 export async function GET(request: Request) {
@@ -36,7 +37,8 @@ export async function GET(request: Request) {
   }
   if (search) {
     const s = `%${search}%`
-    q = q.or(`nombre.ilike.${s},apellido.ilike.${s},email.ilike.${s},telefono.ilike.${s}`)
+    const sn = `%${normalizeSearchTerm(search)}%`
+    q = q.or(`nombre.ilike.${s},apellido.ilike.${s},email.ilike.${s},telefono.ilike.${sn}`)
   }
 
   const { data: reps, error, count } = await q.range(from, to)

@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { useInView } from "@/hooks/use-in-view";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { interesPeriodo } from "@/lib/finance";
+import { formatCedula } from "@/lib/formatters";
 import { formatRD } from "@/lib/format-currency";
 import { cn } from "@/lib/utils";
 
@@ -88,7 +89,7 @@ const LoanHeader = memo(function LoanHeader({
         </Button>
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
               Préstamo de{" "}
               {cliente
                 ? `${cliente.nombre ?? ""} ${cliente.apellido ?? ""}`.trim()
@@ -99,7 +100,7 @@ const LoanHeader = memo(function LoanHeader({
             </Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Cédula: {cliente?.cedula ?? "—"} · Empresa:{" "}
+            Cédula: {formatCedula(cliente?.cedula ?? "")} · Empresa:{" "}
             {cliente?.empresas?.nombre ?? "—"} · Representante:{" "}
             {cliente?.representantes
               ? `${cliente.representantes.nombre ?? ""} ${cliente.representantes.apellido ?? ""}`.trim()

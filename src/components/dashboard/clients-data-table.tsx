@@ -15,6 +15,8 @@ import { ArrowUpDown, ChevronLeft, ChevronRight, Eye, Edit2, Trash2, Search } fr
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
+import { formatPhone, unformatPhone } from "@/lib/formatters"
 import {
   Table,
   TableBody,
@@ -378,7 +380,7 @@ export function ClientsDataTable({
                 </div>
                 <div className="col-span-2">
                   <label htmlFor="phone" className="text-xs font-semibold text-muted-foreground">Teléfono</label>
-                  <p className="font-medium">{viewClient.phone}</p>
+                  <p className="font-medium">{formatPhone(viewClient.phone)}</p>
                 </div>
                 <div>
                   <label htmlFor="segment" className="text-xs font-semibold text-muted-foreground">Segmento</label>
@@ -431,10 +433,9 @@ export function ClientsDataTable({
               </div>
               <div className="grid gap-2">
                 <label htmlFor="phone" className="text-sm font-medium">Teléfono</label>
-                <Input
+                <PhoneInput
                   value={editClient.phone}
-                  onChange={(e) => setEditClient({ ...editClient, phone: e.target.value })}
-                  placeholder="+1 809 ..."
+                  onChange={(raw) => setEditClient({ ...editClient, phone: raw })}
                 />
               </div>
               <div className="grid gap-2">

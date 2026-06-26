@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   ChevronLeft,
@@ -62,8 +62,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
+import { formatPhone } from "@/lib/formatters";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { cn } from "@/lib/utils";
 
@@ -117,7 +119,7 @@ const RepresentanteDesktopRow = memo(function RepresentanteDesktopRow({
       <TableCell>
         <span className="inline-flex items-center gap-1.5 text-sm">
           <Phone className="size-3.5 text-muted-foreground" />
-          {rep.telefono}
+          {formatPhone(rep.telefono)}
         </span>
       </TableCell>
       <TableCell>
@@ -221,7 +223,7 @@ const RepresentanteMobileCard = memo(function RepresentanteMobileCard({
           <div className="text-sm font-medium">
             <span className="inline-flex items-center gap-1.5">
               <Phone className="size-3.5 text-muted-foreground" />
-              {rep.telefono}
+              {formatPhone(rep.telefono)}
             </span>
           </div>
         </div>
@@ -477,7 +479,7 @@ export default function RepresentantesPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Representantes</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Representantes</h1>
             <p className="text-sm text-muted-foreground">
               Contactos para cobranza. Búsqueda por nombre, apellido, email o
               teléfono.
@@ -537,11 +539,9 @@ export default function RepresentantesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Teléfono / WhatsApp</Label>
-                    <Input
+                    <PhoneInput
                       value={form.telefono}
-                      onChange={(e) =>
-                        setForm({ ...form, telefono: e.target.value })
-                      }
+                      onChange={(raw) => setForm({ ...form, telefono: raw })}
                       required
                     />
                   </div>
@@ -584,7 +584,7 @@ export default function RepresentantesPage() {
             Panel
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Card className="border-border/60 shadow-sm">
+            <Card className="border-border shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                   <UserCircle2 className="size-4 text-primary" />
@@ -600,7 +600,7 @@ export default function RepresentantesPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-border/60 shadow-sm">
+            <Card className="border-border shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                   <Users className="size-4 text-primary" />
@@ -622,7 +622,7 @@ export default function RepresentantesPage() {
           </div>
         </section>
 
-        <div className="rounded-xl border border-border/60 bg-card/50 p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1 space-y-2">
@@ -706,15 +706,15 @@ export default function RepresentantesPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-xl border border-border/60">
-            <Table>
+          <div className="overflow-x-auto rounded-xl border border-border/60">
+            <Table className="min-w-[560px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[4rem]">ID</TableHead>
                   <TableHead>Representante</TableHead>
-                  <TableHead>Teléfono</TableHead>
+                  <TableHead className="w-36">Teléfono</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Cartera</TableHead>
+                  <TableHead className="w-28">Cartera</TableHead>
                   <TableHead className="w-[3rem] text-right">
                     Acciones
                   </TableHead>
@@ -780,3 +780,4 @@ export default function RepresentantesPage() {
     </TooltipProvider>
   );
 }
+

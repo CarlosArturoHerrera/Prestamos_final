@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { RESULTADOS_GESTION_COBRANZA } from "@/lib/gestion-cobranza"
+import { unformatCedula, unformatPhone } from "@/lib/formatters"
 
 const moneyString = z.union([
   z.string().regex(/^\d+(\.\d{1,4})?$/, "Monto inválido"),
@@ -7,27 +8,49 @@ const moneyString = z.union([
 ])
 const positiveMoney = moneyString.refine((v) => Number(v) > 0, "Debe ser un monto mayor que 0")
 
+const phoneField = (msg = "Teléfono obligatorio") =>
+  z
+    .string()
+    .min(1, msg)
+    .max(50)
+    .transform(unformatPhone)
+
+const phoneFieldOptional = () =>
+  z
+    .string()
+    .max(50)
+    .transform((v) => (v ? unformatPhone(v) : v))
+    .optional()
+    .nullable()
+
+const cedulaField = (msg = "Cédula obligatoria") =>
+  z
+    .string()
+    .min(1, msg)
+    .max(50)
+    .transform(unformatCedula)
+
 export const empresaCreateSchema = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio").max(500),
   rnc: z.string().max(100).optional().nullable(),
   direccion: z.string().max(1000).optional().nullable(),
-  telefono: z.string().max(50).optional().nullable(),
+  telefono: phoneFieldOptional(),
   email: z.union([z.string().email("Email inválido"), z.literal(""), z.null()]).optional(),
 })
 
 export const representanteCreateSchema = z.object({
   nombre: z.string().min(1, "Nombre obligatorio").max(200),
   apellido: z.string().min(1, "Apellido obligatorio").max(200),
-  telefono: z.string().min(1, "Teléfono / WhatsApp obligatorio").max(50),
+  telefono: phoneField("Teléfono / WhatsApp obligatorio"),
   email: z.string().email("Email inválido"),
 })
 
 export const clienteCreateSchema = z.object({
   nombre: z.string().min(1).max(200),
   apellido: z.string().min(1).max(200),
-  cedula: z.string().min(1).max(50),
+  cedula: cedulaField(),
   ubicacion: z.string().min(1).max(1000),
-  telefono: z.string().min(1).max(50),
+  telefono: phoneField(),
   estadoValidacion: z.enum(["VALIDADO", "PENDIENTE_VALIDAR"]).optional(),
   representanteId: z.coerce.number().int().positive({
     message: "Selecciona un representante",

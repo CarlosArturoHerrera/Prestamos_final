@@ -53,7 +53,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { CedulaInput } from "@/components/ui/cedula-input"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
+import { formatCedula, formatPhone } from "@/lib/formatters"
 import { useDebouncedValue } from "@/lib/use-debounced-value"
 import { cn } from "@/lib/utils"
 
@@ -341,11 +344,11 @@ export default function ClientesPage() {
             {c.nombre} {c.apellido}
           </Link>
         </TableCell>
-        <TableCell className="font-mono text-sm">{c.cedula}</TableCell>
+        <TableCell className="font-mono text-sm">{formatCedula(c.cedula)}</TableCell>
         <TableCell>
           <span className="inline-flex items-center gap-1.5 text-sm">
             <Phone className="size-3.5 text-muted-foreground" />
-            {c.telefono}
+            {formatPhone(c.telefono)}
           </span>
         </TableCell>
         <TableCell>
@@ -403,9 +406,9 @@ export default function ClientesPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Clientes</h1>
-            <p className="text-sm text-muted-foreground">
-              Deudores vinculados a empresa y representante. Búsqueda por nombre, apellido o cédula.
+            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Clientes</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Deudores vinculados a empresa y representante.
             </p>
           </div>
           <Dialog
@@ -493,9 +496,9 @@ export default function ClientesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Cédula / DNI</Label>
-                    <Input
+                    <CedulaInput
                       value={form.cedula}
-                      onChange={(e) => setForm({ ...form, cedula: e.target.value })}
+                      onChange={(raw) => setForm({ ...form, cedula: raw })}
                       required
                     />
                   </div>
@@ -509,9 +512,9 @@ export default function ClientesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Teléfono</Label>
-                    <Input
+                    <PhoneInput
                       value={form.telefono}
-                      onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                      onChange={(raw) => setForm({ ...form, telefono: raw })}
                       required
                     />
                   </div>
@@ -630,48 +633,27 @@ export default function ClientesPage() {
           </Dialog>
         </div>
 
-        <section aria-label="Resumen de clientes">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Panel
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold">Total clientes</CardTitle>
-                <CardDescription>Registrados</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold tabular-nums">{resumenLoading ? "…" : (resumen?.total ?? "—")}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold">Validados</CardTitle>
-                <CardDescription>Listos para operar</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold tabular-nums">
-                  {resumenLoading ? "…" : (resumen?.validados ?? "—")}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-amber-500/20 bg-amber-500/[0.04] shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold text-amber-950 dark:text-amber-100">
-                  Pendientes de validar
-                </CardTitle>
-                <CardDescription>Requieren revisión</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold tabular-nums text-amber-950 dark:text-amber-100">
-                  {resumenLoading ? "…" : (resumen?.pendientesValidacion ?? "—")}
-                </p>
-              </CardContent>
-            </Card>
+        <section aria-label="Resumen de clientes" className="grid gap-3 sm:grid-cols-3">
+          <div className="stat-card">
+            <p className="text-xs font-medium text-muted-foreground">Total clientes</p>
+            <p className="mt-1 text-2xl font-bold tabular">{resumenLoading ? "…" : (resumen?.total ?? "—")}</p>
+            <p className="text-xs text-muted-foreground">Registrados</p>
+          </div>
+          <div className="stat-card">
+            <p className="text-xs font-medium text-muted-foreground">Validados</p>
+            <p className="mt-1 text-2xl font-bold tabular">{resumenLoading ? "…" : (resumen?.validados ?? "—")}</p>
+            <p className="text-xs text-muted-foreground">Listos para operar</p>
+          </div>
+          <div className="stat-card border-l-amber-400">
+            <p className="text-xs font-medium text-muted-foreground">Pendientes de validar</p>
+            <p className="mt-1 text-2xl font-bold tabular text-amber-600 dark:text-amber-400">
+              {resumenLoading ? "…" : (resumen?.pendientesValidacion ?? "—")}
+            </p>
+            <p className="text-xs text-muted-foreground">Requieren revisión</p>
           </div>
         </section>
 
-        <div className="rounded-xl border border-border/60 bg-card/50 p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-2 lg:col-span-2">
               <Label htmlFor="cli-search">Buscar</Label>
@@ -756,17 +738,17 @@ export default function ClientesPage() {
           </p>
         </div>
 
-        <div className="hidden md:block rounded-xl border border-border/60">
-          <Table>
+        <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+          <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[4rem]">ID</TableHead>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Cédula</TableHead>
-                <TableHead>Teléfono</TableHead>
+                <TableHead className="w-32">Cédula</TableHead>
+                <TableHead className="w-36">Teléfono</TableHead>
                 <TableHead>Empresa</TableHead>
                 <TableHead>Representante</TableHead>
-                <TableHead>
+                <TableHead className="w-28">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="cursor-help border-b border-dotted border-muted-foreground/50">
@@ -778,8 +760,8 @@ export default function ClientesPage() {
                     </TooltipContent>
                   </Tooltip>
                 </TableHead>
-                <TableHead>Último pago</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
+                <TableHead className="w-28">Último pago</TableHead>
+                <TableHead className="w-16 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>{tableRows}</TableBody>
@@ -788,9 +770,9 @@ export default function ClientesPage() {
 
         <div className="md:hidden block space-y-3">
           {loading ? (
-            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">Cargando…</div>
+            <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">Cargando…</div>
           ) : rows.length === 0 ? (
-            <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+            <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
               Sin clientes con estos filtros
             </div>
           ) : (
@@ -798,7 +780,7 @@ export default function ClientesPage() {
               {rows.map((c) => (
                 <div
                   key={c.id}
-                  className={cn("rounded-xl border border-border/60 bg-card/80 p-4", rowClass(c))}
+                  className={cn("rounded-xl border border-border bg-card/80 p-4", rowClass(c))}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
@@ -809,11 +791,11 @@ export default function ClientesPage() {
                       <div className="text-base font-semibold leading-tight">
                         {c.nombre} {c.apellido}
                       </div>
-                      <p className="text-sm text-muted-foreground">Cédula: {c.cedula}</p>
+                      <p className="text-sm text-muted-foreground">Cédula: {formatCedula(c.cedula)}</p>
                       <p className="text-sm text-muted-foreground">
                         <span className="inline-flex items-center gap-2">
                           <Phone className="size-3.5 text-muted-foreground" />
-                          {c.telefono}
+                          {formatPhone(c.telefono)}
                         </span>
                       </p>
                     </div>

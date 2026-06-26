@@ -1,0 +1,25 @@
+{
+  // ─── CSS: delegar validación al validador de Tailwind ───────────────────────
+  // El validador nativo de VS Code no conoce @apply, @theme, @layer, @variant,
+  // ni otras directivas de Tailwind v4. Desactivarlo evita falsos positivos.
+  "css.validate": false,
+  "scss.validate": false,
+  "less.validate": false,
+
+  // ─── Tailwind CSS IntelliSense ───────────────────────────────────────────────
+  // Activa el autocompletado y la validación en archivos CSS/JSX/TSX.
+  "tailwindCSS.includeLanguages": {
+    "typescript": "javascript",
+    "typescriptreact": "javascript"
+  },
+  // Necesario para Tailwind v4: indica que el archivo CSS raíz es globals.css
+  "tailwindCSS.experimental.configFile": "src/app/globals.css",
+
+  // ─── Editor ─────────────────────────────────────────────────────────────────
+  "editor.quickSuggestions": {
+    "strings": "on"
+  },
+
+  // ─── TypeScript ─────────────────────────────────────────────────────────────
+  "typescript.tsdk": "node_modules/typescript/lib"
+}

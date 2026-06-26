@@ -9,7 +9,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, full_name")
+    .select("role, full_name, is_active")
     .eq("id", session.userId)
     .maybeSingle()
 
@@ -17,5 +17,6 @@ export async function GET() {
     userId: session.userId,
     role: profile?.role ?? session.role,
     fullName: profile?.full_name ?? null,
+    isActive: profile?.is_active ?? session.isActive,
   })
 }

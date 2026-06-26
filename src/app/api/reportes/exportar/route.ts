@@ -3,6 +3,7 @@ import { jsPDF } from "jspdf"
 import Decimal from "decimal.js"
 import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { formatCedula, formatPhone } from "@/lib/formatters"
 import { reportesQuerySchema } from "@/lib/validations/schemas"
 
 // ── Shared layout / color constants ──────────────────────────────────────────
@@ -14,27 +15,27 @@ const FOOTER_Y = PAGE_H - 13
 
 type RGB = [number, number, number]
 const C: Record<string, RGB> = {
-  headerBg: [30,  27,  75],
+  headerBg: [0,   82,  204],   // #0052CC brand primary
   white:    [255, 255, 255],
-  headerSub:[199, 210, 254],
-  accent:   [79,  70,  229],
-  tblHead:  [79,  70,  229],
-  tblAlt:   [238, 242, 255],
-  border:   [209, 213, 219],
+  headerSub:[0,   210, 255],   // #00D2FF brand accent
+  accent:   [0,   82,  204],   // #0052CC
+  tblHead:  [0,   82,  204],   // #0052CC
+  tblAlt:   [244, 246, 250],   // #F4F6FA light bg
+  border:   [226, 232, 240],   // #E2E8F0
   moraHead: [153, 27,  27],
   moraRowA: [254, 242, 242],
   moraRowB: [254, 226, 226],
-  totalBg:  [224, 231, 255],
-  totalTxt: [49,  46,  129],
-  kpiBg:    [249, 250, 251],
-  kpiBorder:[224, 231, 255],
-  body:     [17,  24,  39],
-  muted:    [107, 114, 128],
-  sectionBg:[30,  27,  75],
+  totalBg:  [232, 240, 254],   // #E8F0FE brand tint
+  totalTxt: [0,   52,  163],   // #0034A3 dark brand
+  kpiBg:    [244, 246, 250],   // #F4F6FA
+  kpiBorder:[226, 232, 240],   // #E2E8F0
+  body:     [10,  14,  23],    // #0A0E17
+  muted:    [92,  107, 137],   // #5C6B89
+  sectionBg:[0,   82,  204],   // #0052CC
   green:    [5,   150, 105],
   amber:    [180, 83,  9],
   red:      [185, 28,  28],
-  gray:     [107, 114, 128],
+  gray:     [92,  107, 137],   // #5C6B89
 }
 function sf(doc: jsPDF, c: RGB) { doc.setFillColor(c[0], c[1], c[2]) }
 function sd(doc: jsPDF, c: RGB) { doc.setDrawColor(c[0], c[1], c[2]) }
@@ -190,19 +191,19 @@ function stampFooters(doc: jsPDF, now: Date) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const XL = {
-  hdrBg:  "FF1E1B4B", hdrTxt: "FFFFFFFF", hdrSub: "FFC7D2FE",
-  accBg:  "FF4F46E5", accTxt: "FFFFFFFF",
-  tblHd:  "FF4F46E5", tblTxt: "FFFFFFFF",
-  tblAlt: "FFEEF2FF", white:  "FFFFFFFF", lgray: "FFF3F4F6",
-  bdr:    "FFD1D5DB",
+  hdrBg:  "FF0052CC", hdrTxt: "FFFFFFFF", hdrSub: "FF00D2FF",  // brand primary + accent
+  accBg:  "FF0052CC", accTxt: "FFFFFFFF",
+  tblHd:  "FF0052CC", tblTxt: "FFFFFFFF",
+  tblAlt: "FFF4F6FA", white:  "FFFFFFFF", lgray: "FFF4F6FA",
+  bdr:    "FFE2E8F0",
   moraHd: "FF991B1B", moraTx: "FFFFFFFF",
   moraA:  "FFFEF2F2", moraB:  "FFFEE2E2",
-  totBg:  "FFE0E7FF", totTx:  "FF312E81",
-  kpiBg:  "FFF9FAFB", kpiBdr: "FFE0E7FF",
-  blue:   "FF4F46E5", green:  "FF059669", amber: "FFB45309",
-  red:    "FFB91C1C", gray:   "FF6B7280",
-  body:   "FF111827", muted:  "FF6B7280",
-  infoBg: "FFEFF6FF", infoTx: "FF3730A3",
+  totBg:  "FFE8F0FE", totTx:  "FF0044AA",  // brand tint + dark brand
+  kpiBg:  "FFF4F6FA", kpiBdr: "FFE2E8F0",
+  blue:   "FF0052CC", green:  "FF059669", amber: "FFB45309",
+  red:    "FFB91C1C", gray:   "FF5C6B89",
+  body:   "FF0A0E17", muted:  "FF5C6B89",
+  infoBg: "FFE8F0FE", infoTx: "FF003499",  // brand tint + deep brand
 }
 // biome-ignore lint: any needed for exceljs dynamic shape
 function xFill(argb: string): any {
@@ -470,7 +471,7 @@ async function generateExcel(params: {
     { header: "Tasa %",      key: "tasa",           width: 8,  align: "center" },
     { header: "Próx. Vto.",  key: "vto",            width: 14, align: "center" },
   ]
-  const actRows = params.activos.map((r, i) => ({ num: i + 1, cliente: r.cliente, cedula: r.cedula, monto: Number(r.monto), cap: Number(r.capital_pendiente), tasa: `${r.tasa_interes}%`, vto: fmtDate(r.fecha_proximo_vencimiento) })) as Record<string, unknown>[]
+  const actRows = params.activos.map((r, i) => ({ num: i + 1, cliente: r.cliente, cedula: formatCedula(r.cedula), monto: Number(r.monto), cap: Number(r.capital_pendiente), tasa: `${r.tasa_interes}%`, vto: fmtDate(r.fecha_proximo_vencimiento) })) as Record<string, unknown>[]
   y = xlTable(shAct, y, 7, `PRÉSTAMOS ACTIVOS (${params.activos.length})`, colsAct, actRows,
     { num: null, cliente: `TOTALES — ${params.activos.length} préstamos`, cedula: null, monto: sumActivoMonto.toNumber(), cap: sumActivoPend.toNumber(), tasa: null, vto: null })
   xlFooter(shAct, y, 7, dateStr)
@@ -489,7 +490,7 @@ async function generateExcel(params: {
     { header: "Días Atraso", key: "dias",   width: 12, align: "center" },
     { header: "Fecha Venc.", key: "vto",    width: 14, align: "center" },
   ]
-  const moraRows = params.mora.map((r, i) => ({ num: i + 1, cliente: r.cliente, cedula: r.cedula, monto: Number(r.monto), cap: Number(r.capital_pendiente), dias: `${diasAtraso(r.fecha_proximo_vencimiento)} días`, vto: fmtDate(r.fecha_proximo_vencimiento) })) as Record<string, unknown>[]
+  const moraRows = params.mora.map((r, i) => ({ num: i + 1, cliente: r.cliente, cedula: formatCedula(r.cedula), monto: Number(r.monto), cap: Number(r.capital_pendiente), dias: `${diasAtraso(r.fecha_proximo_vencimiento)} días`, vto: fmtDate(r.fecha_proximo_vencimiento) })) as Record<string, unknown>[]
   y = xlTable(shMora, y, 7, `PRÉSTAMOS VENCIDOS / MORA (${params.mora.length})`, colsMora, moraRows,
     { num: null, cliente: `TOTALES — ${params.mora.length} préstamos en mora`, cedula: null, monto: sumMoraMonto.toNumber(), cap: sumMoraPend.toNumber(), dias: `~${avgDias} días (prom.)`, vto: null },
     { warningMode: true })
@@ -507,7 +508,7 @@ async function generateExcel(params: {
     { header: "Empresa",         key: "empresa",  width: 25, align: "left"   },
     { header: "Saldo Pendiente", key: "saldo",    width: 20, align: "right",  fmt: '"RD$"#,##0.00' },
   ]
-  const cliRows = params.clientesSaldo.map((c, i) => ({ num: i + 1, cliente: c.cliente, telefono: c.telefono, empresa: c.empresa, saldo: Number(c.saldo) })) as Record<string, unknown>[]
+  const cliRows = params.clientesSaldo.map((c, i) => ({ num: i + 1, cliente: c.cliente, telefono: formatPhone(c.telefono), empresa: c.empresa, saldo: Number(c.saldo) })) as Record<string, unknown>[]
   y = xlTable(shCli, y, 5, `CLIENTES CON SALDO PENDIENTE (${params.clientesSaldo.length})`, colsCli, cliRows,
     { num: null, cliente: `TOTAL — ${params.clientesSaldo.length} clientes`, telefono: null, empresa: null, saldo: totalSaldoCli.toNumber() })
   xlFooter(shCli, y, 5, dateStr)
@@ -648,7 +649,7 @@ export async function GET(request: Request) {
   ]
   const sumAM = activos.reduce((s, r) => s.plus(r.monto), new Decimal(0))
   const sumAP = activos.reduce((s, r) => s.plus(r.capital_pendiente), new Decimal(0))
-  y = drawSection(doc, y, `PRÉSTAMOS ACTIVOS (${activos.length})`, `Prestado: ${fmtRD(sumAM.toFixed(2))}  |  Pendiente: ${fmtRD(sumAP.toFixed(2))}`, colsAct, activos.map((r, i) => ({ ...r, num: i + 1 })) as Record<string, unknown>[], { num: null, cliente: `TOTALES — ${activos.length} préstamos`, cedula: null, monto: sumAM.toFixed(2), capital_pendiente: sumAP.toFixed(2), tasa_interes: null, fecha_proximo_vencimiento: null }, { addPage })
+  y = drawSection(doc, y, `PRÉSTAMOS ACTIVOS (${activos.length})`, `Prestado: ${fmtRD(sumAM.toFixed(2))}  |  Pendiente: ${fmtRD(sumAP.toFixed(2))}`, colsAct, activos.map((r, i) => ({ ...r, cedula: formatCedula(r.cedula), num: i + 1 })) as Record<string, unknown>[], { num: null, cliente: `TOTALES — ${activos.length} préstamos`, cedula: null, monto: sumAM.toFixed(2), capital_pendiente: sumAP.toFixed(2), tasa_interes: null, fecha_proximo_vencimiento: null }, { addPage })
 
   if (mora.length > 0) {
     const colsMora: ColDef[] = [
@@ -662,7 +663,7 @@ export async function GET(request: Request) {
     ]
     const sumMM = mora.reduce((s, r) => s.plus(r.monto), new Decimal(0))
     const sumMP = mora.reduce((s, r) => s.plus(r.capital_pendiente), new Decimal(0))
-    const moraRows = mora.map((r, i) => ({ ...r, num: i + 1, dias: diasAtraso(r.fecha_proximo_vencimiento) })) as Record<string, unknown>[]
+    const moraRows = mora.map((r, i) => ({ ...r, cedula: formatCedula(r.cedula), num: i + 1, dias: diasAtraso(r.fecha_proximo_vencimiento) })) as Record<string, unknown>[]
     const avgD = mora.length > 0 ? Math.round(moraRows.reduce((s, r) => s + (r.dias as number), 0) / mora.length) : 0
     y = drawSection(doc, y, `PRÉSTAMOS VENCIDOS / MORA (${mora.length})`, `Pendiente: ${fmtRD(sumMP.toFixed(2))}  |  Prom. atraso: ${avgD} días`, colsMora, moraRows, { num: null, cliente: `TOTALES — ${mora.length} préstamos en mora`, cedula: null, monto: sumMM.toFixed(2), capital_pendiente: sumMP.toFixed(2), dias: `~${avgD} días (prom.)`, fecha_proximo_vencimiento: null }, { warningMode: true, addPage })
   }
@@ -676,7 +677,7 @@ export async function GET(request: Request) {
       { header: "Saldo Pendiente", key: "saldo", w: 40, align: "right", fmt: fmtRD },
     ]
     const sumS = clientesSaldo.reduce((s, c) => s.plus(c.saldo), new Decimal(0))
-    y = drawSection(doc, y, `CLIENTES CON SALDO PENDIENTE (${clientesSaldo.length})`, `Total: ${fmtRD(sumS.toFixed(2))}`, colsCli, clientesSaldo.map((c, i) => ({ ...c, num: i + 1 })) as Record<string, unknown>[], { num: null, cliente: `TOTAL — ${clientesSaldo.length} clientes`, telefono: null, empresa: null, saldo: sumS.toFixed(2) }, { addPage })
+    y = drawSection(doc, y, `CLIENTES CON SALDO PENDIENTE (${clientesSaldo.length})`, `Total: ${fmtRD(sumS.toFixed(2))}`, colsCli, clientesSaldo.map((c, i) => ({ ...c, telefono: formatPhone(c.telefono), num: i + 1 })) as Record<string, unknown>[], { num: null, cliente: `TOTAL — ${clientesSaldo.length} clientes`, telefono: null, empresa: null, saldo: sumS.toFixed(2) }, { addPage })
   }
 
   stampFooters(doc, now)

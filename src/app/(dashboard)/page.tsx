@@ -2,15 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
+import { motion, type Variants } from "framer-motion"
 import {
   AlertCircle,
   ArrowRight,
+  BarChart3,
   Building2,
   CalendarClock,
   CircleDollarSign,
   ClipboardList,
-  PhoneForwarded,
   Landmark,
+  PhoneForwarded,
   PiggyBank,
   Sparkles,
   TrendingUp,
@@ -24,7 +26,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Skeleton } from "@/components/ui/skeleton"
+import { CardGridSkeleton, TableSkeleton } from "@/components/shared/data-skeleton"
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
 import { formatRD } from "@/lib/format-currency"
 import { labelResultadoGestion } from "@/lib/gestion-cobranza"
@@ -36,10 +38,7 @@ type AbonoReciente = {
   fecha_abono: string
   total_pagado: string | number
   prestamo_id: number
-  prestamos?: {
-    id: number
-    clientes?: { nombre: string; apellido: string } | null
-  } | null
+  prestamos?: { id: number; clientes?: { nombre: string; apellido: string } | null } | null
 }
 
 type Stats = {
@@ -56,21 +55,9 @@ type Stats = {
   abonos_recientes: AbonoReciente[]
 }
 
-type ClientesResumen = {
-  total: number
-  validados: number
-  pendientesValidacion: number
-}
-
-type EmpresasResumen = {
-  total: number
-  conRnc: number
-}
-
-type RepresentantesResumen = {
-  totalRepresentantes: number
-  totalClientesVinculados: number
-}
+type ClientesResumen = { total: number; validados: number; pendientesValidacion: number }
+type EmpresasResumen = { total: number; conRnc: number }
+type RepresentantesResumen = { totalRepresentantes: number; totalClientesVinculados: number }
 
 type PrestamosResumen = {
   totalPrestado: string
@@ -100,10 +87,7 @@ type GestionPendienteRow = {
   prestamos: { id: number; estado: string; capital_pendiente: string } | null
 }
 
-type GestionPendientesRes = {
-  total: number
-  items: GestionPendienteRow[]
-}
+type GestionPendientesRes = { total: number; items: GestionPendienteRow[] }
 
 type DashboardData = {
   stats: Stats
@@ -117,65 +101,97 @@ type DashboardData = {
 const quickLinks = [
   {
     href: "/clientes?estadoValidacion=PENDIENTE_VALIDAR",
-    label: "Clientes pendientes de validar",
-    desc: "Expedientes por revisar",
+    label: "Clientes por validar",
+    desc: "Expedientes pendientes de revisión",
     icon: UserCheck,
-    variant: "amber" as const,
+    color: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40",
   },
   {
     href: "/prestamos?estado=MORA",
     label: "Préstamos en mora",
-    desc: "Seguimiento prioritario",
+    desc: "Seguimiento prioritario de cartera",
     icon: AlertCircle,
-    variant: "destructive" as const,
+    color: "text-red-600 dark:text-red-400",
+    bg: "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40",
   },
   {
     href: "/prestamos?conInteresPendiente=true",
-    label: "Con interés pendiente",
-    desc: "Histórico de períodos abiertos",
+    label: "Interés pendiente",
+    desc: "Períodos con interés abierto",
     icon: CircleDollarSign,
-    variant: "amber" as const,
+    color: "text-primary",
+    bg: "bg-card border-border",
   },
   {
     href: "/empresas?sinRnc=true",
     label: "Empresas sin RNC",
     desc: "Completar datos fiscales",
     icon: Building2,
-    variant: "muted" as const,
+    color: "text-muted-foreground",
+    bg: "bg-muted/30 border-border",
   },
   {
     href: "/representantes?conClientes=true",
-    label: "Representantes con cartera",
-    desc: "Cartera asignada",
+    label: "Cartera de representantes",
+    desc: "Clientes vinculados activos",
     icon: Users,
-    variant: "default" as const,
+    color: "text-primary",
+    bg: "bg-card border-border",
   },
   {
     href: "/prestamos",
-    label: "Cobranza y gestión",
-    desc: "Registra seguimientos en el detalle de préstamo o cliente",
+    label: "Gestión de cobranza",
+    desc: "Registra seguimientos y contactos",
     icon: PhoneForwarded,
-    variant: "default" as const,
+    color: "text-primary",
+    bg: "bg-card border-border",
   },
 ]
 
-function Metric({
+const fade: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  show: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.05, duration: 0.3, ease: [0.4, 0, 0.2, 1] },
+  }),
+}
+
+function StatCard({
   label,
   value,
   sub,
-  className,
+  icon: Icon,
+  accent,
+  index = 0,
 }: {
   label: string
-  value: string
+  value: string | number
   sub?: string
-  className?: string
+  icon: React.ElementType
+  accent?: string
+  index?: number
 }) {
   return (
-    <div className={cn("space-y-1", className)}>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">{value}</p>
-      {sub ? <p className="text-xs text-muted-foreground">{sub}</p> : null}
-    </div>
+    <motion.div
+      className="stat-card"
+      custom={index}
+      variants={fade}
+      initial="hidden"
+      animate="show"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+          <p className={cn("mt-1 text-2xl font-bold tracking-tight tabular", accent)}>{value}</p>
+          {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
+        </div>
+        <div className="metric-icon shrink-0">
+          <Icon className="size-4" />
+        </div>
+      </div>
+    </motion.div>
   )
 }
 
@@ -205,38 +221,12 @@ export default function DashboardPage() {
       fetchApi<GestionPendientesRes>("/api/dashboard/gestion-pendientes"),
     ])
 
-    if (!rStats.ok) {
-      redirectToLoginIfUnauthorized(rStats.status)
-      setError(rStats.message)
-      setLoading(false)
-      return
-    }
-    if (!rCli.ok) {
-      redirectToLoginIfUnauthorized(rCli.status)
-      setError(rCli.message)
-      setLoading(false)
-      return
-    }
-    if (!rEmp.ok) {
-      redirectToLoginIfUnauthorized(rEmp.status)
-      setError(rEmp.message)
-      setLoading(false)
-      return
-    }
-    if (!rRep.ok) {
-      redirectToLoginIfUnauthorized(rRep.status)
-      setError(rRep.message)
-      setLoading(false)
-      return
-    }
-    if (!rPre.ok) {
-      redirectToLoginIfUnauthorized(rPre.status)
-      setError(rPre.message)
-      setLoading(false)
-      return
-    }
+    if (!rStats.ok) { redirectToLoginIfUnauthorized(rStats.status); setError(rStats.message); setLoading(false); return }
+    if (!rCli.ok)   { redirectToLoginIfUnauthorized(rCli.status);   setError(rCli.message);   setLoading(false); return }
+    if (!rEmp.ok)   { redirectToLoginIfUnauthorized(rEmp.status);   setError(rEmp.message);   setLoading(false); return }
+    if (!rRep.ok)   { redirectToLoginIfUnauthorized(rRep.status);   setError(rRep.message);   setLoading(false); return }
+    if (!rPre.ok)   { redirectToLoginIfUnauthorized(rPre.status);   setError(rPre.message);   setLoading(false); return }
 
-    const gestionPendientes = rGestion.ok ? rGestion.data : null
     if (!rGestion.ok && rGestion.status === 401) {
       redirectToLoginIfUnauthorized(rGestion.status)
       setError(rGestion.message)
@@ -250,28 +240,22 @@ export default function DashboardPage() {
       empresas: rEmp.data,
       representantes: rRep.data,
       prestamos: rPre.data,
-      gestionPendientes,
+      gestionPendientes: rGestion.ok ? rGestion.data : null,
     })
     setLoading(false)
   }, [])
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  useEffect(() => { void load() }, [load])
 
   if (loading && !error) {
     return (
-      <div className="space-y-8">
-        <Skeleton className="h-12 w-full max-w-xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
-          ))}
-        </div>
+      <div className="space-y-8 animate-pulse">
+        <div className="h-8 w-48 rounded-lg bg-muted" />
+        <div className="h-28 w-full rounded-xl bg-muted" />
+        <CardGridSkeleton count={4} />
         <div className="grid gap-4 lg:grid-cols-2">
-          <Skeleton className="h-64 rounded-xl" />
-          <Skeleton className="h-64 rounded-xl" />
+          <div className="h-64 rounded-xl bg-muted" />
+          <div className="h-64 rounded-xl bg-muted" />
         </div>
       </div>
     )
@@ -281,14 +265,13 @@ export default function DashboardPage() {
     return (
       <div className="space-y-4">
         <Alert variant="destructive">
+          <AlertCircle className="size-4" />
           <AlertTitle>No se pudo cargar el panel</AlertTitle>
           <AlertDescription className="whitespace-pre-wrap text-sm">{error}</AlertDescription>
         </Alert>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={() => void load()}>
-            Reintentar
-          </Button>
-          <Button type="button" asChild variant="secondary">
+          <Button variant="outline" onClick={() => void load()}>Reintentar</Button>
+          <Button variant="secondary" asChild>
             <Link href="/login">Ir al inicio de sesión</Link>
           </Button>
         </div>
@@ -296,445 +279,384 @@ export default function DashboardPage() {
     )
   }
 
-  if (!data) {
-    return null
-  }
+  if (!data) return null
 
   const { stats, clientes, empresas, representantes, prestamos: fin, gestionPendientes } = data
   const empresasSinRnc = Math.max(0, empresas.total - empresas.conRnc)
   const abonosRec = stats.abonos_recientes ?? []
 
   return (
-    <div className="space-y-10 pb-8">
-      <header className="space-y-2 border-b border-border/60 pb-8">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="font-medium">
-            Elicar
-          </Badge>
-          <span className="text-sm text-muted-foreground">Visión global del sistema</span>
+    <div className="space-y-8 pb-6">
+      {/* ── Page header ── */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex flex-wrap items-center justify-between gap-4"
+      >
+        <div>
+          <h1 className="text-xl font-semibold text-foreground md:text-2xl">Panel general</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Estado de la cartera y señales operativas
+          </p>
         </div>
-        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Panel general</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
-          Estado de la cartera, red comercial y señales operativas. Los datos se actualizan al cargar la página.
-        </p>
-      </header>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/reportes" className="gap-1.5">
+            <BarChart3 className="size-3.5" />
+            Ver reportes
+          </Link>
+        </Button>
+      </motion.div>
 
-      {/* Cartera — jerarquía principal */}
-      <section aria-labelledby="cartera-heading" className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 id="cartera-heading" className="text-lg font-semibold tracking-tight">
-              Cartera
-            </h2>
-            <p className="text-sm text-muted-foreground">Montos y composición de préstamos</p>
+      {/* ── Cartera hero ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.05 }}
+        className="rounded-xl border border-border bg-card p-5 shadow-sm md:p-6"
+      >
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="metric-icon">
+              <TrendingUp className="size-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Cartera activa</p>
+              <p className="text-xs text-muted-foreground">Capital pendiente total</p>
+            </div>
           </div>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="ghost" size="sm" asChild className="gap-1 text-xs">
             <Link href="/prestamos">
-              Ir a préstamos
-              <ArrowRight className="ml-1 size-4" />
+              Ver préstamos
+              <ArrowRight className="size-3" />
             </Link>
           </Button>
         </div>
-        <Card className="overflow-hidden border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.04] shadow-md">
-          <CardContent className="grid gap-8 p-6 sm:p-8 lg:grid-cols-12 lg:gap-10">
-            <div className="lg:col-span-5">
-              <Metric
-                label="Capital pendiente"
-                value={formatRD(fin.capitalPendiente)}
-                sub="Principal por cobrar (excluye saldados)"
-                className="lg:pr-4"
-              />
+        <div className="grid gap-6 md:grid-cols-12">
+          <div className="md:col-span-5">
+            <p className="text-3xl font-bold tracking-tight tabular md:text-4xl">
+              {formatRD(fin.capitalPendiente)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Principal por cobrar (excluye saldados)</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <span className="badge-activo">Activos: {fin.prestamosActivos}</span>
+              <span className="badge-mora">Mora: {fin.prestamosMora}</span>
+              <span className="badge-saldado">Saldados: {fin.prestamosSaldados}</span>
             </div>
-            <div className="grid gap-6 sm:grid-cols-2 lg:col-span-7 lg:grid-cols-2">
-              <Metric label="Total histórico prestado" value={formatRD(fin.totalPrestado)} />
-              <Metric
-                label="Intereses pendientes (hist.)"
-                value={formatRD(fin.interesPendienteAcumulado)}
-                sub="Períodos en estado PENDIENTE"
-              />
-              <div className="flex flex-wrap gap-2 sm:col-span-2">
-                <Badge variant="default" className="px-3 py-1 text-xs">
-                  Activos: {fin.prestamosActivos}
-                </Badge>
-                <Badge variant="destructive" className="px-3 py-1 text-xs">
-                  Mora: {fin.prestamosMora}
-                </Badge>
-                <Badge variant="secondary" className="px-3 py-1 text-xs">
-                  Saldados: {fin.prestamosSaldados}
-                </Badge>
-              </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 md:col-span-7">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Total histórico prestado</p>
+              <p className="mt-1 text-xl font-bold tabular">{formatRD(fin.totalPrestado)}</p>
             </div>
-          </CardContent>
-        </Card>
-      </section>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Intereses pendientes (hist.)</p>
+              <p className="mt-1 text-xl font-bold tabular">{formatRD(fin.interesPendienteAcumulado)}</p>
+              <p className="text-[10px] text-muted-foreground">Períodos en estado PENDIENTE</p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
 
-      {/* Seguimiento y flujo */}
-      <section aria-labelledby="seguimiento-heading" className="space-y-4">
-        <h2 id="seguimiento-heading" className="text-lg font-semibold tracking-tight">
+      {/* ── Alert KPIs ── */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Seguimiento y cobranza
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          <Card className="border-amber-500/25 bg-amber-500/[0.04] shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <CalendarClock className="size-4 text-amber-600 dark:text-amber-400" />
-                Vencen en 7 días
-              </CardTitle>
-              <CardDescription>No saldados, próxima cuota en la ventana</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold tabular-nums">{fin.alertas.vencenProximos7Dias}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-destructive/25 bg-destructive/[0.04] shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <AlertCircle className="size-4 text-destructive" />
-                En mora
-              </CardTitle>
-              <CardDescription>Préstamos estado MORA</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold tabular-nums">{fin.alertas.enMora}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <CircleDollarSign className="size-4 text-primary" />
-                Con interés pendiente
-              </CardTitle>
-              <CardDescription>Préstamos con períodos abiertos</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold tabular-nums">{fin.alertas.prestamosConInteresPendiente}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <PiggyBank className="size-4 text-primary" />
-                Recaudación del mes
-              </CardTitle>
-              <CardDescription>Suma de abonos del mes en curso</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold tabular-nums sm:text-3xl">{formatRD(stats.recaudacion_mes)}</p>
-            </CardContent>
-          </Card>
-          <Card id="cobranza-pendientes" className="border-teal-500/25 bg-teal-500/[0.04] shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <PhoneForwarded className="size-4 text-teal-700 dark:text-teal-400" />
-                Contactos de cobranza pendientes
-              </CardTitle>
-              <CardDescription>
-                Última gestión con próxima fecha de contacto hoy o vencida (por cliente o préstamo)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold tabular-nums">{gestionPendientes?.total ?? "—"}</p>
-              {gestionPendientes == null ? (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Ejecuta la migración de gestión de cobranza en Supabase para activar este indicador.
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
-        </div>
-        {gestionPendientes && gestionPendientes.total > 0 ? (
-          <Card className="border-border/60 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold">Cola sugerida de seguimiento</CardTitle>
-              <CardDescription>Hasta 20 casos; abre el detalle para registrar una nueva gestión</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <ul className="space-y-2">
-                {gestionPendientes.items.map((row) => {
-                  const nombre = row.clientes
-                    ? `${row.clientes.nombre} ${row.clientes.apellido}`.trim()
-                    : `Cliente #${row.cliente_id}`
-                  const href = row.prestamo_id != null ? `/prestamos/${row.prestamo_id}` : `/clientes/${row.cliente_id}`
-                  return (
-                    <li key={`${row.prestamo_id ?? "c"}-${row.cliente_id}-${row.id}`}>
-                      <Link
-                        href={href}
-                        className="flex flex-col gap-1 rounded-lg border border-border/60 bg-muted/15 px-3 py-2.5 text-sm transition-colors hover:bg-muted/35 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span className="font-medium">{nombre}</span>
-                        <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <Badge variant="outline" className="text-[10px]">
-                            {labelResultadoGestion(row.resultado)}
-                          </Badge>
-                          <span className="tabular-nums">Próx. {row.proxima_fecha_contacto}</span>
-                          {row.prestamo_id != null ? (
-                            <span>Prést. #{row.prestamo_id}</span>
-                          ) : (
-                            <span>Solo cliente</span>
-                          )}
-                        </span>
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            </CardContent>
-          </Card>
-        ) : null}
-        <Card className="border-border/60 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <TrendingUp className="size-4" />
-              Clientes con préstamo activo
-            </CardTitle>
-            <CardDescription>Personas únicas con al menos un préstamo ACTIVO</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold tabular-nums">{stats.clientes_activos}</p>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Red comercial */}
-      <section aria-labelledby="red-heading" className="space-y-4">
-        <h2 id="red-heading" className="text-lg font-semibold tracking-tight">
-          Red comercial y maestros
-        </h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="border-border/60 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <Users className="size-4 text-primary" />
-                Clientes
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-sm text-muted-foreground">Total</span>
-                <span className="text-2xl font-bold tabular-nums">{clientes.total}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Validados</span>
-                <span className="font-semibold">{clientes.validados}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Pendientes</span>
-                <span className="font-semibold text-amber-700 dark:text-amber-300">
-                  {clientes.pendientesValidacion}
-                </span>
-              </div>
-              <Button variant="outline" size="sm" className="w-full" asChild>
-                <Link href="/clientes">Gestionar clientes</Link>
-              </Button>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <Landmark className="size-4 text-primary" />
-                Empresas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-sm text-muted-foreground">Registradas</span>
-                <span className="text-2xl font-bold tabular-nums">{empresas.total}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Con RNC</span>
-                <span className="font-semibold">{empresas.conRnc}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Sin RNC</span>
-                <span className="font-semibold">{empresasSinRnc}</span>
-              </div>
-              <Button variant="outline" size="sm" className="w-full" asChild>
-                <Link href="/empresas">Gestionar empresas</Link>
-              </Button>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <UserSquare2 className="size-4 text-primary" />
-                Representantes
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-sm text-muted-foreground">En catálogo</span>
-                <span className="text-2xl font-bold tabular-nums">{representantes.totalRepresentantes}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Clientes vinculados (total)</span>
-                <span className="font-semibold">{representantes.totalClientesVinculados}</span>
-              </div>
-              <Button variant="outline" size="sm" className="w-full" asChild>
-                <Link href="/representantes">Gestionar representantes</Link>
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <StatCard
+            label="Vencen en 7 días"
+            value={fin.alertas.vencenProximos7Dias}
+            sub="Próxima cuota en la ventana"
+            icon={CalendarClock}
+            accent="text-amber-600 dark:text-amber-400"
+            index={0}
+          />
+          <StatCard
+            label="En mora"
+            value={fin.alertas.enMora}
+            sub="Préstamos estado MORA"
+            icon={AlertCircle}
+            accent="text-destructive"
+            index={1}
+          />
+          <StatCard
+            label="Con interés pendiente"
+            value={fin.alertas.prestamosConInteresPendiente}
+            sub="Períodos abiertos"
+            icon={CircleDollarSign}
+            index={2}
+          />
+          <StatCard
+            label="Recaudación del mes"
+            value={formatRD(stats.recaudacion_mes)}
+            sub="Suma de abonos"
+            icon={PiggyBank}
+            index={3}
+          />
+          <StatCard
+            label="Cobranzas pendientes"
+            value={gestionPendientes?.total ?? "—"}
+            sub={gestionPendientes == null ? "Requiere migración" : "Próxima fecha vencida"}
+            icon={PhoneForwarded}
+            index={4}
+          />
         </div>
       </section>
 
-      {/* Capitalización reciente */}
-      <section aria-labelledby="cap-heading" className="space-y-4">
-        <h2 id="cap-heading" className="text-lg font-semibold tracking-tight">
-          Capitalización e histórico
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-violet-500/20 bg-violet-500/[0.04] shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <Zap className="size-3.5 text-violet-600" />
-                AUTO (acumulado)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xl font-bold tabular-nums">{formatRD(fin.capitalizacionAuto)}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-sky-500/20 bg-sky-500/[0.04] shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <ClipboardList className="size-3.5 text-sky-600" />
-                MANUAL (acumulado)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xl font-bold tabular-nums">{formatRD(fin.capitalizacionManual)}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 shadow-sm sm:col-span-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <Sparkles className="size-4" />
-                Capitalizaciones AUTO (últimos 7 días)
-              </CardTitle>
-              <CardDescription>Operaciones registradas en reganches</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold tabular-nums">{fin.alertas.capitalizacionesAutoUltimos7Dias}</p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+      {/* ── Cobranza queue ── */}
+      {gestionPendientes && gestionPendientes.total > 0 && (
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="space-y-3"
+        >
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Cola de seguimiento
+          </h2>
+          <div className="rounded-xl border border-border bg-card">
+            <div className="border-b border-border px-4 py-3">
+              <p className="text-sm font-medium text-foreground">
+                {gestionPendientes.total} caso{gestionPendientes.total !== 1 ? "s" : ""} pendiente{gestionPendientes.total !== 1 ? "s" : ""}
+              </p>
+              <p className="text-xs text-muted-foreground">Abre el detalle para registrar gestión</p>
+            </div>
+            <ul className="divide-y divide-border">
+              {gestionPendientes.items.map((row) => {
+                const nombre = row.clientes
+                  ? `${row.clientes.nombre} ${row.clientes.apellido}`.trim()
+                  : `Cliente #${row.cliente_id}`
+                const href = row.prestamo_id != null ? `/prestamos/${row.prestamo_id}` : `/clientes/${row.cliente_id}`
+                return (
+                  <li key={`${row.prestamo_id ?? "c"}-${row.cliente_id}-${row.id}`}>
+                    <Link
+                      href={href}
+                      className="flex flex-col gap-1 px-4 py-3 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <span className="font-medium text-foreground">{nombre}</span>
+                      <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline" className="text-[10px]">
+                          {labelResultadoGestion(row.resultado)}
+                        </Badge>
+                        <span className="tabular">Próx. {row.proxima_fecha_contacto}</span>
+                        {row.prestamo_id != null
+                          ? <span>Prést. #{row.prestamo_id}</span>
+                          : <span>Solo cliente</span>
+                        }
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        </motion.section>
+      )}
 
-      {/* Accesos rápidos */}
-      <section aria-labelledby="accesos-heading" className="space-y-4">
-        <h2 id="accesos-heading" className="text-lg font-semibold tracking-tight">
-          Accesos rápidos
+      {/* ── Red comercial ── */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Red comercial
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {quickLinks.map((q) => (
-            <Link
-              key={q.href}
-              href={q.href}
-              className={cn(
-                "group flex items-start gap-3 rounded-xl border p-4 shadow-sm transition-colors",
-                q.variant === "destructive" && "border-destructive/30 bg-destructive/[0.06] hover:bg-destructive/10",
-                q.variant === "amber" && "border-amber-500/30 bg-amber-500/[0.06] hover:bg-amber-500/10",
-                q.variant === "muted" && "border-border/80 bg-muted/30 hover:bg-muted/50",
-                q.variant === "default" && "border-border/60 bg-card hover:bg-accent/40",
-              )}
+        <div className="grid gap-3 md:grid-cols-3">
+          {[
+            {
+              icon: Users,
+              title: "Clientes",
+              total: clientes.total,
+              totalLabel: "Total registrados",
+              rows: [
+                { label: "Validados", value: clientes.validados },
+                { label: "Pendientes de validar", value: clientes.pendientesValidacion, accent: clientes.pendientesValidacion > 0 ? "text-amber-600 dark:text-amber-400" : undefined },
+              ],
+              href: "/clientes",
+              cta: "Ver clientes",
+            },
+            {
+              icon: Landmark,
+              title: "Empresas",
+              total: empresas.total,
+              totalLabel: "Total registradas",
+              rows: [
+                { label: "Con RNC", value: empresas.conRnc },
+                { label: "Sin RNC", value: empresasSinRnc },
+              ],
+              href: "/empresas",
+              cta: "Ver empresas",
+            },
+            {
+              icon: UserSquare2,
+              title: "Representantes",
+              total: representantes.totalRepresentantes,
+              totalLabel: "En catálogo",
+              rows: [
+                { label: "Clientes vinculados", value: representantes.totalClientesVinculados },
+                { label: "Con cartera activa", value: stats.clientes_activos },
+              ],
+              href: "/representantes",
+              cta: "Ver representantes",
+            },
+          ].map(({ icon: Icon, title, total, totalLabel, rows, href, cta }, i) => (
+            <motion.div
+              key={title}
+              custom={i}
+              variants={fade}
+              initial="hidden"
+              animate="show"
+              className="rounded-xl border border-border bg-card p-4 shadow-sm"
             >
-              <span
-                className={cn(
-                  "flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background/80",
-                  q.variant === "destructive" && "border-destructive/30 text-destructive",
-                  q.variant === "amber" && "border-amber-500/40 text-amber-700 dark:text-amber-300",
-                )}
-              >
-                <q.icon className="size-5" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="font-semibold leading-snug group-hover:underline">{q.label}</span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">{q.desc}</span>
-              </span>
-              <ArrowRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-            </Link>
+              <div className="mb-3 flex items-center gap-2">
+                <div className="metric-icon">
+                  <Icon className="size-4" />
+                </div>
+                <p className="font-medium text-foreground">{title}</p>
+              </div>
+              <p className="text-2xl font-bold tabular">{total}</p>
+              <p className="text-xs text-muted-foreground">{totalLabel}</p>
+              <Separator className="my-3" />
+              <div className="space-y-1.5">
+                {rows.map(({ label, value, accent }) => (
+                  <div key={label} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className={cn("font-medium", accent)}>{value}</span>
+                  </div>
+                ))}
+              </div>
+              <Button variant="outline" size="sm" className="mt-3 w-full" asChild>
+                <Link href={href}>{cta}</Link>
+              </Button>
+            </motion.div>
           ))}
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-border/60 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarClock className="size-4" />
-              Próximos vencimientos
-            </CardTitle>
-            <CardDescription>Préstamos ACTIVO o MORA ordenados por fecha de cuota</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {stats.proximos_vencimientos.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No hay préstamos en seguimiento.</p>
-            ) : (
-              <ul className="space-y-2">
-                {stats.proximos_vencimientos.map((p) => (
-                  <li key={p.id}>
-                    <Link
-                      href={`/prestamos/${p.id}`}
-                      className="flex flex-col gap-1 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <span className="font-medium">
-                        {p.clientes ? `${p.clientes.nombre} ${p.clientes.apellido}` : "Cliente"}{" "}
-                        <span className="font-normal text-muted-foreground">· #{p.id}</span>
+      {/* ── Capitalización ── */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Capitalización
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Auto (acumulado)", value: formatRD(fin.capitalizacionAuto), icon: Zap, accent: "text-primary dark:text-[#3385FF]" },
+            { label: "Manual (acumulado)", value: formatRD(fin.capitalizacionManual), icon: ClipboardList, accent: "text-[#0044AA] dark:text-[#00D2FF]" },
+            { label: "Auto últimos 7 días", value: fin.alertas.capitalizacionesAutoUltimos7Dias, icon: Sparkles, sub: "Operaciones en reganches" },
+            { label: "Clientes con préstamo activo", value: stats.clientes_activos, icon: UserCheck, sub: "Personas con al menos 1 activo" },
+          ].map(({ label, value, icon: Icon, accent, sub }, i) => (
+            <StatCard key={label} label={label} value={value} sub={sub} icon={Icon} accent={accent} index={i} />
+          ))}
+        </div>
+      </section>
+
+      {/* ── Quick links ── */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Accesos rápidos
+        </h2>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {quickLinks.map((q, i) => (
+            <motion.div key={q.href} custom={i} variants={fade} initial="hidden" animate="show">
+              <Link
+                href={q.href}
+                className={cn(
+                  "group flex items-center gap-3 rounded-xl border p-3.5 text-sm transition-all duration-150 hover:shadow-sm cursor-pointer",
+                  q.bg,
+                )}
+              >
+                <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-background/80 border border-border/50", q.color)}>
+                  <q.icon className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground leading-tight group-hover:text-primary transition-colors">{q.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{q.desc}</p>
+                </div>
+                <ArrowRight className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Activity feeds ── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Próximos vencimientos */}
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-4 py-3">
+            <div className="flex items-center gap-2">
+              <CalendarClock className="size-4 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground">Próximos vencimientos</p>
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              ACTIVO o MORA ordenados por fecha de cuota
+            </p>
+          </div>
+          {stats.proximos_vencimientos.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              No hay préstamos en seguimiento
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {stats.proximos_vencimientos.map((p) => (
+                <li key={p.id}>
+                  <Link
+                    href={`/prestamos/${p.id}`}
+                    className="flex flex-col gap-1 px-4 py-3 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <span className="font-medium">
+                      {p.clientes ? `${p.clientes.nombre} ${p.clientes.apellido}` : "Cliente"}
+                      <span className="font-normal text-muted-foreground"> · #{p.id}</span>
+                    </span>
+                    <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground tabular">
+                      <span>{p.fecha_proximo_vencimiento}</span>
+                      <span>·</span>
+                      <span>{formatRD(p.capital_pendiente)}</span>
+                      <span className={p.estado === "MORA" ? "badge-mora" : "badge-saldado"}>
+                        {p.estado}
                       </span>
-                      <span className="flex flex-wrap items-center gap-2 tabular-nums">
-                        <span>{p.fecha_proximo_vencimiento}</span>
-                        <span className="text-muted-foreground">·</span>
-                        <span>{formatRD(p.capital_pendiente)}</span>
-                        <Badge variant={p.estado === "MORA" ? "destructive" : "secondary"} className="text-[10px]">
-                          {p.estado}
-                        </Badge>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Actividad reciente */}
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-4 py-3">
+            <div className="flex items-center gap-2">
+              <PiggyBank className="size-4 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground">Actividad reciente</p>
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">Últimos abonos registrados</p>
+          </div>
+          {abonosRec.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              Aún no hay abonos registrados
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {abonosRec.map((a) => {
+                const cli = a.prestamos?.clientes
+                const nombre = cli ? `${cli.nombre} ${cli.apellido}`.trim() : "—"
+                return (
+                  <li key={a.id}>
+                    <Link
+                      href={`/prestamos/${a.prestamo_id}`}
+                      className="flex flex-col gap-1 px-4 py-3 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <span className="font-medium">{nombre}</span>
+                      <span className="tabular text-xs text-muted-foreground">
+                        {a.fecha_abono} · {formatRD(a.total_pagado)}
+                        <span className="ml-1.5">Prést. #{a.prestamo_id}</span>
                       </span>
                     </Link>
                   </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <PiggyBank className="size-4" />
-              Actividad reciente
-            </CardTitle>
-            <CardDescription>Últimos abonos registrados</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {abonosRec.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aún no hay abonos registrados.</p>
-            ) : (
-              <ul className="space-y-2">
-                {abonosRec.map((a) => {
-                  const cli = a.prestamos?.clientes
-                  const nombre = cli ? `${cli.nombre} ${cli.apellido}`.trim() : "—"
-                  return (
-                    <li key={a.id}>
-                      <Link
-                        href={`/prestamos/${a.prestamo_id}`}
-                        className="flex flex-col gap-1 rounded-lg border border-border/60 px-3 py-2.5 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span className="font-medium">{nombre}</span>
-                        <span className="tabular-nums text-muted-foreground">
-                          {a.fecha_abono} · {formatRD(a.total_pagado)}
-                          <span className="ml-2 text-xs">Prést. #{a.prestamo_id}</span>
-                        </span>
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+                )
+              })}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   )
