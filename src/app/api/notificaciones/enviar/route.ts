@@ -12,11 +12,13 @@ import {
   toTwilioWhatsAppAddress,
 } from "@/lib/twilio-whatsapp";
 import { notificacionEnviarSchema } from "@/lib/validations/schemas";
+import { notificationReporteEmail } from "@/lib/email-templates";
 
 async function enviarEmailResend(
   to: string,
   subject: string,
   text: string,
+  html?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
@@ -38,6 +40,7 @@ async function enviarEmailResend(
       to: [to],
       subject,
       text,
+      ...(html ? { html } : {}),
     }),
   });
 
@@ -239,10 +242,18 @@ export async function POST(request: Request) {
     }
 
     if (enviarEm) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://elicar.dev";
+      const emailPayload = notificationReporteEmail({
+        nombreRep,
+        lineas,
+        totalCarteraMora: total_cartera_mora,
+        actionUrl: siteUrl,
+      });
       const r = await enviarEmailResend(
         rep.email,
-        "Reporte de mora — cartera",
-        mensaje,
+        emailPayload.subject,
+        emailPayload.text,
+        emailPayload.html,
       );
       if (r.ok) {
         emOk = true;
