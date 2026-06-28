@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   Banknote,
@@ -11,76 +11,87 @@ import {
   Lock,
   Shield,
   TrendingUp,
-} from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { isSupabaseConfiguredOnClient } from "@/lib/env-public"
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
-import { toast } from "sonner"
+} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { isSupabaseConfiguredOnClient } from "@/lib/env-public";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { toast } from "sonner";
 
 const features = [
   { icon: Banknote, text: "Gestión de cartera de préstamos" },
   { icon: BarChart3, text: "Reportes y análisis en tiempo real" },
   { icon: TrendingUp, text: "Control de mora y capitalizaciones" },
   { icon: Shield, text: "Notificaciones automáticas WhatsApp" },
-]
+];
 
 const stats = [
   { value: "100%", label: "Seguro" },
   { value: "24/7", label: "Disponible" },
   { value: "DR", label: "Enfocado" },
-]
+];
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [configRedirect, setConfigRedirect] = useState(false)
-  const [inactiveError, setInactiveError] = useState(false)
+  const router = useRouter();
+  const [configRedirect, setConfigRedirect] = useState(false);
+  const [inactiveError, setInactiveError] = useState(false);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    setConfigRedirect(params.get("config") === "1")
-    setInactiveError(params.get("error") === "inactive")
-  }, [])
+    const params = new URLSearchParams(window.location.search);
+    setConfigRedirect(params.get("config") === "1");
+    setInactiveError(params.get("error") === "inactive");
+  }, []);
 
-  const hasSupabaseEnv = isSupabaseConfiguredOnClient()
-  const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({ email: "", password: "" })
+  const hasSupabaseEnv = isSupabaseConfiguredOnClient();
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({ email: "", password: "" });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
     try {
       if (!hasSupabaseEnv) {
-        toast.error("Configura las variables NEXT_PUBLIC_SUPABASE_* en el servidor")
-        return
+        toast.error(
+          "Configura las variables NEXT_PUBLIC_SUPABASE_* en el servidor",
+        );
+        return;
       }
-      const supabase = createSupabaseBrowserClient()
+      const supabase = createSupabaseBrowserClient();
       const { error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
-      })
+      });
       if (error) {
-        toast.error("Credenciales inválidas. Verifica tu correo y contraseña.")
+        toast.error("Credenciales inválidas. Verifica tu correo y contraseña.");
       } else {
-        router.push("/")
-        router.refresh()
+        router.push("/");
+        router.refresh();
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error al iniciar sesión")
+      toast.error(e instanceof Error ? e.message : "Error al iniciar sesión");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-screen">
       {/* ── Left panel: branding (hidden on mobile) ── */}
-      <div className="relative hidden w-[55%] flex-col justify-between overflow-hidden p-10 lg:flex xl:w-[60%]" style={{ background: "#0A0E17" }}>
+      <div
+        className="relative hidden w-[55%] flex-col justify-between overflow-hidden p-10 lg:flex xl:w-[60%]"
+        style={{ background: "#0A0E17" }}
+      >
         {/* Background gradient glows */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full blur-[120px]" style={{ background: "rgba(0,82,204,0.18)" }} />
-          <div className="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full blur-[100px]" style={{ background: "rgba(0,210,255,0.10)" }} />
+          <div
+            className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full blur-[120px]"
+            style={{ background: "rgba(0,82,204,0.18)" }}
+          />
+          <div
+            className="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full blur-[100px]"
+            style={{ background: "rgba(0,210,255,0.10)" }}
+          />
         </div>
         {/* Subtle grid */}
         <div
@@ -96,13 +107,20 @@ export default function LoginPage() {
         <div className="relative flex items-center gap-3">
           <div
             className="flex size-10 items-center justify-center rounded-xl text-white"
-            style={{ background: "linear-gradient(135deg, #0052CC 0%, #00D2FF 100%)", boxShadow: "0 4px 16px rgba(0,82,204,0.5)" }}
+            style={{
+              background: "linear-gradient(135deg, #0052CC 0%, #00D2FF 100%)",
+              boxShadow: "0 4px 16px rgba(0,82,204,0.5)",
+            }}
           >
             <TrendingUp className="size-5" />
           </div>
           <div>
-            <p className="text-sm font-bold text-white leading-tight tracking-tight">Préstamos Elicar</p>
-            <p className="text-xs" style={{ color: "#00D2FF" }}>Microfinanzas</p>
+            <p className="text-sm font-bold text-white leading-tight tracking-tight">
+              Préstamos Elicar
+            </p>
+            <p className="text-xs" style={{ color: "#00D2FF" }}>
+              Microfinanzas
+            </p>
           </div>
         </div>
 
@@ -114,13 +132,21 @@ export default function LoginPage() {
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
           <h1 className="mb-3 text-4xl font-bold leading-tight tracking-tight text-white xl:text-5xl">
-            Gestión de cartera<br />
-            <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(135deg, #3385FF 0%, #00D2FF 100%)" }}>
+            Gestión de cartera
+            <br />
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  "linear-gradient(135deg, #3385FF 0%, #00D2FF 100%)",
+              }}
+            >
               inteligente
             </span>
           </h1>
           <p className="mb-8 max-w-sm text-base text-white/50 leading-relaxed">
-            Panel operativo completo para administrar préstamos, clientes, cobros y reportes desde un solo lugar.
+            Panel operativo completo para administrar préstamos, clientes,
+            cobros y reportes desde un solo lugar.
           </p>
 
           {/* Feature list */}
@@ -163,12 +189,16 @@ export default function LoginPage() {
         <div className="mb-8 flex items-center gap-3 lg:hidden">
           <div
             className="flex size-10 items-center justify-center rounded-xl text-white"
-            style={{ background: "linear-gradient(135deg, #0052CC 0%, #00D2FF 100%)" }}
+            style={{
+              background: "linear-gradient(135deg, #0052CC 0%, #00D2FF 100%)",
+            }}
           >
             <TrendingUp className="size-5" />
           </div>
           <div>
-            <p className="font-bold text-foreground tracking-tight">Préstamos Elicar</p>
+            <p className="font-bold text-foreground tracking-tight">
+              Préstamos Elicar
+            </p>
             <p className="text-xs text-muted-foreground">Microfinanzas</p>
           </div>
         </div>
@@ -193,8 +223,13 @@ export default function LoginPage() {
             <Alert variant="destructive" className="mb-4">
               <AlertDescription className="text-xs">
                 Configura{" "}
-                <code className="rounded bg-destructive/10 px-1 text-[11px]">NEXT_PUBLIC_SUPABASE_URL</code> y{" "}
-                <code className="rounded bg-destructive/10 px-1 text-[11px]">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{" "}
+                <code className="rounded bg-destructive/10 px-1 text-[11px]">
+                  NEXT_PUBLIC_SUPABASE_URL
+                </code>{" "}
+                y{" "}
+                <code className="rounded bg-destructive/10 px-1 text-[11px]">
+                  NEXT_PUBLIC_SUPABASE_ANON_KEY
+                </code>{" "}
                 en el hosting y vuelve a desplegar.
               </AlertDescription>
             </Alert>
@@ -218,7 +253,9 @@ export default function LoginPage() {
                 type="email"
                 placeholder="correo@empresa.com"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 required
                 disabled={isLoading}
                 autoComplete="email"
@@ -234,7 +271,9 @@ export default function LoginPage() {
                 type="password"
                 placeholder="••••••••"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
                 required
                 disabled={isLoading}
                 autoComplete="current-password"
@@ -267,5 +306,5 @@ export default function LoginPage() {
         </motion.div>
       </div>
     </div>
-  )
+  );
 }

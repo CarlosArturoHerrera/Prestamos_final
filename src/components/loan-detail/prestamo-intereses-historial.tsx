@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
-import { Button } from "@/components/ui/button"
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -16,36 +16,36 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { formatRD } from "@/lib/format-currency"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/table";
+import { formatRD } from "@/lib/format-currency";
+import { cn } from "@/lib/utils";
 import {
   type CardField,
   ResponsiveHistoryCardList,
-} from "./responsive-history-card-list"
+} from "./responsive-history-card-list";
 
 type Props = {
-  intereses: Record<string, unknown>[]
-  applyingIntereses: boolean
-  onAplicarIntereses: (ids?: number[]) => void | Promise<void>
-  onMarcarInteresPagado: (interesId: number) => void | Promise<void>
-  onAnularInteres: (interesId: number) => void | Promise<void>
-}
+  intereses: Record<string, unknown>[];
+  applyingIntereses: boolean;
+  onAplicarIntereses: (ids?: number[]) => void | Promise<void>;
+  onMarcarInteresPagado: (interesId: number) => void | Promise<void>;
+  onAnularInteres: (interesId: number) => void | Promise<void>;
+};
 
 function num(v: unknown): string {
-  if (v == null || v === "") return "—"
-  const n = Number(v)
-  if (Number.isNaN(n)) return "—"
-  return formatRD(n)
+  if (v == null || v === "") return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return "—";
+  return formatRD(n);
 }
 
 function estadoLabel(estado: string): string {
-  const u = estado.toUpperCase()
-  if (u === "PENDIENTE") return "Pendiente"
-  if (u === "PAGADO") return "Pagado"
-  if (u === "CAPITALIZADO") return "Capitalizado"
-  if (u === "ANULADO") return "Anulado"
-  return estado || "—"
+  const u = estado.toUpperCase();
+  if (u === "PENDIENTE") return "Pendiente";
+  if (u === "PAGADO") return "Pagado";
+  if (u === "CAPITALIZADO") return "Capitalizado";
+  if (u === "ANULADO") return "Anulado";
+  return estado || "—";
 }
 
 // Module-level field definitions — value functions may return JSX.
@@ -58,8 +58,8 @@ const FIELDS: CardField[] = [
   {
     label: "Estado",
     value: (r): ReactNode => {
-      const estado = String(r.estado ?? "").toUpperCase()
-      const isPendiente = estado === "PENDIENTE"
+      const estado = String(r.estado ?? "").toUpperCase();
+      const isPendiente = estado === "PENDIENTE";
       return (
         <span
           className={cn(
@@ -69,7 +69,7 @@ const FIELDS: CardField[] = [
         >
           {estadoLabel(estado)}
         </span>
-      )
+      );
     },
   },
   {
@@ -85,8 +85,8 @@ const FIELDS: CardField[] = [
   {
     label: "Pendiente",
     value: (r): ReactNode => {
-      const estado = String(r.estado ?? "").toUpperCase()
-      const isPendiente = estado === "PENDIENTE"
+      const estado = String(r.estado ?? "").toUpperCase();
+      const isPendiente = estado === "PENDIENTE";
       return (
         <span
           className={cn(
@@ -96,10 +96,10 @@ const FIELDS: CardField[] = [
         >
           {num(r.interes_pendiente ?? r.monto)}
         </span>
-      )
+      );
     },
   },
-]
+];
 
 export function PrestamoInteresesHistorial({
   intereses,
@@ -110,7 +110,7 @@ export function PrestamoInteresesHistorial({
 }: Props) {
   const pendientes = intereses.filter(
     (i) => String(i.estado ?? "").toUpperCase() === "PENDIENTE",
-  )
+  );
 
   return (
     <Card>
@@ -118,7 +118,8 @@ export function PrestamoInteresesHistorial({
         <div className="min-w-0">
           <CardTitle className="text-base">Intereses por período</CardTitle>
           <CardDescription className="mt-1">
-            Intereses generados por período, que pueden ser pagados, capitalizados o eliminados.
+            Intereses generados por período, que pueden ser pagados,
+            capitalizados o eliminados.
           </CardDescription>
         </div>
         <Button
@@ -145,10 +146,10 @@ export function PrestamoInteresesHistorial({
               fields={FIELDS}
               rowKey={(r, i) => (r.id != null ? String(r.id) : `int-${i}`)}
               actions={(record, _idx) => {
-                const id = Number(record.id)
-                const estado = String(record.estado ?? "").toUpperCase()
-                const esPendiente = estado === "PENDIENTE"
-                if (!esPendiente || !Number.isFinite(id)) return null
+                const id = Number(record.id);
+                const estado = String(record.estado ?? "").toUpperCase();
+                const esPendiente = estado === "PENDIENTE";
+                if (!esPendiente || !Number.isFinite(id)) return null;
                 return (
                   <>
                     <Button
@@ -180,7 +181,7 @@ export function PrestamoInteresesHistorial({
                       Anular
                     </Button>
                   </>
-                )
+                );
               }}
             />
 
@@ -202,14 +203,16 @@ export function PrestamoInteresesHistorial({
                       Pagado
                     </TableHead>
                     <TableHead className="text-right">Pendiente</TableHead>
-                    <TableHead className="w-[200px] text-right">Acciones</TableHead>
+                    <TableHead className="w-[200px] text-right">
+                      Acciones
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {intereses.map((i, idx) => {
-                    const id = Number(i.id)
-                    const estado = String(i.estado ?? "").toUpperCase()
-                    const esPendiente = estado === "PENDIENTE"
+                    const id = Number(i.id);
+                    const estado = String(i.estado ?? "").toUpperCase();
+                    const esPendiente = estado === "PENDIENTE";
                     return (
                       <TableRow
                         key={i.id != null ? String(i.id) : `int-${idx}`}
@@ -270,11 +273,13 @@ export function PrestamoInteresesHistorial({
                               </Button>
                             </div>
                           ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                            <span className="text-xs text-muted-foreground">
+                              —
+                            </span>
                           )}
                         </TableCell>
                       </TableRow>
-                    )
+                    );
                   })}
                 </TableBody>
               </Table>
@@ -283,5 +288,5 @@ export function PrestamoInteresesHistorial({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

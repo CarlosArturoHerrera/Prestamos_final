@@ -1,14 +1,24 @@
-import { cn } from "@/lib/utils"
-import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export function TableSkeleton({ rows = 6, cols = 5 }: { rows?: number; cols?: number }) {
+export function TableSkeleton({
+  rows = 6,
+  cols = 5,
+}: {
+  rows?: number;
+  cols?: number;
+}) {
   return (
     <div className="rounded-xl border border-border bg-card">
       {/* Header row */}
       <div className="border-b border-border px-4 py-3">
         <div className="flex gap-4">
           {Array.from({ length: cols }).map((_, i) => (
-            <Skeleton key={i} className="h-4 flex-1" style={{ maxWidth: i === 0 ? 80 : undefined }} />
+            <Skeleton
+              key={i}
+              className="h-4 flex-1"
+              style={{ maxWidth: i === 0 ? 80 : undefined }}
+            />
           ))}
         </div>
       </div>
@@ -16,7 +26,10 @@ export function TableSkeleton({ rows = 6, cols = 5 }: { rows?: number; cols?: nu
       {Array.from({ length: rows }).map((_, row) => (
         <div
           key={row}
-          className={cn("flex items-center gap-4 px-4 py-3", row < rows - 1 && "border-b border-border")}
+          className={cn(
+            "flex items-center gap-4 px-4 py-3",
+            row < rows - 1 && "border-b border-border",
+          )}
         >
           {Array.from({ length: cols }).map((_, col) => (
             <Skeleton
@@ -31,7 +44,7 @@ export function TableSkeleton({ rows = 6, cols = 5 }: { rows?: number; cols?: nu
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 export function StatCardSkeleton() {
@@ -46,7 +59,7 @@ export function StatCardSkeleton() {
         <Skeleton className="size-9 rounded-lg" />
       </div>
     </div>
-  )
+  );
 }
 
 export function CardGridSkeleton({ count = 4 }: { count?: number }) {
@@ -56,7 +69,7 @@ export function CardGridSkeleton({ count = 4 }: { count?: number }) {
         <StatCardSkeleton key={i} />
       ))}
     </div>
-  )
+  );
 }
 
 export function FormSkeleton({ fields = 4 }: { fields?: number }) {
@@ -69,5 +82,5 @@ export function FormSkeleton({ fields = 4 }: { fields?: number }) {
         </div>
       ))}
     </div>
-  )
+  );
 }

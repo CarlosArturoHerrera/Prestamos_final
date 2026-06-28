@@ -1,10 +1,10 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 interface QuickPromptsProps {
-  prompts: string[]
-  onSelectPrompt: (prompt: string) => void
-  disabled?: boolean
-  show?: boolean
+  prompts: string[];
+  onSelectPrompt: (prompt: string) => void;
+  disabled?: boolean;
+  show?: boolean;
 }
 
 export function QuickPrompts({
@@ -13,7 +13,7 @@ export function QuickPrompts({
   disabled = false,
   show = true,
 }: QuickPromptsProps) {
-  if (!show) return null
+  if (!show) return null;
 
   return (
     <div className="grid grid-cols-1 gap-2">
@@ -30,5 +30,5 @@ export function QuickPrompts({
         </Button>
       ))}
     </div>
-  )
+  );
 }

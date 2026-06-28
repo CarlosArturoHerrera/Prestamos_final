@@ -1,22 +1,28 @@
-"use client"
+"use client";
 
-import { motion, useReducedMotion } from "framer-motion"
-import type { LucideIcon } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import { EASE, DUR } from "@/lib/motion"
+import { motion, useReducedMotion } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { EASE, DUR } from "@/lib/motion";
 
 export type KpiCard = {
-  title: string
-  value: string
-  description: string
-  icon: LucideIcon
+  title: string;
+  value: string;
+  description: string;
+  icon: LucideIcon;
   /** "brand" | "emerald" | "amber" | "rose" | "accent" */
-  color?: "brand" | "emerald" | "amber" | "rose" | "accent"
-}
+  color?: "brand" | "emerald" | "amber" | "rose" | "accent";
+};
 
 interface KpiGridProps {
-  items: KpiCard[]
+  items: KpiCard[];
 }
 
 const colorMap = {
@@ -50,34 +56,34 @@ const colorMap = {
     card: "border-rose-100 dark:border-rose-900/40",
     glow: "",
   },
-}
+};
 
 const containerVariants = {
   initial: {},
   animate: {
     transition: { staggerChildren: 0.065, delayChildren: 0.04 },
   },
-}
+};
 
 const cardVariants = {
   initial: { opacity: 0, y: 14, scale: 0.98 },
   animate: {
     opacity: 1,
-    y:       0,
-    scale:   1,
+    y: 0,
+    scale: 1,
     transition: { duration: DUR.slow, ease: EASE.out },
   },
-}
+};
 
 export function KpiGrid({ items }: KpiGridProps) {
-  const reduced = useReducedMotion()
+  const reduced = useReducedMotion();
 
   const getValueSize = (value: string) => {
-    const numericValue = value.replace(/[^0-9]/g, "").length
-    if (numericValue >= 7) return "text-xl"
-    if (numericValue >= 5) return "text-2xl"
-    return "text-3xl"
-  }
+    const numericValue = value.replace(/[^0-9]/g, "").length;
+    if (numericValue >= 7) return "text-xl";
+    if (numericValue >= 5) return "text-2xl";
+    return "text-3xl";
+  };
 
   return (
     <motion.section
@@ -87,7 +93,7 @@ export function KpiGrid({ items }: KpiGridProps) {
       animate="animate"
     >
       {items.map((item) => {
-        const colors = colorMap[item.color ?? "brand"]
+        const colors = colorMap[item.color ?? "brand"];
         return (
           <motion.div
             key={item.title}
@@ -96,8 +102,16 @@ export function KpiGrid({ items }: KpiGridProps) {
             <Card className={cn("stat-card h-full", colors.card)}>
               <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
                 <div className="space-y-1 min-w-0">
-                  <CardDescription className="text-xs font-medium">{item.title}</CardDescription>
-                  <CardTitle className={cn(getValueSize(item.value), "font-bold", colors.value)}>
+                  <CardDescription className="text-xs font-medium">
+                    {item.title}
+                  </CardDescription>
+                  <CardTitle
+                    className={cn(
+                      getValueSize(item.value),
+                      "font-bold",
+                      colors.value,
+                    )}
+                  >
                     {item.value}
                   </CardTitle>
                 </div>
@@ -111,12 +125,14 @@ export function KpiGrid({ items }: KpiGridProps) {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <p className="text-muted-foreground text-xs leading-relaxed">{item.description}</p>
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  {item.description}
+                </p>
               </CardContent>
             </Card>
           </motion.div>
-        )
+        );
       })}
     </motion.section>
-  )
+  );
 }

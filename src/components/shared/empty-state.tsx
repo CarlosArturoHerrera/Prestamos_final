@@ -1,15 +1,21 @@
-import type { LucideIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
+import type { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface EmptyStateProps {
-  icon: LucideIcon
-  title: string
-  description?: string
-  children?: React.ReactNode
-  className?: string
+  icon: LucideIcon;
+  title: string;
+  description?: string;
+  children?: React.ReactNode;
+  className?: string;
 }
 
-export function EmptyState({ icon: Icon, title, description, children, className }: EmptyStateProps) {
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  children,
+  className,
+}: EmptyStateProps) {
   return (
     <div className={cn("empty-state", className)}>
       <div className="empty-state-icon">
@@ -23,5 +29,5 @@ export function EmptyState({ icon: Icon, title, description, children, className
       </div>
       {children && <div className="mt-2">{children}</div>}
     </div>
-  )
+  );
 }

@@ -8,33 +8,39 @@
  *   TWILIO_WHATSAPP_FROM   — whatsapp:+18099421913 (número aprobado)
  */
 
-const WHATSAPP_PREFIX = "whatsapp:"
+const WHATSAPP_PREFIX = "whatsapp:";
 
 // ─── Resolución del template de mora ──────────────────────────────────────────
 
 export type ResolveMoraTemplateResult =
   | { ok: true; sid: string }
-  | { ok: false; reason: string }
+  | { ok: false; reason: string };
 
 /**
  * Lee TWILIO_MORA_TEMPLATE_SID y valida su formato.
  * Los Content Template SIDs de Twilio empiezan con "HX".
  */
 export function resolveMoraTemplateSid(): ResolveMoraTemplateResult {
-  const sid = process.env.TWILIO_MORA_TEMPLATE_SID?.trim()
+  const sid = process.env.TWILIO_MORA_TEMPLATE_SID?.trim();
   if (!sid) {
-    return { ok: false, reason: "TWILIO_MORA_TEMPLATE_SID no configurado en variables de entorno" }
+    return {
+      ok: false,
+      reason: "TWILIO_MORA_TEMPLATE_SID no configurado en variables de entorno",
+    };
   }
   if (!sid.startsWith("HX")) {
-    return { ok: false, reason: `TWILIO_MORA_TEMPLATE_SID inválido (debe empezar con HX): ${sid}` }
+    return {
+      ok: false,
+      reason: `TWILIO_MORA_TEMPLATE_SID inválido (debe empezar con HX): ${sid}`,
+    };
   }
-  return { ok: true, sid }
+  return { ok: true, sid };
 }
 
 // ─── Normalización de teléfonos ───────────────────────────────────────────────
 
 function onlyDigits(s: string): string {
-  return s.replace(/\D/g, "")
+  return s.replace(/\D/g, "");
 }
 
 /**
@@ -45,64 +51,67 @@ function onlyDigits(s: string): string {
  *   Ya tiene + → respeta los dígitos tal cual
  */
 export function normalizeToE164(raw: string): string {
-  const trimmed = raw.trim()
-  if (!trimmed) throw new Error("Teléfono vacío")
+  const trimmed = raw.trim();
+  if (!trimmed) throw new Error("Teléfono vacío");
 
   // Si viene con prefijo whatsapp: lo quitamos y reintentamos
   if (trimmed.toLowerCase().startsWith(WHATSAPP_PREFIX)) {
-    return normalizeToE164(trimmed.slice(WHATSAPP_PREFIX.length).trim())
+    return normalizeToE164(trimmed.slice(WHATSAPP_PREFIX.length).trim());
   }
 
-  const hasPlus = trimmed.startsWith("+")
-  const digits = onlyDigits(trimmed)
+  const hasPlus = trimmed.startsWith("+");
+  const digits = onlyDigits(trimmed);
 
-  if (!digits) throw new Error("Teléfono sin dígitos válidos")
+  if (!digits) throw new Error("Teléfono sin dígitos válidos");
 
   // Ya tiene + → confiamos en que es E.164 correcto
-  if (hasPlus) return `+${digits}`
+  if (hasPlus) return `+${digits}`;
 
   // 10 dígitos → NANP sin código de país → +1XXXXXXXXXX
-  if (digits.length === 10) return `+1${digits}`
+  if (digits.length === 10) return `+1${digits}`;
 
   // 11 dígitos empezando en 1 → +1XXXXXXXXXX
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
 
   // Cualquier otro caso: añadimos + como está
-  return `+${digits}`
+  return `+${digits}`;
 }
 
 /**
  * Construye la dirección Twilio WhatsApp: `whatsapp:+E164`
  */
 export function toTwilioWhatsAppAddress(raw: string): string {
-  const e164 = normalizeToE164(raw)
+  const e164 = normalizeToE164(raw);
   if (!e164.startsWith("+") || e164.length < 8) {
-    throw new Error(`Número E.164 inválido tras normalizar: ${e164}`)
+    throw new Error(`Número E.164 inválido tras normalizar: ${e164}`);
   }
-  return `${WHATSAPP_PREFIX}${e164}`
+  return `${WHATSAPP_PREFIX}${e164}`;
 }
 
 // ─── Resolución del remitente ─────────────────────────────────────────────────
 
 export type ResolveTwilioFromResult =
   | { ok: true; value: string }
-  | { ok: false; reason: string }
+  | { ok: false; reason: string };
 
 /**
  * Lee TWILIO_WHATSAPP_FROM y lo normaliza a `whatsapp:+E164`.
  * Si no está configurado devuelve `{ ok: false, reason }`.
  */
 export function resolveTwilioWhatsAppFrom(): ResolveTwilioFromResult {
-  const raw = process.env.TWILIO_WHATSAPP_FROM?.trim()
+  const raw = process.env.TWILIO_WHATSAPP_FROM?.trim();
 
   if (!raw) {
-    return { ok: false, reason: "TWILIO_WHATSAPP_FROM no está configurado" }
+    return { ok: false, reason: "TWILIO_WHATSAPP_FROM no está configurado" };
   }
 
   try {
-    return { ok: true, value: toTwilioWhatsAppAddress(raw) }
+    return { ok: true, value: toTwilioWhatsAppAddress(raw) };
   } catch {
-    return { ok: false, reason: "TWILIO_WHATSAPP_FROM tiene un valor inválido" }
+    return {
+      ok: false,
+      reason: "TWILIO_WHATSAPP_FROM tiene un valor inválido",
+    };
   }
 }
 
@@ -110,7 +119,7 @@ export function resolveTwilioWhatsAppFrom(): ResolveTwilioFromResult {
 
 export type TwilioClientResult =
   | { ok: true; accountSid: string; apiKeySid: string; apiKeySecret: string }
-  | { ok: false; reason: string }
+  | { ok: false; reason: string };
 
 /**
  * Valida que las variables de entorno de Twilio estén presentes y devuelve
@@ -118,20 +127,28 @@ export type TwilioClientResult =
  * Usa TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET (NO TWILIO_AUTH_TOKEN).
  */
 export function getTwilioCredentials(): TwilioClientResult {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim()
-  const apiKeySid = process.env.TWILIO_API_KEY_SID?.trim()
-  const apiKeySecret = process.env.TWILIO_API_KEY_SECRET?.trim()
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const apiKeySid = process.env.TWILIO_API_KEY_SID?.trim();
+  const apiKeySecret = process.env.TWILIO_API_KEY_SECRET?.trim();
 
-  const missing: string[] = []
-  if (!accountSid) missing.push("TWILIO_ACCOUNT_SID")
-  if (!apiKeySid) missing.push("TWILIO_API_KEY_SID")
-  if (!apiKeySecret) missing.push("TWILIO_API_KEY_SECRET")
+  const missing: string[] = [];
+  if (!accountSid) missing.push("TWILIO_ACCOUNT_SID");
+  if (!apiKeySid) missing.push("TWILIO_API_KEY_SID");
+  if (!apiKeySecret) missing.push("TWILIO_API_KEY_SECRET");
 
   if (missing.length > 0) {
-    return { ok: false, reason: `Faltan variables de entorno: ${missing.join(", ")}` }
+    return {
+      ok: false,
+      reason: `Faltan variables de entorno: ${missing.join(", ")}`,
+    };
   }
 
-  return { ok: true, accountSid: accountSid!, apiKeySid: apiKeySid!, apiKeySecret: apiKeySecret! }
+  return {
+    ok: true,
+    accountSid: accountSid!,
+    apiKeySid: apiKeySid!,
+    apiKeySecret: apiKeySecret!,
+  };
 }
 
 /**
@@ -143,22 +160,22 @@ export function getTwilioCredentials(): TwilioClientResult {
  *   await result.client.messages.create({ ... })
  */
 export async function createTwilioClient() {
-  const creds = getTwilioCredentials()
-  if (!creds.ok) return creds
+  const creds = getTwilioCredentials();
+  if (!creds.ok) return creds;
 
-  const twilio = (await import("twilio")).default
+  const twilio = (await import("twilio")).default;
   const client = twilio(creds.apiKeySid, creds.apiKeySecret, {
     accountSid: creds.accountSid,
-  })
+  });
 
-  return { ok: true as const, client }
+  return { ok: true as const, client };
 }
 
 // ─── Función principal reutilizable ───────────────────────────────────────────
 
 export type SendWhatsAppResult =
   | { ok: true; sid: string; to: string; from: string }
-  | { ok: false; reason: string }
+  | { ok: false; reason: string };
 
 /**
  * Envía un mensaje de WhatsApp al número indicado.
@@ -171,32 +188,33 @@ export async function sendWhatsAppMessage({
   to,
   message,
 }: {
-  to: string
-  message: string
+  to: string;
+  message: string;
 }): Promise<SendWhatsAppResult> {
   // 1. Validar mensaje
   if (!message.trim()) {
-    return { ok: false, reason: "El mensaje no puede estar vacío" }
+    return { ok: false, reason: "El mensaje no puede estar vacío" };
   }
 
   // 2. Resolver remitente
-  const fromResult = resolveTwilioWhatsAppFrom()
-  if (!fromResult.ok) return { ok: false, reason: fromResult.reason }
+  const fromResult = resolveTwilioWhatsAppFrom();
+  if (!fromResult.ok) return { ok: false, reason: fromResult.reason };
 
   // 3. Normalizar destinatario
-  let toAddr: string
+  let toAddr: string;
   try {
-    toAddr = toTwilioWhatsAppAddress(to)
+    toAddr = toTwilioWhatsAppAddress(to);
   } catch (e) {
     return {
       ok: false,
-      reason: e instanceof Error ? e.message : "Teléfono del destinatario inválido",
-    }
+      reason:
+        e instanceof Error ? e.message : "Teléfono del destinatario inválido",
+    };
   }
 
   // 4. Crear cliente con API Key
-  const clientResult = await createTwilioClient()
-  if (!clientResult.ok) return { ok: false, reason: clientResult.reason }
+  const clientResult = await createTwilioClient();
+  if (!clientResult.ok) return { ok: false, reason: clientResult.reason };
 
   // 5. Enviar
   try {
@@ -204,11 +222,11 @@ export async function sendWhatsAppMessage({
       from: fromResult.value,
       to: toAddr,
       body: message,
-    })
+    });
 
-    return { ok: true, sid: sent.sid, to: toAddr, from: fromResult.value }
+    return { ok: true, sid: sent.sid, to: toAddr, from: fromResult.value };
   } catch (e) {
-    return { ok: false, reason: serializeTwilioSendError(e) }
+    return { ok: false, reason: serializeTwilioSendError(e) };
   }
 }
 
@@ -216,14 +234,15 @@ export async function sendWhatsAppMessage({
 
 export function serializeTwilioSendError(err: unknown): string {
   if (err && typeof err === "object") {
-    const o = err as Record<string, unknown>
-    const parts: string[] = []
-    if (typeof o.message === "string" && o.message) parts.push(o.message)
-    if (o.code !== undefined) parts.push(`code=${String(o.code)}`)
-    if (typeof o.moreInfo === "string" && o.moreInfo) parts.push(`info=${o.moreInfo}`)
-    if (typeof o.status === "number") parts.push(`http=${String(o.status)}`)
-    if (parts.length) return parts.join(" | ")
+    const o = err as Record<string, unknown>;
+    const parts: string[] = [];
+    if (typeof o.message === "string" && o.message) parts.push(o.message);
+    if (o.code !== undefined) parts.push(`code=${String(o.code)}`);
+    if (typeof o.moreInfo === "string" && o.moreInfo)
+      parts.push(`info=${o.moreInfo}`);
+    if (typeof o.status === "number") parts.push(`http=${String(o.status)}`);
+    if (parts.length) return parts.join(" | ");
   }
-  if (err instanceof Error) return err.message
-  return String(err)
+  if (err instanceof Error) return err.message;
+  return String(err);
 }

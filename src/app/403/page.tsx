@@ -1,8 +1,8 @@
-import Link from "next/link"
-import { ShieldX } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import Link from "next/link";
+import { ShieldX } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-export const metadata = { title: "403 — Acceso denegado" }
+export const metadata = { title: "403 — Acceso denegado" };
 
 export default function ForbiddenPage() {
   return (
@@ -14,8 +14,8 @@ export default function ForbiddenPage() {
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Acceso denegado</h1>
         <p className="text-muted-foreground max-w-sm">
-          No tienes permisos para acceder a esta sección. Si crees que esto es un error,
-          contacta al Super Admin del sistema.
+          No tienes permisos para acceder a esta sección. Si crees que esto es
+          un error, contacta al Super Admin del sistema.
         </p>
       </div>
 
@@ -27,5 +27,5 @@ export default function ForbiddenPage() {
 
       <p className="text-xs text-muted-foreground">Error 403 — Forbidden</p>
     </div>
-  )
+  );
 }

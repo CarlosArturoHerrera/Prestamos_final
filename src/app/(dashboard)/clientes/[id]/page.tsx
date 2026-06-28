@@ -1,63 +1,87 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useState } from "react"
-import Link from "next/link"
-import { useParams } from "next/navigation"
-import { Building2, ChevronRight, MapPin, Phone, UserCircle } from "lucide-react"
-import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Separator } from "@/components/ui/separator"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { GestionCobranzaPanel } from "@/components/gestion-cobranza-panel"
-import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
-import { formatCedula, formatPhone } from "@/lib/formatters"
-import { formatRD } from "@/lib/format-currency"
-import { cn } from "@/lib/utils"
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import {
+  Building2,
+  ChevronRight,
+  MapPin,
+  Phone,
+  UserCircle,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { GestionCobranzaPanel } from "@/components/gestion-cobranza-panel";
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
+import { formatCedula, formatPhone } from "@/lib/formatters";
+import { formatRD } from "@/lib/format-currency";
+import { cn } from "@/lib/utils";
 
-function estPrestamoBadge(estado: string): "default" | "secondary" | "destructive" | "outline" {
-  const u = estado.toUpperCase()
-  if (u === "MORA") return "destructive"
-  if (u === "SALDADO") return "secondary"
-  return "default"
+function estPrestamoBadge(
+  estado: string,
+): "default" | "secondary" | "destructive" | "outline" {
+  const u = estado.toUpperCase();
+  if (u === "MORA") return "destructive";
+  if (u === "SALDADO") return "secondary";
+  return "default";
 }
 
 function validacionClienteBadge(estado: string | undefined) {
   if (estado === "PENDIENTE_VALIDAR") {
     return (
-      <Badge variant="outline" className="border-amber-600/60 bg-amber-500/20 font-semibold">
+      <Badge
+        variant="outline"
+        className="border-amber-600/60 bg-amber-500/20 font-semibold"
+      >
         Pendiente de validar
       </Badge>
-    )
+    );
   }
-  return <Badge variant="secondary">Validado</Badge>
+  return <Badge variant="secondary">Validado</Badge>;
 }
 
 export default function ClienteDetallePage() {
-  const params = useParams()
-  const id = Number(params.id)
-  const [data, setData] = useState<Record<string, unknown> | null>(null)
-  const [loading, setLoading] = useState(true)
+  const params = useParams();
+  const id = Number(params.id);
+  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setLoading(true)
-    const res = await fetchApi<Record<string, unknown>>(`/api/clientes/${id}`)
+    setLoading(true);
+    const res = await fetchApi<Record<string, unknown>>(`/api/clientes/${id}`);
     if (!res.ok) {
-      redirectToLoginIfUnauthorized(res.status)
-      toast.error(res.message)
-      setData(null)
+      redirectToLoginIfUnauthorized(res.status);
+      toast.error(res.message);
+      setData(null);
     } else {
-      setData(res.data)
+      setData(res.data);
     }
-    setLoading(false)
-  }, [id])
+    setLoading(false);
+  }, [id]);
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void load();
+  }, [load]);
 
   if (loading) {
     return (
@@ -69,7 +93,7 @@ export default function ClienteDetallePage() {
         </div>
         <Skeleton className="h-48 rounded-xl" />
       </div>
-    )
+    );
   }
 
   if (!data) {
@@ -80,27 +104,38 @@ export default function ClienteDetallePage() {
         </Button>
         <Alert variant="destructive">
           <AlertTitle>No se encontró el cliente</AlertTitle>
-          <AlertDescription>Comprueba el enlace o vuelve al listado.</AlertDescription>
+          <AlertDescription>
+            Comprueba el enlace o vuelve al listado.
+          </AlertDescription>
         </Alert>
       </div>
-    )
+    );
   }
 
-  const prestamos = (data.prestamos as Record<string, unknown>[]) ?? []
+  const prestamos = (data.prestamos as Record<string, unknown>[]) ?? [];
   const prestamosGestion = prestamos.map((p) => {
-    const pid = Number(p.id)
-    const est = String(p.estado ?? "")
+    const pid = Number(p.id);
+    const est = String(p.estado ?? "");
     return {
       id: pid,
       label: `#${pid} · ${est} · ${formatRD(p.capital_pendiente as string)}`,
-    }
-  })
-  const emp = data.empresas as { id?: number; nombre?: string } | null | undefined
-  const rep = data.representantes as
-    | { id?: number; nombre?: string; apellido?: string; telefono?: string; email?: string }
+    };
+  });
+  const emp = data.empresas as
+    | { id?: number; nombre?: string }
     | null
-    | undefined
-  const estadoVal = String(data.estado_validacion ?? "")
+    | undefined;
+  const rep = data.representantes as
+    | {
+        id?: number;
+        nombre?: string;
+        apellido?: string;
+        telefono?: string;
+        email?: string;
+      }
+    | null
+    | undefined;
+  const estadoVal = String(data.estado_validacion ?? "");
 
   return (
     <div className="space-y-8">
@@ -115,7 +150,9 @@ export default function ClienteDetallePage() {
             </h1>
             {validacionClienteBadge(estadoVal)}
           </div>
-          <p className="font-mono text-sm text-muted-foreground">ID cliente #{id}</p>
+          <p className="font-mono text-sm text-muted-foreground">
+            ID cliente #{id}
+          </p>
         </div>
         <Button asChild>
           <Link href={`/prestamos`}>
@@ -133,15 +170,21 @@ export default function ClienteDetallePage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex items-start gap-2">
-              <span className="min-w-[5.5rem] text-muted-foreground">Cédula</span>
-              <span className="font-mono font-medium">{formatCedula(String(data.cedula))}</span>
+              <span className="min-w-[5.5rem] text-muted-foreground">
+                Cédula
+              </span>
+              <span className="font-mono font-medium">
+                {formatCedula(String(data.cedula))}
+              </span>
             </div>
             <Separator />
             <div className="flex items-start gap-2">
               <Phone className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               <div>
                 <p className="text-muted-foreground">Teléfono</p>
-                <p className="font-medium">{formatPhone(String(data.telefono))}</p>
+                <p className="font-medium">
+                  {formatPhone(String(data.telefono))}
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-2">
@@ -152,8 +195,12 @@ export default function ClienteDetallePage() {
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <span className="mt-0.5 min-w-[1rem] text-muted-foreground">Último pago</span>
-              <p className="font-medium">{data.ultimo_pago ? String(data.ultimo_pago) : "—"}</p>
+              <span className="mt-0.5 min-w-[1rem] text-muted-foreground">
+                Último pago
+              </span>
+              <p className="font-medium">
+                {data.ultimo_pago ? String(data.ultimo_pago) : "—"}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -170,7 +217,11 @@ export default function ClienteDetallePage() {
                 Empresa
               </div>
               <p className="text-base font-semibold">{emp?.nombre ?? "—"}</p>
-              <Button variant="link" className="h-auto px-0 pt-1 text-xs" asChild>
+              <Button
+                variant="link"
+                className="h-auto px-0 pt-1 text-xs"
+                asChild
+              >
                 <Link href="/empresas">Ver catálogo de empresas</Link>
               </Button>
             </div>
@@ -183,12 +234,18 @@ export default function ClienteDetallePage() {
                 {rep ? `${rep.nombre ?? ""} ${rep.apellido ?? ""}`.trim() : "—"}
               </p>
               {rep?.telefono ? (
-                <p className="text-xs text-muted-foreground">Tel. {formatPhone(rep.telefono)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Tel. {formatPhone(rep.telefono)}
+                </p>
               ) : null}
               {rep?.email ? (
                 <p className="text-xs text-muted-foreground">{rep.email}</p>
               ) : null}
-              <Button variant="link" className="h-auto px-0 pt-1 text-xs" asChild>
+              <Button
+                variant="link"
+                className="h-auto px-0 pt-1 text-xs"
+                asChild
+              >
                 <Link href="/representantes">Ver representantes</Link>
               </Button>
             </div>
@@ -196,7 +253,10 @@ export default function ClienteDetallePage() {
         </Card>
       </div>
 
-      <GestionCobranzaPanel clienteId={id} prestamosOpciones={prestamosGestion} />
+      <GestionCobranzaPanel
+        clienteId={id}
+        prestamosOpciones={prestamosGestion}
+      />
 
       <Card className="border-border/60 shadow-sm">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
@@ -228,13 +288,14 @@ export default function ClienteDetallePage() {
                   </TableRow>
                 ) : (
                   prestamos.map((p) => {
-                    const est = String(p.estado ?? "")
+                    const est = String(p.estado ?? "");
                     return (
                       <TableRow
                         key={String(p.id)}
                         className={cn(
                           est === "MORA" && "bg-destructive/10",
-                          est === "ACTIVO" && "border-l-[3px] border-l-primary/50",
+                          est === "ACTIVO" &&
+                            "border-l-[3px] border-l-primary/50",
                         )}
                       >
                         <TableCell className="font-mono text-xs text-muted-foreground">
@@ -244,17 +305,22 @@ export default function ClienteDetallePage() {
                           {formatRD(p.capital_pendiente as string)}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={estPrestamoBadge(est)} className="uppercase">
+                          <Badge
+                            variant={estPrestamoBadge(est)}
+                            className="uppercase"
+                          >
                             {est}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <Button asChild size="sm" variant="secondary">
-                            <Link href={`/prestamos/${p.id}`}>Ver préstamo</Link>
+                            <Link href={`/prestamos/${p.id}`}>
+                              Ver préstamo
+                            </Link>
                           </Button>
                         </TableCell>
                       </TableRow>
-                    )
+                    );
                   })
                 )}
               </TableBody>
@@ -263,5 +329,5 @@ export default function ClienteDetallePage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

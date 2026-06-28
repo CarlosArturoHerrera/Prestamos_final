@@ -13,53 +13,62 @@
  *   500  { ok: false, error: "..." }   — error de Twilio o config faltante
  */
 
-import { NextResponse } from "next/server"
-import { getUserAndRole, unauthorized } from "@/lib/api-auth"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
-import { sendWhatsAppMessage } from "@/lib/twilio-whatsapp"
+import { NextResponse } from "next/server";
+import { getUserAndRole, unauthorized } from "@/lib/api-auth";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { sendWhatsAppMessage } from "@/lib/twilio-whatsapp";
 
 export async function POST(request: Request) {
   // ── Autenticación: solo usuarios logueados pueden usar este endpoint ──
-  const supabase = await createSupabaseServerClient()
-  const session = await getUserAndRole(supabase)
-  if (!session) return unauthorized()
+  const supabase = await createSupabaseServerClient();
+  const session = await getUserAndRole(supabase);
+  if (!session) return unauthorized();
 
   // ── Parsear body ──
-  let body: unknown
+  let body: unknown;
   try {
-    body = await request.json()
+    body = await request.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "JSON inválido" }, { status: 400 })
+    return NextResponse.json(
+      { ok: false, error: "JSON inválido" },
+      { status: 400 },
+    );
   }
 
-  const { phone, message } = (body ?? {}) as Record<string, unknown>
+  const { phone, message } = (body ?? {}) as Record<string, unknown>;
 
   // ── Validaciones de entrada ──
   if (!phone || typeof phone !== "string" || !phone.trim()) {
     return NextResponse.json(
-      { ok: false, error: "El campo 'phone' es requerido y debe ser una cadena no vacía" },
+      {
+        ok: false,
+        error: "El campo 'phone' es requerido y debe ser una cadena no vacía",
+      },
       { status: 400 },
-    )
+    );
   }
 
   if (!message || typeof message !== "string" || !message.trim()) {
     return NextResponse.json(
-      { ok: false, error: "El campo 'message' es requerido y debe ser una cadena no vacía" },
+      {
+        ok: false,
+        error: "El campo 'message' es requerido y debe ser una cadena no vacía",
+      },
       { status: 400 },
-    )
+    );
   }
 
   // ── Enviar ──
-  const result = await sendWhatsAppMessage({ to: phone, message })
+  const result = await sendWhatsAppMessage({ to: phone, message });
 
   if (!result.ok) {
     const isConfigError =
       result.reason.includes("TWILIO_") ||
-      result.reason.includes("Faltan variables")
+      result.reason.includes("Faltan variables");
     return NextResponse.json(
       { ok: false, error: result.reason },
       { status: isConfigError ? 500 : 400 },
-    )
+    );
   }
 
   return NextResponse.json({
@@ -67,5 +76,5 @@ export async function POST(request: Request) {
     sid: result.sid,
     to: result.to,
     from: result.from,
-  })
+  });
 }

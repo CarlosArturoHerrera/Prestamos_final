@@ -19,23 +19,37 @@ async function verifySupabaseClient() {
   }
   const { createClient } = require("@supabase/supabase-js");
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const { data, error } = await supabase.from("segments").select("id, name").limit(5);
+  const { data, error } = await supabase
+    .from("segments")
+    .select("id, name")
+    .limit(5);
   if (error) {
-    if (error.message.includes("schema cache") || error.message.includes("does not exist")) {
+    if (
+      error.message.includes("schema cache") ||
+      error.message.includes("does not exist")
+    ) {
       console.error("❌ Conexión OK pero la tabla 'segments' no existe.");
-      console.log("\n→ Importa el schema: Supabase Dashboard → SQL Editor → pega y ejecuta el contenido de supabase/schema.sql");
+      console.log(
+        "\n→ Importa el schema: Supabase Dashboard → SQL Editor → pega y ejecuta el contenido de supabase/schema.sql",
+      );
       return false;
     }
     console.error("❌ Error conectando con Supabase (cliente):", error.message);
     return false;
   }
-  console.log("✅ Conexión Supabase OK. Segmentos:", data?.length ?? 0, "registro(s).");
+  console.log(
+    "✅ Conexión Supabase OK. Segmentos:",
+    data?.length ?? 0,
+    "registro(s).",
+  );
   return true;
 }
 
 async function runSchemaWithPg() {
   if (!DATABASE_URL) {
-    console.warn("⚠️ DATABASE_URL no definida. No se puede ejecutar el schema desde este script.");
+    console.warn(
+      "⚠️ DATABASE_URL no definida. No se puede ejecutar el schema desde este script.",
+    );
     console.log("\nPara importar schema y datos manualmente:");
     console.log("  1. Abre Supabase Dashboard → SQL Editor");
     console.log("  2. Pega y ejecuta el contenido de: supabase/schema.sql");
@@ -57,8 +71,13 @@ async function runSchemaWithPg() {
     return true;
   } catch (err) {
     console.error("❌ Error ejecutando schema:", err.message);
-    if (err.message.includes("ENOTFOUND") || err.message.includes("ECONNREFUSED")) {
-      console.log("\n→ Importa manualmente: Supabase Dashboard → SQL Editor → pega y ejecuta supabase/schema.sql");
+    if (
+      err.message.includes("ENOTFOUND") ||
+      err.message.includes("ECONNREFUSED")
+    ) {
+      console.log(
+        "\n→ Importa manualmente: Supabase Dashboard → SQL Editor → pega y ejecuta supabase/schema.sql",
+      );
     }
     return false;
   } finally {

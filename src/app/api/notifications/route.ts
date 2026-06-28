@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(request: Request) {
   try {
     // Verificar que supabase esté configurado
     if (!supabase) {
       return NextResponse.json(
-        { error: "Supabase no está configurado correctamente" }, 
-        { status: 500 }
-      )
+        { error: "Supabase no está configurado correctamente" },
+        { status: 500 },
+      );
     }
 
     const { data, error } = await supabase
@@ -27,11 +27,11 @@ export async function GET(request: Request) {
           name
         )
       `)
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Supabase error:", error)
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      console.error("Supabase error:", error);
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     const result = (data ?? []).map((n: any) => ({
@@ -45,11 +45,14 @@ export async function GET(request: Request) {
       status: n.status,
       sent_at: n.sent_at,
       created_at: n.created_at,
-    }))
+    }));
 
-    return NextResponse.json(result)
+    return NextResponse.json(result);
   } catch (error) {
-    console.error("Error en /api/notifications:", error)
-    return NextResponse.json({ error: "Error obteniendo notificaciones" }, { status: 500 })
+    console.error("Error en /api/notifications:", error);
+    return NextResponse.json(
+      { error: "Error obteniendo notificaciones" },
+      { status: 500 },
+    );
   }
 }

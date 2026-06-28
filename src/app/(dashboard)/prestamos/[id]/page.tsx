@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -248,11 +249,10 @@ const RegancheFormCard = memo(function RegancheFormCard({
       <CardContent className="space-y-3">
         <div className="space-y-2">
           <Label>Monto a agregar al capital pendiente</Label>
-          <Input
+          <CurrencyInput
             value={form.monto}
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, monto: e.target.value }))
-            }
+            onChange={(raw) => setForm((prev) => ({ ...prev, monto: raw }))}
+            placeholder="0"
           />
         </div>
         <div className="space-y-2">
@@ -327,16 +327,15 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
           </div>
           <div className="space-y-2">
             <Label>Interés recibido</Label>
-            <Input
+            <CurrencyInput
               value={form.interesRecibido}
-              onChange={(e) =>
+              onChange={(raw) =>
                 setForm((prev) => ({
                   ...prev,
-                  interesRecibido: e.target.value,
+                  interesRecibido: raw,
                 }))
               }
               placeholder="Monto de interés que pagó el cliente"
-              inputMode="decimal"
             />
             <p className="text-xs text-muted-foreground leading-snug">
               Si es menor que el interés calculado, la diferencia queda en
@@ -345,15 +344,14 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
           </div>
           <div className="space-y-2">
             <Label>Capital a debitar (manual)</Label>
-            <Input
+            <CurrencyInput
               value={form.montoCapitalDebitado}
-              onChange={(e) =>
+              onChange={(raw) =>
                 setForm((prev) => ({
                   ...prev,
-                  montoCapitalDebitado: e.target.value,
+                  montoCapitalDebitado: raw,
                 }))
               }
-              inputMode="decimal"
             />
           </div>
           <div className="space-y-2">

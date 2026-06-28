@@ -479,7 +479,9 @@ export default function RepresentantesPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Representantes</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+              Representantes
+            </h1>
             <p className="text-sm text-muted-foreground">
               Contactos para cobranza. Búsqueda por nombre, apellido, email o
               teléfono.
@@ -714,9 +716,7 @@ export default function RepresentantesPage() {
                 <TableHead className="w-36">Teléfono</TableHead>
                 <TableHead className="hidden xl:table-cell">Email</TableHead>
                 <TableHead className="w-28">Cartera</TableHead>
-                <TableHead className="w-[3rem] text-right">
-                  Acciones
-                </TableHead>
+                <TableHead className="w-[3rem] text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>{tableRows}</TableBody>
@@ -778,4 +778,3 @@ export default function RepresentantesPage() {
     </TooltipProvider>
   );
 }
-

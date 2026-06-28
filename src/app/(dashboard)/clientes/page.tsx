@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import Link from "next/link"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   AlertCircle,
   Building2,
@@ -17,8 +17,8 @@ import {
   ShieldCheck,
   Trash2,
   User,
-} from "lucide-react"
-import { toast } from "sonner"
+} from "lucide-react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,11 +28,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -40,84 +46,114 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { CedulaInput } from "@/components/ui/cedula-input"
-import { PhoneInput } from "@/components/ui/phone-input"
-import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api"
-import { formatCedula, formatPhone } from "@/lib/formatters"
-import { useDebouncedValue } from "@/lib/use-debounced-value"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { CedulaInput } from "@/components/ui/cedula-input";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
+import { formatCedula, formatPhone } from "@/lib/formatters";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { cn } from "@/lib/utils";
 
 type ClienteRow = {
-  id: number
-  nombre: string
-  apellido: string
-  cedula: string
-  telefono: string
-  ultimo_pago: string | null
-  estado_validacion?: "VALIDADO" | "PENDIENTE_VALIDAR"
-  empresas: { nombre: string } | null
-  representantes: { nombre: string; apellido: string } | null
-}
+  id: number;
+  nombre: string;
+  apellido: string;
+  cedula: string;
+  telefono: string;
+  ultimo_pago: string | null;
+  estado_validacion?: "VALIDADO" | "PENDIENTE_VALIDAR";
+  empresas: { nombre: string } | null;
+  representantes: { nombre: string; apellido: string } | null;
+};
 
-type ListRes = { data: ClienteRow[]; page: number; pageSize: number; total: number }
+type ListRes = {
+  data: ClienteRow[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
 
 type ResumenCli = {
-  total: number
-  validados: number
-  pendientesValidacion: number
-}
+  total: number;
+  validados: number;
+  pendientesValidacion: number;
+};
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 50;
 
 function validacionBadge(estado: string | undefined) {
   if (estado === "PENDIENTE_VALIDAR") {
     return (
-      <Badge variant="outline" className="border-amber-600/60 bg-amber-500/20 font-semibold text-amber-950 dark:text-amber-100">
+      <Badge
+        variant="outline"
+        className="border-amber-600/60 bg-amber-500/20 font-semibold text-amber-950 dark:text-amber-100"
+      >
         <AlertCircle className="mr-1 size-3" />
         Pendiente
       </Badge>
-    )
+    );
   }
   return (
     <Badge variant="secondary" className="font-medium">
       <ShieldCheck className="mr-1 size-3 opacity-80" />
       Validado
     </Badge>
-  )
+  );
 }
 
 export default function ClientesPage() {
-  const [rows, setRows] = useState<ClienteRow[]>([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [search, setSearch] = useState("")
-  const searchDebounced = useDebouncedValue(search, 350)
-  const [filtroEmpresa, setFiltroEmpresa] = useState("")
-  const [filtroRep, setFiltroRep] = useState("")
-  const [filtroEstadoValidacion, setFiltroEstadoValidacion] = useState("")
-  const [loading, setLoading] = useState(true)
-  const [resumen, setResumen] = useState<ResumenCli | null>(null)
-  const [resumenLoading, setResumenLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<ClienteRow | null>(null)
-  const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [empresas, setEmpresas] = useState<{ id: number; nombre: string }[]>([])
-  const [reps, setReps] = useState<{ id: number; nombre: string; apellido: string }[]>([])
+  const [rows, setRows] = useState<ClienteRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const searchDebounced = useDebouncedValue(search, 350);
+  const [filtroEmpresa, setFiltroEmpresa] = useState("");
+  const [filtroRep, setFiltroRep] = useState("");
+  const [filtroEstadoValidacion, setFiltroEstadoValidacion] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [resumen, setResumen] = useState<ResumenCli | null>(null);
+  const [resumenLoading, setResumenLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<ClienteRow | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [empresas, setEmpresas] = useState<{ id: number; nombre: string }[]>(
+    [],
+  );
+  const [reps, setReps] = useState<
+    { id: number; nombre: string; apellido: string }[]
+  >([]);
   const [form, setForm] = useState({
     nombre: "",
     apellido: "",
@@ -127,94 +163,102 @@ export default function ClientesPage() {
     estadoValidacion: "VALIDADO" as "VALIDADO" | "PENDIENTE_VALIDAR",
     empresaId: "",
     representanteId: "",
-  })
+  });
 
-  const urlSynced = useRef(false)
+  const urlSynced = useRef(false);
   useEffect(() => {
-    if (urlSynced.current || typeof window === "undefined") return
-    urlSynced.current = true
-    const p = new URLSearchParams(window.location.search)
-    const ev = p.get("estadoValidacion")
+    if (urlSynced.current || typeof window === "undefined") return;
+    urlSynced.current = true;
+    const p = new URLSearchParams(window.location.search);
+    const ev = p.get("estadoValidacion");
     if (ev === "PENDIENTE_VALIDAR" || ev === "VALIDADO") {
-      setFiltroEstadoValidacion(ev)
+      setFiltroEstadoValidacion(ev);
     }
-  }, [])
+  }, []);
 
   const loadResumen = useCallback(async () => {
-    setResumenLoading(true)
-    const res = await fetchApi<ResumenCli>("/api/clientes/resumen")
+    setResumenLoading(true);
+    const res = await fetchApi<ResumenCli>("/api/clientes/resumen");
     if (!res.ok) {
-      redirectToLoginIfUnauthorized(res.status)
-      setResumen(null)
+      redirectToLoginIfUnauthorized(res.status);
+      setResumen(null);
     } else {
-      setResumen(res.data)
+      setResumen(res.data);
     }
-    setResumenLoading(false)
-  }, [])
+    setResumenLoading(false);
+  }, []);
 
   useEffect(() => {
-    void loadResumen()
-  }, [loadResumen])
+    void loadResumen();
+  }, [loadResumen]);
 
   const load = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     const q = new URLSearchParams({
       search: searchDebounced,
       pageSize: String(PAGE_SIZE),
       page: String(page),
-    })
-    if (filtroEmpresa) q.set("empresaId", filtroEmpresa)
-    if (filtroRep) q.set("representanteId", filtroRep)
-    if (filtroEstadoValidacion) q.set("estadoValidacion", filtroEstadoValidacion)
-    const res = await fetchApi<ListRes>(`/api/clientes?${q}`)
+    });
+    if (filtroEmpresa) q.set("empresaId", filtroEmpresa);
+    if (filtroRep) q.set("representanteId", filtroRep);
+    if (filtroEstadoValidacion)
+      q.set("estadoValidacion", filtroEstadoValidacion);
+    const res = await fetchApi<ListRes>(`/api/clientes?${q}`);
     if (!res.ok) {
-      redirectToLoginIfUnauthorized(res.status)
-      toast.error(res.message)
-      setRows([])
-      setTotal(0)
+      redirectToLoginIfUnauthorized(res.status);
+      toast.error(res.message);
+      setRows([]);
+      setTotal(0);
     } else {
-      setRows(res.data.data ?? [])
-      setTotal(res.data.total ?? 0)
+      setRows(res.data.data ?? []);
+      setTotal(res.data.total ?? 0);
     }
-    setLoading(false)
-  }, [searchDebounced, filtroEmpresa, filtroRep, filtroEstadoValidacion, page])
+    setLoading(false);
+  }, [searchDebounced, filtroEmpresa, filtroRep, filtroEstadoValidacion, page]);
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void load();
+  }, [load]);
 
   useEffect(() => {
-    setPage(1)
-  }, [searchDebounced, filtroEmpresa, filtroRep, filtroEstadoValidacion])
+    setPage(1);
+  }, [searchDebounced, filtroEmpresa, filtroRep, filtroEstadoValidacion]);
 
   const loadEmpresasYReps = useCallback(async () => {
     const [e, r] = await Promise.all([
-      fetchApi<{ data: { id: number; nombre: string }[] }>("/api/empresas?pageSize=200"),
+      fetchApi<{ data: { id: number; nombre: string }[] }>(
+        "/api/empresas?pageSize=200",
+      ),
       fetchApi<{ data: { id: number; nombre: string; apellido: string }[] }>(
         "/api/representantes?pageSize=200",
       ),
-    ])
-    if (e.ok) setEmpresas((e.data.data ?? []).map((x) => ({ id: x.id, nombre: x.nombre })))
-    if (r.ok) setReps(r.data.data ?? [])
-  }, [])
+    ]);
+    if (e.ok)
+      setEmpresas(
+        (e.data.data ?? []).map((x) => ({ id: x.id, nombre: x.nombre })),
+      );
+    if (r.ok) setReps(r.data.data ?? []);
+  }, []);
 
   useEffect(() => {
-    void loadEmpresasYReps()
-  }, [loadEmpresasYReps])
+    void loadEmpresasYReps();
+  }, [loadEmpresasYReps]);
 
   useEffect(() => {
-    if (open) void loadEmpresasYReps()
-  }, [open, loadEmpresasYReps])
+    if (open) void loadEmpresasYReps();
+  }, [open, loadEmpresasYReps]);
 
   const save = async () => {
-    if (isSaving) return
+    if (isSaving) return;
     if (!form.empresaId || !form.representanteId) {
-      toast.error("Debes elegir una empresa y un representante antes de guardar.")
-      return
+      toast.error(
+        "Debes elegir una empresa y un representante antes de guardar.",
+      );
+      return;
     }
-    setIsSaving(true)
-    const method = editing ? "PUT" : "POST"
-    const url = editing ? `/api/clientes/${editing.id}` : "/api/clientes"
+    setIsSaving(true);
+    const method = editing ? "PUT" : "POST";
+    const url = editing ? `/api/clientes/${editing.id}` : "/api/clientes";
     const res = await fetchApi(url, {
       method,
       headers: { "Content-Type": "application/json" },
@@ -228,58 +272,63 @@ export default function ClientesPage() {
         empresaId: Number(form.empresaId),
         representanteId: Number(form.representanteId),
       }),
-    })
+    });
     if (!res.ok) {
-      redirectToLoginIfUnauthorized(res.status)
-      toast.error(res.message)
-      setIsSaving(false)
-      return
+      redirectToLoginIfUnauthorized(res.status);
+      toast.error(res.message);
+      setIsSaving(false);
+      return;
     }
-    toast.success("Cliente guardado")
-    setOpen(false)
-    setEditing(null)
-    await loadResumen()
-    await load()
-    setIsSaving(false)
-  }
+    toast.success("Cliente guardado");
+    setOpen(false);
+    setEditing(null);
+    await loadResumen();
+    await load();
+    setIsSaving(false);
+  };
 
   const remove = async () => {
-    if (!deleteId || isDeleting) return
-    setIsDeleting(true)
-    const res = await fetchApi(`/api/clientes/${deleteId}`, { method: "DELETE" })
+    if (!deleteId || isDeleting) return;
+    setIsDeleting(true);
+    const res = await fetchApi(`/api/clientes/${deleteId}`, {
+      method: "DELETE",
+    });
     if (!res.ok) {
-      redirectToLoginIfUnauthorized(res.status)
-      toast.error(res.message)
+      redirectToLoginIfUnauthorized(res.status);
+      toast.error(res.message);
     } else {
-      toast.success("Eliminado")
-      await loadResumen()
-      await load()
+      toast.success("Eliminado");
+      await loadResumen();
+      await load();
     }
-    setDeleteId(null)
-    setIsDeleting(false)
-  }
+    setDeleteId(null);
+    setIsDeleting(false);
+  };
 
   const openEdit = async (c: ClienteRow) => {
-    const res = await fetchApi<Record<string, unknown>>(`/api/clientes/${c.id}`)
+    const res = await fetchApi<Record<string, unknown>>(
+      `/api/clientes/${c.id}`,
+    );
     if (!res.ok) {
-      redirectToLoginIfUnauthorized(res.status)
-      toast.error(res.message)
-      return
+      redirectToLoginIfUnauthorized(res.status);
+      toast.error(res.message);
+      return;
     }
-    const j = res.data
-    setEditing(c)
+    const j = res.data;
+    setEditing(c);
     setForm({
       nombre: String(j.nombre),
       apellido: String(j.apellido),
       cedula: String(j.cedula),
       ubicacion: String(j.ubicacion),
       telefono: String(j.telefono),
-      estadoValidacion: (j.estado_validacion as "VALIDADO" | "PENDIENTE_VALIDAR") ?? "VALIDADO",
+      estadoValidacion:
+        (j.estado_validacion as "VALIDADO" | "PENDIENTE_VALIDAR") ?? "VALIDADO",
       empresaId: String(j.empresa_id),
       representanteId: String(j.representante_id),
-    })
-    setOpen(true)
-  }
+    });
+    setOpen(true);
+  };
 
   const empresaOptions = useMemo(
     () =>
@@ -289,7 +338,7 @@ export default function ClientesPage() {
         </SelectItem>
       )),
     [empresas],
-  )
+  );
 
   const representanteOptions = useMemo(
     () =>
@@ -299,24 +348,24 @@ export default function ClientesPage() {
         </SelectItem>
       )),
     [reps],
-  )
+  );
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const startIdx = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
-  const endIdx = Math.min(page * PAGE_SIZE, total)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const startIdx = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const endIdx = Math.min(page * PAGE_SIZE, total);
 
   const resetFilters = () => {
-    setSearch("")
-    setFiltroEmpresa("")
-    setFiltroRep("")
-    setFiltroEstadoValidacion("")
-    setPage(1)
-  }
+    setSearch("");
+    setFiltroEmpresa("");
+    setFiltroRep("");
+    setFiltroEstadoValidacion("");
+    setPage(1);
+  };
 
   const rowClass = (c: ClienteRow) =>
     c.estado_validacion === "PENDIENTE_VALIDAR"
       ? "border-l-[5px] border-amber-500 bg-amber-500/10"
-      : "border-l-[5px] border-emerald-500/35 bg-emerald-500/[0.04]"
+      : "border-l-[5px] border-emerald-500/35 bg-emerald-500/[0.04]";
 
   const tableRows = useMemo(() => {
     if (loading) {
@@ -324,18 +373,20 @@ export default function ClientesPage() {
         <TableRow>
           <TableCell colSpan={9}>Cargando…</TableCell>
         </TableRow>
-      )
+      );
     }
     if (rows.length === 0) {
       return (
         <TableRow>
           <TableCell colSpan={9}>Sin clientes con estos filtros</TableCell>
         </TableRow>
-      )
+      );
     }
     return rows.map((c) => (
       <TableRow key={c.id} className={cn(rowClass(c), "transition-colors")}>
-        <TableCell className="font-mono text-xs text-muted-foreground">#{c.id}</TableCell>
+        <TableCell className="font-mono text-xs text-muted-foreground">
+          #{c.id}
+        </TableCell>
         <TableCell>
           <Link
             href={`/clientes/${c.id}`}
@@ -344,7 +395,9 @@ export default function ClientesPage() {
             {c.nombre} {c.apellido}
           </Link>
         </TableCell>
-        <TableCell className="font-mono text-sm">{formatCedula(c.cedula)}</TableCell>
+        <TableCell className="font-mono text-sm">
+          {formatCedula(c.cedula)}
+        </TableCell>
         <TableCell className="hidden xl:table-cell">
           <span className="inline-flex items-center gap-1.5 text-sm">
             <Phone className="size-3.5 text-muted-foreground" />
@@ -359,7 +412,9 @@ export default function ClientesPage() {
         </TableCell>
         <TableCell className="hidden xl:table-cell text-sm max-w-[140px]">
           <span className="block truncate">
-            {c.representantes ? `${c.representantes.nombre} ${c.representantes.apellido}` : "—"}
+            {c.representantes
+              ? `${c.representantes.nombre} ${c.representantes.apellido}`
+              : "—"}
           </span>
         </TableCell>
         <TableCell>{validacionBadge(c.estado_validacion)}</TableCell>
@@ -376,7 +431,12 @@ export default function ClientesPage() {
         <TableCell className="text-right">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="ghost" className="size-8" aria-label="Acciones">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-8"
+                aria-label="Acciones"
+              >
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -392,7 +452,10 @@ export default function ClientesPage() {
                 Editar
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(c.id)}>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => setDeleteId(c.id)}
+              >
                 <Trash2 className="mr-2 size-4" />
                 Eliminar
               </DropdownMenuItem>
@@ -400,15 +463,17 @@ export default function ClientesPage() {
           </DropdownMenu>
         </TableCell>
       </TableRow>
-    ))
-  }, [loading, rows])
+    ));
+  }, [loading, rows]);
 
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Clientes</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+              Clientes
+            </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
               Deudores vinculados a empresa y representante.
             </p>
@@ -416,14 +481,14 @@ export default function ClientesPage() {
           <Dialog
             open={open}
             onOpenChange={(v) => {
-              setOpen(v)
-              if (!v) setEditing(null)
+              setOpen(v);
+              if (!v) setEditing(null);
             }}
           >
             <DialogTrigger asChild>
               <Button
                 onClick={() => {
-                  setEditing(null)
+                  setEditing(null);
                   setForm({
                     nombre: "",
                     apellido: "",
@@ -433,8 +498,8 @@ export default function ClientesPage() {
                     estadoValidacion: "VALIDADO",
                     empresaId: "",
                     representanteId: "",
-                  })
-                  setOpen(true)
+                  });
+                  setOpen(true);
                 }}
               >
                 <Plus className="mr-2 size-4" />
@@ -444,7 +509,9 @@ export default function ClientesPage() {
             {open && (
               <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>{editing ? "Editar" : "Nuevo"} cliente</DialogTitle>
+                  <DialogTitle>
+                    {editing ? "Editar" : "Nuevo"} cliente
+                  </DialogTitle>
                 </DialogHeader>
                 {(empresas.length === 0 || reps.length === 0) && (
                   <Alert>
@@ -483,7 +550,9 @@ export default function ClientesPage() {
                       <Label>Nombre</Label>
                       <Input
                         value={form.nombre}
-                        onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                        onChange={(e) =>
+                          setForm({ ...form, nombre: e.target.value })
+                        }
                         required
                       />
                     </div>
@@ -491,7 +560,9 @@ export default function ClientesPage() {
                       <Label>Apellido</Label>
                       <Input
                         value={form.apellido}
-                        onChange={(e) => setForm({ ...form, apellido: e.target.value })}
+                        onChange={(e) =>
+                          setForm({ ...form, apellido: e.target.value })
+                        }
                         required
                       />
                     </div>
@@ -508,7 +579,9 @@ export default function ClientesPage() {
                     <Label>Ubicación</Label>
                     <Input
                       value={form.ubicacion}
-                      onChange={(e) => setForm({ ...form, ubicacion: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, ubicacion: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -527,7 +600,9 @@ export default function ClientesPage() {
                       onValueChange={(v) =>
                         setForm({
                           ...form,
-                          estadoValidacion: v as "VALIDADO" | "PENDIENTE_VALIDAR",
+                          estadoValidacion: v as
+                            | "VALIDADO"
+                            | "PENDIENTE_VALIDAR",
                         })
                       }
                     >
@@ -536,31 +611,52 @@ export default function ClientesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="VALIDADO">Validado</SelectItem>
-                        <SelectItem value="PENDIENTE_VALIDAR">Pendiente de validar</SelectItem>
+                        <SelectItem value="PENDIENTE_VALIDAR">
+                          Pendiente de validar
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <Label>Empresa</Label>
-                      <Button variant="outline" size="sm" className="shrink-0 gap-1" asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 gap-1"
+                        asChild
+                      >
                         <Link href="/empresas">
                           <Plus className="size-3.5" />
                           Nueva empresa
                         </Link>
                       </Button>
                     </div>
-                    <Select value={form.empresaId} onValueChange={(v) => setForm({ ...form, empresaId: v })}>
+                    <Select
+                      value={form.empresaId}
+                      onValueChange={(v) => setForm({ ...form, empresaId: v })}
+                    >
                       <SelectTrigger>
                         <SelectValue
-                          placeholder={empresas.length ? "Seleccionar" : "Sin empresas — créalas primero"}
+                          placeholder={
+                            empresas.length
+                              ? "Seleccionar"
+                              : "Sin empresas — créalas primero"
+                          }
                         />
                       </SelectTrigger>
                       <SelectContent>
                         {empresas.length === 0 ? (
                           <div className="flex flex-col gap-2 p-2">
-                            <p className="text-sm text-muted-foreground">Aún no hay empresas.</p>
-                            <Button variant="secondary" size="sm" className="w-full" asChild>
+                            <p className="text-sm text-muted-foreground">
+                              Aún no hay empresas.
+                            </p>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="w-full"
+                              asChild
+                            >
                               <Link href="/empresas">
                                 <Plus className="mr-1 size-3.5" />
                                 Crear empresa
@@ -576,7 +672,12 @@ export default function ClientesPage() {
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <Label>Representante</Label>
-                      <Button variant="outline" size="sm" className="shrink-0 gap-1" asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 gap-1"
+                        asChild
+                      >
                         <Link href="/representantes">
                           <Plus className="size-3.5" />
                           Nuevo representante
@@ -585,18 +686,31 @@ export default function ClientesPage() {
                     </div>
                     <Select
                       value={form.representanteId}
-                      onValueChange={(v) => setForm({ ...form, representanteId: v })}
+                      onValueChange={(v) =>
+                        setForm({ ...form, representanteId: v })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue
-                          placeholder={reps.length ? "Seleccionar" : "Sin representantes — créalos primero"}
+                          placeholder={
+                            reps.length
+                              ? "Seleccionar"
+                              : "Sin representantes — créalos primero"
+                          }
                         />
                       </SelectTrigger>
                       <SelectContent>
                         {reps.length === 0 ? (
                           <div className="flex flex-col gap-2 p-2">
-                            <p className="text-sm text-muted-foreground">Aún no hay representantes.</p>
-                            <Button variant="secondary" size="sm" className="w-full" asChild>
+                            <p className="text-sm text-muted-foreground">
+                              Aún no hay representantes.
+                            </p>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="w-full"
+                              asChild
+                            >
                               <Link href="/representantes">
                                 <Plus className="mr-1 size-3.5" />
                                 Crear representante
@@ -621,10 +735,14 @@ export default function ClientesPage() {
                   </Button>
                   <Button
                     onClick={save}
-                    disabled={!form.empresaId || !form.representanteId || isSaving}
+                    disabled={
+                      !form.empresaId || !form.representanteId || isSaving
+                    }
                     className="w-full sm:w-auto"
                     title={
-                      !form.empresaId || !form.representanteId ? "Elige empresa y representante" : undefined
+                      !form.empresaId || !form.representanteId
+                        ? "Elige empresa y representante"
+                        : undefined
                     }
                   >
                     {isSaving ? "Guardando..." : "Guardar"}
@@ -635,19 +753,32 @@ export default function ClientesPage() {
           </Dialog>
         </div>
 
-        <section aria-label="Resumen de clientes" className="grid gap-3 sm:grid-cols-3">
+        <section
+          aria-label="Resumen de clientes"
+          className="grid gap-3 sm:grid-cols-3"
+        >
           <div className="stat-card">
-            <p className="text-xs font-medium text-muted-foreground">Total clientes</p>
-            <p className="mt-1 text-2xl font-bold tabular">{resumenLoading ? "…" : (resumen?.total ?? "—")}</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              Total clientes
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular">
+              {resumenLoading ? "…" : (resumen?.total ?? "—")}
+            </p>
             <p className="text-xs text-muted-foreground">Registrados</p>
           </div>
           <div className="stat-card">
-            <p className="text-xs font-medium text-muted-foreground">Validados</p>
-            <p className="mt-1 text-2xl font-bold tabular">{resumenLoading ? "…" : (resumen?.validados ?? "—")}</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              Validados
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular">
+              {resumenLoading ? "…" : (resumen?.validados ?? "—")}
+            </p>
             <p className="text-xs text-muted-foreground">Listos para operar</p>
           </div>
           <div className="stat-card border-l-amber-400">
-            <p className="text-xs font-medium text-muted-foreground">Pendientes de validar</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              Pendientes de validar
+            </p>
             <p className="mt-1 text-2xl font-bold tabular text-amber-600 dark:text-amber-400">
               {resumenLoading ? "…" : (resumen?.pendientesValidacion ?? "—")}
             </p>
@@ -672,7 +803,10 @@ export default function ClientesPage() {
             </div>
             <div className="space-y-2">
               <Label>Empresa</Label>
-              <Select value={filtroEmpresa || "all"} onValueChange={(v) => setFiltroEmpresa(v === "all" ? "" : v)}>
+              <Select
+                value={filtroEmpresa || "all"}
+                onValueChange={(v) => setFiltroEmpresa(v === "all" ? "" : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
@@ -688,7 +822,10 @@ export default function ClientesPage() {
             </div>
             <div className="space-y-2">
               <Label>Representante</Label>
-              <Select value={filtroRep || "all"} onValueChange={(v) => setFiltroRep(v === "all" ? "" : v)}>
+              <Select
+                value={filtroRep || "all"}
+                onValueChange={(v) => setFiltroRep(v === "all" ? "" : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -706,7 +843,9 @@ export default function ClientesPage() {
               <Label>Validación</Label>
               <Select
                 value={filtroEstadoValidacion || "all"}
-                onValueChange={(v) => setFiltroEstadoValidacion(v === "all" ? "" : v)}
+                onValueChange={(v) =>
+                  setFiltroEstadoValidacion(v === "all" ? "" : v)
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -714,12 +853,20 @@ export default function ClientesPage() {
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
                   <SelectItem value="VALIDADO">Validado</SelectItem>
-                  <SelectItem value="PENDIENTE_VALIDAR">Pendiente de validar</SelectItem>
+                  <SelectItem value="PENDIENTE_VALIDAR">
+                    Pendiente de validar
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-end xl:col-span-2 w-full sm:w-auto">
-              <Button type="button" variant="outline" size="sm" onClick={resetFilters} className="w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={resetFilters}
+                className="w-full sm:w-auto"
+              >
                 Limpiar filtros
               </Button>
             </div>
@@ -731,9 +878,11 @@ export default function ClientesPage() {
               "Sin resultados."
             ) : (
               <>
-                Mostrando <span className="font-medium text-foreground">{startIdx}</span>–
+                Mostrando{" "}
+                <span className="font-medium text-foreground">{startIdx}</span>–
                 <span className="font-medium text-foreground">{endIdx}</span> de{" "}
-                <span className="font-medium text-foreground">{total}</span> cliente
+                <span className="font-medium text-foreground">{total}</span>{" "}
+                cliente
                 {total === 1 ? "" : "s"}
               </>
             )}
@@ -747,9 +896,13 @@ export default function ClientesPage() {
                 <TableHead className="w-[4rem]">ID</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead className="w-32">Cédula</TableHead>
-                <TableHead className="hidden xl:table-cell w-36">Teléfono</TableHead>
+                <TableHead className="hidden xl:table-cell w-36">
+                  Teléfono
+                </TableHead>
                 <TableHead className="hidden xl:table-cell">Empresa</TableHead>
-                <TableHead className="hidden xl:table-cell">Representante</TableHead>
+                <TableHead className="hidden xl:table-cell">
+                  Representante
+                </TableHead>
                 <TableHead className="w-28">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -762,7 +915,9 @@ export default function ClientesPage() {
                     </TooltipContent>
                   </Tooltip>
                 </TableHead>
-                <TableHead className="hidden xl:table-cell w-28">Último pago</TableHead>
+                <TableHead className="hidden xl:table-cell w-28">
+                  Último pago
+                </TableHead>
                 <TableHead className="w-16 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -772,7 +927,9 @@ export default function ClientesPage() {
 
         <div className="lg:hidden block space-y-3">
           {loading ? (
-            <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">Cargando…</div>
+            <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
+              Cargando…
+            </div>
           ) : rows.length === 0 ? (
             <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
               Sin clientes con estos filtros
@@ -782,18 +939,25 @@ export default function ClientesPage() {
               {rows.map((c) => (
                 <div
                   key={c.id}
-                  className={cn("rounded-xl border border-border bg-card/80 p-4", rowClass(c))}
+                  className={cn(
+                    "rounded-xl border border-border bg-card/80 p-4",
+                    rowClass(c),
+                  )}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-xs text-muted-foreground">#{c.id}</span>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          #{c.id}
+                        </span>
                         {validacionBadge(c.estado_validacion)}
                       </div>
                       <div className="text-base font-semibold leading-tight">
                         {c.nombre} {c.apellido}
                       </div>
-                      <p className="text-sm text-muted-foreground">Cédula: {formatCedula(c.cedula)}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Cédula: {formatCedula(c.cedula)}
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         <span className="inline-flex items-center gap-2">
                           <Phone className="size-3.5 text-muted-foreground" />
@@ -802,7 +966,9 @@ export default function ClientesPage() {
                       </p>
                     </div>
                     <div className="space-y-1 text-right">
-                      <p className="text-xs text-muted-foreground">Último pago</p>
+                      <p className="text-xs text-muted-foreground">
+                        Último pago
+                      </p>
                       <p className="font-semibold">{c.ultimo_pago ?? "—"}</p>
                     </div>
                   </div>
@@ -810,21 +976,35 @@ export default function ClientesPage() {
                   <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
                     <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
                       <span className="text-muted-foreground">Empresa</span>
-                      <span className="font-medium">{c.empresas?.nombre ?? "—"}</span>
+                      <span className="font-medium">
+                        {c.empresas?.nombre ?? "—"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
-                      <span className="text-muted-foreground">Representante</span>
+                      <span className="text-muted-foreground">
+                        Representante
+                      </span>
                       <span className="font-medium">
-                        {c.representantes ? `${c.representantes.nombre} ${c.representantes.apellido}` : "—"}
+                        {c.representantes
+                          ? `${c.representantes.nombre} ${c.representantes.apellido}`
+                          : "—"}
                       </span>
                     </div>
                   </div>
 
                   <div className="mt-4 flex flex-col gap-2">
-                    <Button asChild variant="secondary" className="w-full justify-center">
+                    <Button
+                      asChild
+                      variant="secondary"
+                      className="w-full justify-center"
+                    >
                       <Link href={`/clientes/${c.id}`}>Ver ficha</Link>
                     </Button>
-                    <Button variant="outline" className="w-full justify-center" onClick={() => void openEdit(c)}>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-center"
+                      onClick={() => void openEdit(c)}
+                    >
                       Editar
                     </Button>
                     <Button
@@ -871,14 +1051,21 @@ export default function ClientesPage() {
           </div>
         ) : null}
 
-        <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialog
+          open={deleteId !== null}
+          onOpenChange={() => setDeleteId(null)}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
-              <AlertDialogDescription>Solo si no tiene préstamos activos o en mora.</AlertDialogDescription>
+              <AlertDialogDescription>
+                Solo si no tiene préstamos activos o en mora.
+              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel disabled={isDeleting}>
+                Cancelar
+              </AlertDialogCancel>
               <AlertDialogAction onClick={remove} disabled={isDeleting}>
                 {isDeleting ? "Eliminando..." : "Eliminar"}
               </AlertDialogAction>
@@ -887,5 +1074,5 @@ export default function ClientesPage() {
         </AlertDialog>
       </div>
     </TooltipProvider>
-  )
+  );
 }

@@ -4,9 +4,7 @@
     "description": "Colección de APIs de la app de préstamos",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000" }
-  ],
+  "variable": [{ "key": "baseUrl", "value": "http://localhost:3000" }],
   "item": [
     {
       "name": "Clientes",
@@ -134,15 +132,24 @@
       "item": [
         {
           "name": "Clientes por segmento",
-          "request": { "method": "GET", "url": "{{baseUrl}}/api/dashboard/clients-segment" }
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/dashboard/clients-segment"
+          }
         },
         {
           "name": "Préstamos por segmento",
-          "request": { "method": "GET", "url": "{{baseUrl}}/api/dashboard/loans-segment" }
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/dashboard/loans-segment"
+          }
         },
         {
           "name": "Notificaciones por segmento",
-          "request": { "method": "GET", "url": "{{baseUrl}}/api/dashboard/notifications-segment" }
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/dashboard/notifications-segment"
+          }
         }
       ]
     },

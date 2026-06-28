@@ -1,25 +1,28 @@
-"use client"
+"use client";
 
-import { Users, TrendingUp, AlertCircle } from "lucide-react"
-import { Card } from "@/components/ui/card"
+import { Users, TrendingUp, AlertCircle } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 interface ClientsHeroSectionProps {
-  totalClients: number
-  activeClients: number
+  totalClients: number;
+  activeClients: number;
 }
 
 export function ClientsHeroSection({
   totalClients,
   activeClients,
 }: ClientsHeroSectionProps) {
-  const atRiskClients = totalClients - activeClients
+  const atRiskClients = totalClients - activeClients;
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Clientes personales</h2>
+        <h2 className="text-3xl font-bold tracking-tight">
+          Clientes personales
+        </h2>
         <p className="text-muted-foreground mt-2">
-          Gestiona y monitorea tu cartera de préstamos a personas en un solo lugar
+          Gestiona y monitorea tu cartera de préstamos a personas en un solo
+          lugar
         </p>
       </div>
 
@@ -27,7 +30,9 @@ export function ClientsHeroSection({
         <Card className="stat-card">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-muted-foreground text-sm font-medium">Total de clientes</p>
+              <p className="text-muted-foreground text-sm font-medium">
+                Total de clientes
+              </p>
               <p className="text-3xl font-bold mt-2">{totalClients}</p>
             </div>
             <div className="metric-icon">
@@ -39,10 +44,13 @@ export function ClientsHeroSection({
         <Card className="stat-card">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-muted-foreground text-sm font-medium">Clientes activos</p>
+              <p className="text-muted-foreground text-sm font-medium">
+                Clientes activos
+              </p>
               <p className="text-3xl font-bold mt-2">{activeClients}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {Math.round((activeClients / totalClients) * 100)}% de la cartera
+                {Math.round((activeClients / totalClients) * 100)}% de la
+                cartera
               </p>
             </div>
             <div className="metric-icon">
@@ -54,10 +62,13 @@ export function ClientsHeroSection({
         <Card className="stat-card">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-muted-foreground text-sm font-medium">En riesgo</p>
+              <p className="text-muted-foreground text-sm font-medium">
+                En riesgo
+              </p>
               <p className="text-3xl font-bold mt-2">{atRiskClients}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {Math.round((atRiskClients / totalClients) * 100)}% requiere atención
+                {Math.round((atRiskClients / totalClients) * 100)}% requiere
+                atención
               </p>
             </div>
             <div className="metric-icon">
@@ -67,5 +78,5 @@ export function ClientsHeroSection({
         </Card>
       </div>
     </div>
-  )
+  );
 }

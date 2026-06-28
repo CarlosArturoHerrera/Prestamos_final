@@ -1,8 +1,14 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Package, Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Package, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function ProductsTab() {
   return (
@@ -37,5 +43,5 @@ export function ProductsTab() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

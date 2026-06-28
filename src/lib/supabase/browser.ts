@@ -1,16 +1,16 @@
-"use client"
+"use client";
 
-import { createBrowserClient } from "@supabase/ssr"
+import { createBrowserClient } from "@supabase/ssr";
 
 export function createSupabaseBrowserClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
     throw new Error(
       "Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY (en Vercel pon los mismos valores que SUPABASE_URL / SUPABASE_ANON_KEY; el navegador no puede leer variables sin NEXT_PUBLIC_)",
-    )
+    );
   }
-  return createBrowserClient(url, key)
+  return createBrowserClient(url, key);
 }
 
-export { isSupabaseConfiguredOnClient } from "@/lib/env-public"
+export { isSupabaseConfiguredOnClient } from "@/lib/env-public";

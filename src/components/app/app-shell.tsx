@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Banknote,
   BarChart3,
@@ -19,14 +19,21 @@ import {
   UserCircle,
   Users,
   X,
-} from "lucide-react"
-import { createSupabaseBrowserClient, isSupabaseConfiguredOnClient } from "@/lib/supabase/browser"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { isSuperAdmin } from "@/lib/roles"
-import type { AppRole } from "@/lib/api-auth"
+} from "lucide-react";
+import {
+  createSupabaseBrowserClient,
+  isSupabaseConfiguredOnClient,
+} from "@/lib/supabase/browser";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { isSuperAdmin } from "@/lib/roles";
+import type { AppRole } from "@/lib/api-auth";
 
 const navBase = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -36,67 +43,72 @@ const navBase = [
   { href: "/prestamos", label: "Préstamos", icon: Banknote },
   { href: "/notificaciones", label: "Notificaciones", icon: Bell },
   { href: "/reportes", label: "Reportes", icon: BarChart3 },
-] as const
+] as const;
 
 const navAdminItem = {
   href: "/admin/users",
   label: "Usuarios",
   icon: Settings2,
-} as const
+} as const;
 
-const BOTTOM_NAV_ITEMS = 4
+const BOTTOM_NAV_ITEMS = 4;
 
 interface AppShellProps {
-  children: React.ReactNode
-  role?: AppRole | null
+  children: React.ReactNode;
+  role?: AppRole | null;
 }
 
 export function AppShell({ children, role }: AppShellProps) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const pathname = usePathname();
+  const router = useRouter();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  const superAdmin = isSuperAdmin(role)
-  const nav = superAdmin ? [...navBase, navAdminItem] : navBase
+  const superAdmin = isSuperAdmin(role);
+  const nav = superAdmin ? [...navBase, navAdminItem] : navBase;
 
   // Current page label for header breadcrumb
-  const currentNav = [...nav].reverse().find((item) =>
-    item.href === "/" ? pathname === "/" : pathname.startsWith(item.href),
-  )
+  const currentNav = [...nav]
+    .reverse()
+    .find((item) =>
+      item.href === "/" ? pathname === "/" : pathname.startsWith(item.href),
+    );
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("elicar.sidebar.collapsed")
-      setSidebarCollapsed(stored === "true")
+      const stored = localStorage.getItem("elicar.sidebar.collapsed");
+      setSidebarCollapsed(stored === "true");
     } catch {}
-  }, [])
+  }, []);
 
   useEffect(() => {
     try {
-      localStorage.setItem("elicar.sidebar.collapsed", String(sidebarCollapsed))
+      localStorage.setItem(
+        "elicar.sidebar.collapsed",
+        String(sidebarCollapsed),
+      );
     } catch {}
-  }, [sidebarCollapsed])
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
-    setMobileSidebarOpen(false)
-  }, [pathname])
+    setMobileSidebarOpen(false);
+  }, [pathname]);
 
   const logout = async () => {
     try {
       if (isSupabaseConfiguredOnClient()) {
-        const supabase = createSupabaseBrowserClient()
-        await supabase.auth.signOut({ scope: "local" })
+        const supabase = createSupabaseBrowserClient();
+        await supabase.auth.signOut({ scope: "local" });
       }
-    } catch {}
-    finally {
-      router.push("/login")
-      router.refresh()
+    } catch {
+    } finally {
+      router.push("/login");
+      router.refresh();
     }
-  }
+  };
 
   const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href)
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   const navItemClass = (active: boolean, collapsed = false) =>
     cn(
@@ -105,7 +117,7 @@ export function AppShell({ children, role }: AppShellProps) {
       active
         ? "bg-sidebar-accent text-sidebar-primary font-semibold"
         : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-    )
+    );
 
   return (
     <div className="relative flex h-screen w-full overflow-hidden bg-background">
@@ -117,12 +129,19 @@ export function AppShell({ children, role }: AppShellProps) {
         )}
       >
         {/* Brand */}
-        <div className={cn(
-          "flex h-14 shrink-0 items-center border-b border-sidebar-border",
-          sidebarCollapsed ? "justify-center px-2" : "gap-2.5 px-4",
-        )}>
+        <div
+          className={cn(
+            "flex h-14 shrink-0 items-center border-b border-sidebar-border",
+            sidebarCollapsed ? "justify-center px-2" : "gap-2.5 px-4",
+          )}
+        >
           <div className="relative flex size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden">
-            <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #0052CC 0%, #00D2FF 100%)" }} />
+            <div
+              className="absolute inset-0"
+              style={{
+                background: "linear-gradient(135deg, #0052CC 0%, #00D2FF 100%)",
+              }}
+            />
             <TrendingUp className="relative size-4 text-white" />
           </div>
           {!sidebarCollapsed && (
@@ -130,7 +149,10 @@ export function AppShell({ children, role }: AppShellProps) {
               <p className="truncate text-sm font-bold text-sidebar-foreground leading-tight tracking-tight">
                 Elicar
               </p>
-              <p className="truncate text-[10px] leading-tight" style={{ color: "var(--sidebar-primary)" }}>
+              <p
+                className="truncate text-[10px] leading-tight"
+                style={{ color: "var(--sidebar-primary)" }}
+              >
                 Microfinanzas
               </p>
             </div>
@@ -138,11 +160,16 @@ export function AppShell({ children, role }: AppShellProps) {
         </div>
 
         {/* Nav links */}
-        <nav className={cn("flex flex-1 flex-col gap-0.5 overflow-y-auto py-3", sidebarCollapsed ? "px-2" : "px-3")}>
+        <nav
+          className={cn(
+            "flex flex-1 flex-col gap-0.5 overflow-y-auto py-3",
+            sidebarCollapsed ? "px-2" : "px-3",
+          )}
+        >
           {nav.map((item) => {
-            const Icon = item.icon
-            const active = isActive(item.href)
-            const isAdminItem = item.href === "/admin/users"
+            const Icon = item.icon;
+            const active = isActive(item.href);
+            const isAdminItem = item.href === "/admin/users";
 
             const link = (
               <Link
@@ -150,19 +177,26 @@ export function AppShell({ children, role }: AppShellProps) {
                 href={item.href}
                 className={cn(
                   navItemClass(active, sidebarCollapsed),
-                  isAdminItem && !sidebarCollapsed && "mt-3 border-t border-sidebar-border pt-3",
+                  isAdminItem &&
+                    !sidebarCollapsed &&
+                    "mt-3 border-t border-sidebar-border pt-3",
                   isAdminItem && sidebarCollapsed && "mt-3",
                 )}
               >
                 {active && !sidebarCollapsed && (
                   <span className="nav-active-indicator" />
                 )}
-                <Icon className={cn("shrink-0", sidebarCollapsed ? "size-[18px]" : "size-4")} />
+                <Icon
+                  className={cn(
+                    "shrink-0",
+                    sidebarCollapsed ? "size-[18px]" : "size-4",
+                  )}
+                />
                 {!sidebarCollapsed && (
                   <span className="flex-1 truncate">{item.label}</span>
                 )}
               </Link>
-            )
+            );
 
             if (sidebarCollapsed) {
               return (
@@ -172,17 +206,21 @@ export function AppShell({ children, role }: AppShellProps) {
                     {item.label}
                   </TooltipContent>
                 </Tooltip>
-              )
+              );
             }
-            return link
+            return link;
           })}
         </nav>
 
         {/* Collapse toggle + logout */}
-        <div className={cn(
-          "shrink-0 border-t border-sidebar-border py-3",
-          sidebarCollapsed ? "flex flex-col items-center gap-1 px-2" : "px-3 space-y-1",
-        )}>
+        <div
+          className={cn(
+            "shrink-0 border-t border-sidebar-border py-3",
+            sidebarCollapsed
+              ? "flex flex-col items-center gap-1 px-2"
+              : "px-3 space-y-1",
+          )}
+        >
           {sidebarCollapsed ? (
             <>
               <Tooltip>
@@ -196,7 +234,9 @@ export function AppShell({ children, role }: AppShellProps) {
                     <ChevronRight className="size-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>Expandir</TooltipContent>
+                <TooltipContent side="right" sideOffset={8}>
+                  Expandir
+                </TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -209,7 +249,9 @@ export function AppShell({ children, role }: AppShellProps) {
                     <LogOut className="size-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>Salir</TooltipContent>
+                <TooltipContent side="right" sideOffset={8}>
+                  Salir
+                </TooltipContent>
               </Tooltip>
             </>
           ) : (
@@ -262,10 +304,18 @@ export function AppShell({ children, role }: AppShellProps) {
             {/* Mobile brand */}
             <div className="flex items-center gap-2 md:hidden">
               <div className="relative flex size-7 items-center justify-center rounded-lg overflow-hidden">
-                <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #0052CC 0%, #00D2FF 100%)" }} />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #0052CC 0%, #00D2FF 100%)",
+                  }}
+                />
                 <TrendingUp className="relative size-3.5 text-white" />
               </div>
-              <span className="font-bold text-sm text-foreground tracking-tight">Elicar</span>
+              <span className="font-bold text-sm text-foreground tracking-tight">
+                Elicar
+              </span>
             </div>
             {/* Desktop: current page name */}
             {currentNav && (
@@ -314,12 +364,25 @@ export function AppShell({ children, role }: AppShellProps) {
         <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-4">
           <div className="flex items-center gap-2.5">
             <div className="relative flex size-8 items-center justify-center rounded-lg overflow-hidden">
-              <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #0052CC 0%, #00D2FF 100%)" }} />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #0052CC 0%, #00D2FF 100%)",
+                }}
+              />
               <TrendingUp className="relative size-4 text-white" />
             </div>
             <div>
-              <p className="text-sm font-bold text-sidebar-foreground tracking-tight">Elicar</p>
-              <p className="text-[10px]" style={{ color: "var(--sidebar-primary)" }}>Microfinanzas</p>
+              <p className="text-sm font-bold text-sidebar-foreground tracking-tight">
+                Elicar
+              </p>
+              <p
+                className="text-[10px]"
+                style={{ color: "var(--sidebar-primary)" }}
+              >
+                Microfinanzas
+              </p>
             </div>
           </div>
           <Button
@@ -335,9 +398,9 @@ export function AppShell({ children, role }: AppShellProps) {
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
           {nav.map((item) => {
-            const Icon = item.icon
-            const active = isActive(item.href)
-            const isAdminItem = item.href === "/admin/users"
+            const Icon = item.icon;
+            const active = isActive(item.href);
+            const isAdminItem = item.href === "/admin/users";
             return (
               <Link
                 key={item.href}
@@ -351,7 +414,7 @@ export function AppShell({ children, role }: AppShellProps) {
                 <Icon className="size-4 shrink-0" />
                 <span className="flex-1 truncate">{item.label}</span>
               </Link>
-            )
+            );
           })}
         </nav>
 
@@ -370,8 +433,8 @@ export function AppShell({ children, role }: AppShellProps) {
       {/* ── Mobile bottom navigation ── */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-border bg-background/95 shadow-[0_-1px_0_0_var(--border)] backdrop-blur-xl md:hidden">
         {navBase.slice(0, BOTTOM_NAV_ITEMS).map((item) => {
-          const Icon = item.icon
-          const active = isActive(item.href)
+          const Icon = item.icon;
+          const active = isActive(item.href);
           return (
             <Link
               key={item.href}
@@ -381,12 +444,19 @@ export function AppShell({ children, role }: AppShellProps) {
                 active ? "text-primary" : "text-muted-foreground",
               )}
             >
-              <div className={cn("bottom-nav-item-icon", active && "bg-accent text-primary")}>
+              <div
+                className={cn(
+                  "bottom-nav-item-icon",
+                  active && "bg-accent text-primary",
+                )}
+              >
                 <Icon className="size-5" />
               </div>
-              <span className={cn(active && "font-semibold")}>{item.label}</span>
+              <span className={cn(active && "font-semibold")}>
+                {item.label}
+              </span>
             </Link>
-          )
+          );
         })}
         <button
           type="button"
@@ -399,7 +469,6 @@ export function AppShell({ children, role }: AppShellProps) {
           <span>Más</span>
         </button>
       </nav>
-
     </div>
-  )
+  );
 }

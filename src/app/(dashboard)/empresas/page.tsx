@@ -509,7 +509,9 @@ export default function EmpresasPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Empresas</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+              Empresas
+            </h1>
             <p className="text-sm text-muted-foreground">
               Catálogo de empresas vinculadas a clientes. Búsqueda por nombre,
               RNC o email.
@@ -764,9 +766,7 @@ export default function EmpresasPage() {
                 <TableHead className="w-32">RNC</TableHead>
                 <TableHead className="w-36">Teléfono</TableHead>
                 <TableHead className="hidden xl:table-cell">Email</TableHead>
-                <TableHead className="w-[3rem] text-right">
-                  Acciones
-                </TableHead>
+                <TableHead className="w-[3rem] text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>{tableRows}</TableBody>
@@ -828,4 +828,3 @@ export default function EmpresasPage() {
     </TooltipProvider>
   );
 }
-

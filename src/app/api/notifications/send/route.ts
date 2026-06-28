@@ -8,28 +8,41 @@
  * No usa TWILIO_AUTH_TOKEN.
  */
 
-import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
-import { sendWhatsAppMessage, serializeTwilioSendError } from "@/lib/twilio-whatsapp"
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
+import {
+  sendWhatsAppMessage,
+  serializeTwilioSendError,
+} from "@/lib/twilio-whatsapp";
 
 export async function POST(request: Request) {
-  let body: Record<string, unknown>
+  let body: Record<string, unknown>;
   try {
-    body = await request.json()
+    body = await request.json();
   } catch {
-    return NextResponse.json({ error: "JSON inválido" }, { status: 400 })
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const { loanId, clientId, phone, email, subject, content, type } = body as Record<string, unknown>
+  const { loanId, clientId, phone, email, subject, content, type } =
+    body as Record<string, unknown>;
 
   if (!loanId || !clientId || !phone || !subject || !content || !type) {
-    return NextResponse.json({ error: "Campos requeridos: loanId, clientId, phone, subject, content, type" }, { status: 400 })
+    return NextResponse.json(
+      {
+        error:
+          "Campos requeridos: loanId, clientId, phone, subject, content, type",
+      },
+      { status: 400 },
+    );
   }
 
   // Validación temprana: teléfono no puede estar vacío
-  const phoneStr = String(phone).trim()
+  const phoneStr = String(phone).trim();
   if (!phoneStr) {
-    return NextResponse.json({ error: "El teléfono del cliente está vacío" }, { status: 400 })
+    return NextResponse.json(
+      { error: "El teléfono del cliente está vacío" },
+      { status: 400 },
+    );
   }
 
   // Registrar notificación como pendiente
@@ -46,37 +59,44 @@ export async function POST(request: Request) {
       status: "pending",
     })
     .select()
-    .single()
+    .single();
 
   if (dbError) {
-    return NextResponse.json({ error: dbError.message }, { status: 400 })
+    return NextResponse.json({ error: dbError.message }, { status: 400 });
   }
 
   if (String(type) === "whatsapp") {
-    const messageBody = `${String(subject)}\n\n${String(content)}`
+    const messageBody = `${String(subject)}\n\n${String(content)}`;
 
-    const result = await sendWhatsAppMessage({ to: phoneStr, message: messageBody })
+    const result = await sendWhatsAppMessage({
+      to: phoneStr,
+      message: messageBody,
+    });
 
     if (!result.ok) {
       console.error("[notifications/send] sendWhatsAppMessage falló", {
         phone: phoneStr,
         reason: result.reason,
-      })
+      });
       await supabase
         .from("notifications")
         .update({ status: "failed", error_detail: result.reason })
-        .eq("id", notif.id)
+        .eq("id", notif.id);
 
       const isConfigError =
-        result.reason.includes("TWILIO_") || result.reason.includes("Faltan variables")
-      return NextResponse.json({ error: result.reason }, { status: isConfigError ? 500 : 400 })
+        result.reason.includes("TWILIO_") ||
+        result.reason.includes("Faltan variables");
+      return NextResponse.json(
+        { error: result.reason },
+        { status: isConfigError ? 500 : 400 },
+      );
     }
 
     console.info("[notifications/send] enviado", {
       sid: result.sid,
       to: result.to,
       from: result.from,
-    })
+    });
 
     await supabase
       .from("notifications")
@@ -85,11 +105,15 @@ export async function POST(request: Request) {
         sent_at: new Date().toISOString(),
         twilio_message_sid: result.sid,
       })
-      .eq("id", notif.id)
+      .eq("id", notif.id);
 
-    return NextResponse.json({ ok: true, notification: notif, sid: result.sid })
+    return NextResponse.json({
+      ok: true,
+      notification: notif,
+      sid: result.sid,
+    });
   }
 
   // Canal distinto a whatsapp (email, etc.) — no se procesa aquí
-  return NextResponse.json({ ok: true, notification: notif })
+  return NextResponse.json({ ok: true, notification: notif });
 }

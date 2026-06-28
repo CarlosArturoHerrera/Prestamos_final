@@ -1,4 +1,4 @@
-import { Bell, LineChart } from "lucide-react"
+import { Bell, LineChart } from "lucide-react";
 
 import {
   Card,
@@ -6,18 +6,18 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 
 interface OperationsCardProps {
-  scheduledAmount: string
-  operationsCount: number
-  expectedRecoveries: string
-  digitalPercentage: number
-  cashPercentage: number
-  alertText: string
-  alertDetail: string
+  scheduledAmount: string;
+  operationsCount: number;
+  expectedRecoveries: string;
+  digitalPercentage: number;
+  cashPercentage: number;
+  alertText: string;
+  alertDetail: string;
 }
 
 export function OperationsCard({
@@ -40,7 +40,9 @@ export function OperationsCard({
           <div className="space-y-1 text-sm">
             <p className="text-muted-foreground">Desembolsos agendados</p>
             <p className="font-semibold">{scheduledAmount}</p>
-            <span className="text-muted-foreground">{operationsCount} operaciones</span>
+            <span className="text-muted-foreground">
+              {operationsCount} operaciones
+            </span>
           </div>
           <div className="bg-primary/10 text-primary border-primary/30 flex size-12 items-center justify-center rounded-lg border">
             <LineChart className="size-5" />
@@ -80,5 +82,5 @@ export function OperationsCard({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

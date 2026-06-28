@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Card,
@@ -6,7 +6,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -14,22 +14,22 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { formatRD } from "@/lib/format-currency"
+} from "@/components/ui/table";
+import { formatRD } from "@/lib/format-currency";
 import {
   type CardField,
   ResponsiveHistoryCardList,
-} from "./responsive-history-card-list"
+} from "./responsive-history-card-list";
 
 type Props = {
-  abonos: Record<string, unknown>[]
-}
+  abonos: Record<string, unknown>[];
+};
 
 function num(v: unknown): string {
-  if (v == null || v === "") return "—"
-  const n = Number(v)
-  if (Number.isNaN(n)) return "—"
-  return formatRD(n)
+  if (v == null || v === "") return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return "—";
+  return formatRD(n);
 }
 
 // All fields shown in the mobile card view — same data as the desktop table.
@@ -63,8 +63,8 @@ const FIELDS: CardField[] = [
     value: (r) => num(r.diferencia_interes_pendiente),
     valueClassName: "tabular-nums",
     hidden: (r) => {
-      const d = Number(r.diferencia_interes_pendiente)
-      return Number.isNaN(d) || d === 0
+      const d = Number(r.diferencia_interes_pendiente);
+      return Number.isNaN(d) || d === 0;
     },
   },
   {
@@ -77,7 +77,7 @@ const FIELDS: CardField[] = [
     value: (r) => String(r.observaciones ?? "").trim() || "—",
     hidden: (r) => !String(r.observaciones ?? "").trim(),
   },
-]
+];
 
 export function PrestamoAbonosHistorial({ abonos }: Props) {
   return (
@@ -114,7 +114,9 @@ export function PrestamoAbonosHistorial({ abonos }: Props) {
                   <TableRow>
                     <TableHead>Fecha</TableHead>
                     <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Capital debitado</TableHead>
+                    <TableHead className="text-right">
+                      Capital debitado
+                    </TableHead>
                     <TableHead className="hidden lg:table-cell text-right">
                       Int. recibido
                     </TableHead>
@@ -130,7 +132,9 @@ export function PrestamoAbonosHistorial({ abonos }: Props) {
                 </TableHeader>
                 <TableBody>
                   {abonos.map((a, idx) => (
-                    <TableRow key={a.id != null ? String(a.id) : `abono-${idx}`}>
+                    <TableRow
+                      key={a.id != null ? String(a.id) : `abono-${idx}`}
+                    >
                       <TableCell className="whitespace-nowrap">
                         {String(a.fecha_abono ?? "—")}
                       </TableCell>
@@ -164,5 +168,5 @@ export function PrestamoAbonosHistorial({ abonos }: Props) {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

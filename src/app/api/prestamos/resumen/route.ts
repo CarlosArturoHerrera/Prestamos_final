@@ -35,10 +35,13 @@ export async function GET() {
   );
 
   if (error) {
-    console.error("[api/prestamos/resumen] RPC api_prestamos_resumen_dashboard falló, usando fallback", {
-      message: error.message,
-      code: error.code ?? null,
-    });
+    console.error(
+      "[api/prestamos/resumen] RPC api_prestamos_resumen_dashboard falló, usando fallback",
+      {
+        message: error.message,
+        code: error.code ?? null,
+      },
+    );
 
     const [
       { data: prestamos, error: ePrestamos },
@@ -47,7 +50,9 @@ export async function GET() {
     ] = await Promise.all([
       supabase
         .from("prestamos")
-        .select("id, monto, capital_pendiente, estado, fecha_proximo_vencimiento"),
+        .select(
+          "id, monto, capital_pendiente, estado, fecha_proximo_vencimiento",
+        ),
       supabase
         .from("intereses_atrasados")
         .select("prestamo_id, estado, interes_pendiente, monto"),
@@ -56,7 +61,10 @@ export async function GET() {
 
     if (ePrestamos || eIntereses || eReganches) {
       const message =
-        ePrestamos?.message ?? eIntereses?.message ?? eReganches?.message ?? "No se pudo calcular el resumen";
+        ePrestamos?.message ??
+        eIntereses?.message ??
+        eReganches?.message ??
+        "No se pudo calcular el resumen";
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
@@ -69,7 +77,9 @@ export async function GET() {
       .filter((p) => String(p.estado ?? "").toUpperCase() !== "SALDADO")
       .reduce((acc, p) => acc + num(p.capital_pendiente), 0);
 
-    const interesesPendientesRows = iRows.filter((i) => String(i.estado ?? "").toUpperCase() === "PENDIENTE");
+    const interesesPendientesRows = iRows.filter(
+      (i) => String(i.estado ?? "").toUpperCase() === "PENDIENTE",
+    );
     const interesPendienteAcumulado = interesesPendientesRows.reduce(
       (acc, i) => acc + num(i.interes_pendiente ?? i.monto),
       0,
@@ -82,9 +92,15 @@ export async function GET() {
       .filter((r) => String(r.notas ?? "").startsWith("MANUAL:"))
       .reduce((acc, r) => acc + num(r.monto_agregado), 0);
 
-    const prestamosMora = pRows.filter((p) => String(p.estado ?? "").toUpperCase() === "MORA").length;
-    const prestamosSaldados = pRows.filter((p) => String(p.estado ?? "").toUpperCase() === "SALDADO").length;
-    const prestamosActivos = pRows.filter((p) => String(p.estado ?? "").toUpperCase() === "ACTIVO").length;
+    const prestamosMora = pRows.filter(
+      (p) => String(p.estado ?? "").toUpperCase() === "MORA",
+    ).length;
+    const prestamosSaldados = pRows.filter(
+      (p) => String(p.estado ?? "").toUpperCase() === "SALDADO",
+    ).length;
+    const prestamosActivos = pRows.filter(
+      (p) => String(p.estado ?? "").toUpperCase() === "ACTIVO",
+    ).length;
 
     const vencenProximos7Dias = pRows.filter((p) => {
       const estado = String(p.estado ?? "").toUpperCase();

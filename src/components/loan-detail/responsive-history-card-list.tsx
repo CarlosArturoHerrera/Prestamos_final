@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
-import { cn } from "@/lib/utils"
+import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 /**
  * Field definition for each row in a history card.
@@ -9,21 +9,21 @@ import { cn } from "@/lib/utils"
  * `hidden` is called to conditionally skip the row (e.g., empty observations).
  */
 export type CardField = {
-  label: string
-  value: (record: Record<string, unknown>) => ReactNode
-  valueClassName?: string
-  hidden?: (record: Record<string, unknown>) => boolean
-}
+  label: string;
+  value: (record: Record<string, unknown>) => ReactNode;
+  valueClassName?: string;
+  hidden?: (record: Record<string, unknown>) => boolean;
+};
 
 type ResponsiveHistoryCardListProps = {
-  records: Record<string, unknown>[]
-  fields: CardField[]
+  records: Record<string, unknown>[];
+  fields: CardField[];
   /** Derive a stable key for each row. Defaults to record.id or index. */
-  rowKey?: (record: Record<string, unknown>, idx: number) => string
+  rowKey?: (record: Record<string, unknown>, idx: number) => string;
   /** Optional action buttons rendered below the fields for each row. */
-  actions?: (record: Record<string, unknown>, idx: number) => ReactNode
-  className?: string
-}
+  actions?: (record: Record<string, unknown>, idx: number) => ReactNode;
+  className?: string;
+};
 
 /**
  * Mobile card list (hidden at md+).
@@ -37,17 +37,17 @@ export function ResponsiveHistoryCardList({
   actions,
   className,
 }: ResponsiveHistoryCardListProps) {
-  if (records.length === 0) return null
+  if (records.length === 0) return null;
 
   return (
     <ul className={cn("divide-y divide-border/60 md:hidden", className)}>
       {records.map((record, idx) => {
         const key =
           rowKey?.(record, idx) ??
-          (record.id != null ? String(record.id) : `row-${idx}`)
+          (record.id != null ? String(record.id) : `row-${idx}`);
 
-        const visibleFields = fields.filter((f) => !f.hidden?.(record))
-        const actionContent = actions?.(record, idx)
+        const visibleFields = fields.filter((f) => !f.hidden?.(record));
+        const actionContent = actions?.(record, idx);
 
         return (
           <li key={key} className="space-y-2.5 p-4">
@@ -75,8 +75,8 @@ export function ResponsiveHistoryCardList({
               </div>
             )}
           </li>
-        )
+        );
       })}
     </ul>
-  )
+  );
 }

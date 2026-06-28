@@ -1,30 +1,45 @@
-"use client"
+"use client";
 
-import { useState, type ReactNode, useEffect } from "react"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { PhoneInput } from "@/components/ui/phone-input"
-import { unformatPhone } from "@/lib/formatters"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { Client } from "@/lib/types/client"
+import { useState, type ReactNode, useEffect } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { unformatPhone } from "@/lib/formatters";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Client } from "@/lib/types/client";
 
 interface Segment {
-  id: number
-  name: string
+  id: number;
+  name: string;
 }
 
 interface ClientCreateDialogProps {
-  trigger: ReactNode
-  onCreate: (client: Client) => void
+  trigger: ReactNode;
+  onCreate: (client: Client) => void;
 }
 
-export function ClientCreateDialog({ trigger, onCreate }: ClientCreateDialogProps) {
-  const [open, setOpen] = useState(false)
-  const [segments, setSegments] = useState<Segment[]>([])
+export function ClientCreateDialog({
+  trigger,
+  onCreate,
+}: ClientCreateDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [segments, setSegments] = useState<Segment[]>([]);
   const [form, setForm] = useState({
     name: "",
     segment: "",
@@ -32,24 +47,24 @@ export function ClientCreateDialog({ trigger, onCreate }: ClientCreateDialogProp
     email: "",
     location: "",
     notes: "",
-  })
+  });
 
   useEffect(() => {
     if (open) {
       const loadSegments = async () => {
         try {
-          const response = await fetch("/api/segments")
+          const response = await fetch("/api/segments");
           if (response.ok) {
-            const data = await response.json()
-            setSegments(data)
+            const data = await response.json();
+            setSegments(data);
           }
         } catch (error) {
-          console.error("Error loading segments:", error)
+          console.error("Error loading segments:", error);
         }
-      }
-      loadSegments()
+      };
+      loadSegments();
     }
-  }, [open])
+  }, [open]);
 
   const resetForm = () =>
     setForm({
@@ -59,7 +74,7 @@ export function ClientCreateDialog({ trigger, onCreate }: ClientCreateDialogProp
       email: "",
       location: "",
       notes: "",
-    })
+    });
 
   const handleSubmit = async () => {
     try {
@@ -74,24 +89,25 @@ export function ClientCreateDialog({ trigger, onCreate }: ClientCreateDialogProp
           location: form.location.trim() || null,
           notes: form.notes.trim() || null,
         }),
-      })
+      });
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "Error al crear cliente")
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear cliente");
       }
 
-      const newClient = await response.json() as Client
-      onCreate(newClient)
-      toast.success("Cliente creado exitosamente")
-      setOpen(false)
-      resetForm()
+      const newClient = (await response.json()) as Client;
+      onCreate(newClient);
+      toast.success("Cliente creado exitosamente");
+      setOpen(false);
+      resetForm();
     } catch (error) {
-      console.error(error)
-      const message = error instanceof Error ? error.message : "Error al crear cliente"
-      toast.error(message)
+      console.error(error);
+      const message =
+        error instanceof Error ? error.message : "Error al crear cliente";
+      toast.error(message);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -111,8 +127,13 @@ export function ClientCreateDialog({ trigger, onCreate }: ClientCreateDialogProp
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="segment">Perfil <span className="text-destructive">*</span></Label>
-            <Select value={form.segment} onValueChange={(value) => setForm({ ...form, segment: value })}>
+            <Label htmlFor="segment">
+              Perfil <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={form.segment}
+              onValueChange={(value) => setForm({ ...form, segment: value })}
+            >
               <SelectTrigger id="segment">
                 <SelectValue placeholder="Selecciona un perfil" />
               </SelectTrigger>
@@ -136,7 +157,9 @@ export function ClientCreateDialog({ trigger, onCreate }: ClientCreateDialogProp
           </div>
           <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="phone">Teléfono <span className="text-destructive">*</span></Label>
+              <Label htmlFor="phone">
+                Teléfono <span className="text-destructive">*</span>
+              </Label>
               <PhoneInput
                 id="phone"
                 required
@@ -157,36 +180,50 @@ export function ClientCreateDialog({ trigger, onCreate }: ClientCreateDialogProp
           </div>
           <div className="grid gap-2">
             <Label htmlFor="status">Estado</Label>
-            <Input id="status" value="En seguimiento" disabled className="bg-accent/65" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="risk">Riesgo</Label>
-              <Input id="risk" value="Estable" disabled className="bg-accent/65" />
-            </div>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="notes">Notas</Label>
-            <Textarea
-              id="notes"
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              placeholder="Motivo del préstamo, ingresos, referencias..."
-              rows={3}
+            <Input
+              id="status"
+              value="En seguimiento"
+              disabled
+              className="bg-accent/65"
             />
           </div>
-          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!form.name.trim() || !form.phone.trim()}
-              className="w-full sm:w-auto"
-            >
-              Guardar
-            </Button>
+          <div className="grid gap-2">
+            <Label htmlFor="risk">Riesgo</Label>
+            <Input
+              id="risk"
+              value="Estable"
+              disabled
+              className="bg-accent/65"
+            />
           </div>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="notes">Notas</Label>
+          <Textarea
+            id="notes"
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            placeholder="Motivo del préstamo, ingresos, referencias..."
+            rows={3}
+          />
+        </div>
+        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            className="w-full sm:w-auto"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!form.name.trim() || !form.phone.trim()}
+            className="w-full sm:w-auto"
+          >
+            Guardar
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

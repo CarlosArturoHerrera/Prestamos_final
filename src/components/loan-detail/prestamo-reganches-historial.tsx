@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Card,
@@ -6,7 +6,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -14,16 +14,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { formatRD } from "@/lib/format-currency"
+} from "@/components/ui/table";
+import { formatRD } from "@/lib/format-currency";
 import {
   type CardField,
   ResponsiveHistoryCardList,
-} from "./responsive-history-card-list"
+} from "./responsive-history-card-list";
 
 type Props = {
-  reganches: Record<string, unknown>[]
-}
+  reganches: Record<string, unknown>[];
+};
 
 const FIELDS: CardField[] = [
   {
@@ -33,8 +33,8 @@ const FIELDS: CardField[] = [
   {
     label: "Monto agregado",
     value: (r) => {
-      const m = Number(r.monto_agregado ?? 0)
-      return Number.isNaN(m) ? "—" : formatRD(m)
+      const m = Number(r.monto_agregado ?? 0);
+      return Number.isNaN(m) ? "—" : formatRD(m);
     },
     valueClassName: "font-semibold tabular-nums",
   },
@@ -42,7 +42,7 @@ const FIELDS: CardField[] = [
     label: "Notas / origen",
     value: (r) => String(r.notas ?? "") || "—",
   },
-]
+];
 
 export function PrestamoReganchesHistorial({ reganches }: Props) {
   return (
@@ -50,13 +50,16 @@ export function PrestamoReganchesHistorial({ reganches }: Props) {
       <CardHeader>
         <CardTitle className="text-base">Historial de reganches</CardTitle>
         <CardDescription>
-          Reganches son montos agregados al capital del préstamo, que aumentan el saldo pendiente.
+          Reganches son montos agregados al capital del préstamo, que aumentan
+          el saldo pendiente.
         </CardDescription>
       </CardHeader>
 
       <CardContent className="p-0">
         {reganches.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted-foreground">Sin reganches.</p>
+          <p className="px-4 py-4 text-sm text-muted-foreground">
+            Sin reganches.
+          </p>
         ) : (
           <>
             {/* ── Móvil (<768 px) — tarjetas ── */}
@@ -78,7 +81,7 @@ export function PrestamoReganchesHistorial({ reganches }: Props) {
                 </TableHeader>
                 <TableBody>
                   {reganches.map((r, idx) => {
-                    const m = Number(r.monto_agregado ?? 0)
+                    const m = Number(r.monto_agregado ?? 0);
                     return (
                       <TableRow
                         key={r.id != null ? String(r.id) : `reg-${idx}`}
@@ -93,7 +96,7 @@ export function PrestamoReganchesHistorial({ reganches }: Props) {
                           {String(r.notas ?? "") || "—"}
                         </TableCell>
                       </TableRow>
-                    )
+                    );
                   })}
                 </TableBody>
               </Table>
@@ -102,5 +105,5 @@ export function PrestamoReganchesHistorial({ reganches }: Props) {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

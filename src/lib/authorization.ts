@@ -15,19 +15,19 @@
  * pero la autorización real siempre la valida el servidor.
  */
 
-import type { AppRole } from "@/lib/api-auth"
+import type { AppRole } from "@/lib/api-auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type AuthActor = {
-  userId: string
-  role: AppRole
-}
+  userId: string;
+  role: AppRole;
+};
 
 export type AuthTarget = {
-  id: string
-  role: AppRole
-}
+  id: string;
+  role: AppRole;
+};
 
 // ── Core permission predicates ────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ export type AuthTarget = {
  * admin no puede editar ningún usuario, ni siquiera su propia cuenta.
  */
 export function canEditUser(_actor: AuthActor, _target: AuthTarget): boolean {
-  return _actor.role === "super_admin"
+  return _actor.role === "super_admin";
 }
 
 /**
@@ -44,7 +44,7 @@ export function canEditUser(_actor: AuthActor, _target: AuthTarget): boolean {
  * admin no puede editar su propio perfil.
  */
 export function canEditSelf(actor: AuthActor): boolean {
-  return actor.role === "super_admin"
+  return actor.role === "super_admin";
 }
 
 /**
@@ -52,7 +52,7 @@ export function canEditSelf(actor: AuthActor): boolean {
  * admin no puede cambiar su contraseña.
  */
 export function canChangePassword(actor: AuthActor): boolean {
-  return actor.role === "super_admin"
+  return actor.role === "super_admin";
 }
 
 /**
@@ -60,14 +60,14 @@ export function canChangePassword(actor: AuthActor): boolean {
  * admin no puede cambiar su email.
  */
 export function canChangeEmail(actor: AuthActor): boolean {
-  return actor.role === "super_admin"
+  return actor.role === "super_admin";
 }
 
 /**
  * Solo super_admin puede crear, eliminar, activar o desactivar usuarios.
  */
 export function canManageUsers(actor: AuthActor): boolean {
-  return actor.role === "super_admin"
+  return actor.role === "super_admin";
 }
 
 /**
@@ -78,10 +78,10 @@ export function canManageUsers(actor: AuthActor): boolean {
  *   - No se puede desactivar la propia cuenta.
  */
 export function canToggleUser(actor: AuthActor, target: AuthTarget): boolean {
-  if (actor.role !== "super_admin") return false
-  if (target.role === "super_admin") return false   // protege cuentas super_admin
-  if (actor.userId === target.id) return false       // protege cuenta propia
-  return true
+  if (actor.role !== "super_admin") return false;
+  if (target.role === "super_admin") return false; // protege cuentas super_admin
+  if (actor.userId === target.id) return false; // protege cuenta propia
+  return true;
 }
 
 /**
@@ -92,10 +92,10 @@ export function canToggleUser(actor: AuthActor, target: AuthTarget): boolean {
  *   - No se puede eliminar la propia cuenta.
  */
 export function canDeleteUser(actor: AuthActor, target: AuthTarget): boolean {
-  if (actor.role !== "super_admin") return false
-  if (target.role === "super_admin") return false   // protege cuentas super_admin
-  if (actor.userId === target.id) return false       // protege cuenta propia
-  return true
+  if (actor.role !== "super_admin") return false;
+  if (target.role === "super_admin") return false; // protege cuentas super_admin
+  if (actor.userId === target.id) return false; // protege cuenta propia
+  return true;
 }
 
 /**
@@ -107,9 +107,12 @@ export function canDeleteUser(actor: AuthActor, target: AuthTarget): boolean {
  *   - El objetivo es otro super_admin diferente al actor.
  *   - El actor no es super_admin.
  */
-export function canShowRowActions(actor: AuthActor, target: AuthTarget): boolean {
-  if (actor.role !== "super_admin") return false
-  if (target.role === "admin") return true            // gestión de administradores
-  if (actor.userId === target.id) return true         // self-edit del super_admin
-  return false                                         // otros super_admin: protegidos
+export function canShowRowActions(
+  actor: AuthActor,
+  target: AuthTarget,
+): boolean {
+  if (actor.role !== "super_admin") return false;
+  if (target.role === "admin") return true; // gestión de administradores
+  if (actor.userId === target.id) return true; // self-edit del super_admin
+  return false; // otros super_admin: protegidos
 }

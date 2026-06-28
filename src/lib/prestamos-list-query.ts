@@ -1,9 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import {
-  abonosCountFromRow,
-} from "@/lib/prestamo-logic"
-import { interesPeriodo, sumDecimal } from "@/lib/finance"
-import { resolveClienteIdsFromSearch } from "@/lib/prestamos-list-filters"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { abonosCountFromRow } from "@/lib/prestamo-logic";
+import { interesPeriodo, sumDecimal } from "@/lib/finance";
+import { resolveClienteIdsFromSearch } from "@/lib/prestamos-list-filters";
 
 export const PRESTAMOS_LIST_SELECT = `
   *,
@@ -16,46 +14,52 @@ export const PRESTAMOS_LIST_SELECT = `
     empresas ( id, nombre )
   ),
   abonos(count)
-`
+`;
 
 export type PrestamosListPreFilters =
   | { empty: true }
-  | { empty: false; prestamoIdsConInteres: number[] | null; clienteIdsBusqueda: number[] | null }
+  | {
+      empty: false;
+      prestamoIdsConInteres: number[] | null;
+      clienteIdsBusqueda: number[] | null;
+    };
 
 export async function resolvePrestamosListPreFilters(
   supabase: SupabaseClient,
   qText: string,
   conInteresPendiente: boolean,
 ): Promise<PrestamosListPreFilters> {
-  let prestamoIdsConInteres: number[] | null = null
+  let prestamoIdsConInteres: number[] | null = null;
   if (conInteresPendiente) {
     const { data: pendRows } = await supabase
       .from("intereses_atrasados")
       .select("prestamo_id")
       .eq("estado", "PENDIENTE")
-      .gt("interes_pendiente", 0)
-    prestamoIdsConInteres = [...new Set((pendRows ?? []).map((r) => r.prestamo_id))]
+      .gt("interes_pendiente", 0);
+    prestamoIdsConInteres = [
+      ...new Set((pendRows ?? []).map((r) => r.prestamo_id)),
+    ];
     if (prestamoIdsConInteres.length === 0) {
-      return { empty: true }
+      return { empty: true };
     }
   }
 
-  let clienteIdsBusqueda: number[] | null = null
-  const trimmed = qText.trim()
+  let clienteIdsBusqueda: number[] | null = null;
+  const trimmed = qText.trim();
   if (trimmed) {
-    clienteIdsBusqueda = await resolveClienteIdsFromSearch(supabase, trimmed)
+    clienteIdsBusqueda = await resolveClienteIdsFromSearch(supabase, trimmed);
     if (clienteIdsBusqueda.length === 0) {
-      return { empty: true }
+      return { empty: true };
     }
   }
 
-  return { empty: false, prestamoIdsConInteres, clienteIdsBusqueda }
+  return { empty: false, prestamoIdsConInteres, clienteIdsBusqueda };
 }
 
 type ApplyOpts = {
-  clienteId: string | null
-  estado: string | null
-}
+  clienteId: string | null;
+  estado: string | null;
+};
 
 /** Query base del listado (orden fijo). count solo en rutas que paginan con total. */
 export function createPrestamosListQuery(
@@ -67,53 +71,61 @@ export function createPrestamosListQuery(
   let q = supabase
     .from("prestamos")
     .select(PRESTAMOS_LIST_SELECT, count ? { count: "exact" } : undefined)
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: false });
 
   if (opts.clienteId) {
-    q = q.eq("cliente_id", Number(opts.clienteId))
+    q = q.eq("cliente_id", Number(opts.clienteId));
   }
   if (opts.estado) {
-    q = q.eq("estado", opts.estado)
+    q = q.eq("estado", opts.estado);
   }
   if (pre.prestamoIdsConInteres) {
-    q = q.in("id", pre.prestamoIdsConInteres)
+    q = q.in("id", pre.prestamoIdsConInteres);
   }
   if (pre.clienteIdsBusqueda) {
-    q = q.in("cliente_id", pre.clienteIdsBusqueda)
+    q = q.in("cliente_id", pre.clienteIdsBusqueda);
   }
-  return q
+  return q;
 }
 
 export function mapPrestamoListRowFromRaw(raw: Record<string, unknown>) {
-  const n = abonosCountFromRow(raw as { abonos?: { count?: number }[] | null })
+  const n = abonosCountFromRow(raw as { abonos?: { count?: number }[] | null });
   const { abonos: _a, ...prestamo } = raw as {
-    abonos?: { count?: number }[] | null
-    capital_pendiente: string | number
-    capital_a_debitar?: string | number | null
-    tasa_interes: string | number
-    estado: string
-    id: number
-    [key: string]: unknown
-  }
-  const saldado = String(prestamo.estado) === "SALDADO"
-  const interesProximo = saldado ? "0.00" : interesPeriodo(String(prestamo.capital_pendiente), String(prestamo.tasa_interes))
-  const capitalDebitar = saldado ? "0.00" : String(prestamo.capital_a_debitar ?? "0")
-  const totalProximoPago = sumDecimal(interesProximo, capitalDebitar)
+    abonos?: { count?: number }[] | null;
+    capital_pendiente: string | number;
+    capital_a_debitar?: string | number | null;
+    tasa_interes: string | number;
+    estado: string;
+    id: number;
+    [key: string]: unknown;
+  };
+  const saldado = String(prestamo.estado) === "SALDADO";
+  const interesProximo = saldado
+    ? "0.00"
+    : interesPeriodo(
+        String(prestamo.capital_pendiente),
+        String(prestamo.tasa_interes),
+      );
+  const capitalDebitar = saldado
+    ? "0.00"
+    : String(prestamo.capital_a_debitar ?? "0");
+  const totalProximoPago = sumDecimal(interesProximo, capitalDebitar);
   return {
     ...prestamo,
     abonos_realizados: n,
     interes_proximo: interesProximo,
     capital_debitar_proximo: capitalDebitar,
     total_proximo_pago: totalProximoPago,
-  }
+  };
 }
 
-export async function enrichPrestamoListRowsWithFlags<
-  T extends { id: number },
->(supabase: SupabaseClient, rowsBase: T[]) {
-  if (rowsBase.length === 0) return rowsBase
+export async function enrichPrestamoListRowsWithFlags<T extends { id: number }>(
+  supabase: SupabaseClient,
+  rowsBase: T[],
+) {
+  if (rowsBase.length === 0) return rowsBase;
 
-  const ids = rowsBase.map((r) => r.id)
+  const ids = rowsBase.map((r) => r.id);
   const [{ data: pendRows }, { data: regRows }] = await Promise.all([
     supabase
       .from("intereses_atrasados")
@@ -121,17 +133,22 @@ export async function enrichPrestamoListRowsWithFlags<
       .in("prestamo_id", ids)
       .eq("estado", "PENDIENTE")
       .gt("interes_pendiente", 0),
-    supabase.from("reganches").select("prestamo_id, notas").in("prestamo_id", ids),
-  ])
+    supabase
+      .from("reganches")
+      .select("prestamo_id, notas")
+      .in("prestamo_id", ids),
+  ]);
 
-  const interesPendienteIds = new Set((pendRows ?? []).map((r) => r.prestamo_id))
-  const capAuto = new Set<number>()
-  const capManual = new Set<number>()
+  const interesPendienteIds = new Set(
+    (pendRows ?? []).map((r) => r.prestamo_id),
+  );
+  const capAuto = new Set<number>();
+  const capManual = new Set<number>();
   for (const r of regRows ?? []) {
-    const n = String(r.notas ?? "")
-    const pid = r.prestamo_id as number
-    if (n.startsWith("AUTO:")) capAuto.add(pid)
-    if (n.startsWith("MANUAL:")) capManual.add(pid)
+    const n = String(r.notas ?? "");
+    const pid = r.prestamo_id as number;
+    if (n.startsWith("AUTO:")) capAuto.add(pid);
+    if (n.startsWith("MANUAL:")) capManual.add(pid);
   }
 
   return rowsBase.map((r) => ({
@@ -139,5 +156,5 @@ export async function enrichPrestamoListRowsWithFlags<
     tiene_interes_pendiente: interesPendienteIds.has(r.id),
     tiene_capitalizacion_auto: capAuto.has(r.id),
     tiene_capitalizacion_manual: capManual.has(r.id),
-  }))
+  }));
 }

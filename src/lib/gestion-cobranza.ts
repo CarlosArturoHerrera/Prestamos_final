@@ -8,11 +8,15 @@ export const RESULTADOS_GESTION_COBRANZA = [
   "PROMESA_CUMPLIDA",
   "PROMESA_INCUMPLIDA",
   "OTRO",
-] as const
+] as const;
 
-export type ResultadoGestionCobranza = (typeof RESULTADOS_GESTION_COBRANZA)[number]
+export type ResultadoGestionCobranza =
+  (typeof RESULTADOS_GESTION_COBRANZA)[number];
 
-export const RESULTADO_GESTION_LABELS: Record<ResultadoGestionCobranza, string> = {
+export const RESULTADO_GESTION_LABELS: Record<
+  ResultadoGestionCobranza,
+  string
+> = {
   CONTACTADO: "Contactado",
   NO_RESPONDE: "No responde",
   PAGARA_HOY: "Pagará hoy",
@@ -21,9 +25,9 @@ export const RESULTADO_GESTION_LABELS: Record<ResultadoGestionCobranza, string> 
   PROMESA_CUMPLIDA: "Promesa cumplida",
   PROMESA_INCUMPLIDA: "Promesa incumplida",
   OTRO: "Otro",
-}
+};
 
 export function labelResultadoGestion(codigo: string): string {
-  const u = codigo.toUpperCase() as ResultadoGestionCobranza
-  return RESULTADO_GESTION_LABELS[u] ?? codigo
+  const u = codigo.toUpperCase() as ResultadoGestionCobranza;
+  return RESULTADO_GESTION_LABELS[u] ?? codigo;
 }

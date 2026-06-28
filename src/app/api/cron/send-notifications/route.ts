@@ -1,17 +1,19 @@
-import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
 // Esta función se ejecuta como cron job en Vercel
 export async function GET(request: Request) {
   // Verificar token de seguridad
-  const authHeader = request.headers.get("authorization")
+  const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
   try {
     // Obtener pagos pendientes que no han sido notificados en las últimas 72 horas
-    const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()
+    const seventyTwoHoursAgo = new Date(
+      Date.now() - 72 * 60 * 60 * 1000,
+    ).toISOString();
 
     const { data: payments, error } = await supabase
       .from("payments")
@@ -34,23 +36,28 @@ export async function GET(request: Request) {
         )
       `)
       .eq("status", "pendiente")
-      .lt("due_date", new Date().toISOString().split("T")[0])
+      .lt("due_date", new Date().toISOString().split("T")[0]);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    let sentCount = 0
-    const results = []
+    let sentCount = 0;
+    const results = [];
 
     for (const payment of payments || []) {
-      const loan = (payment as any).loans
-      if (!loan) continue
+      const loan = (payment as any).loans;
+      if (!loan) continue;
 
       // No enviar si el préstamo está en estados especiales
-      const excludedStatuses = ["en revisión", "aprobado", "cancelado", "completado"]
+      const excludedStatuses = [
+        "en revisión",
+        "aprobado",
+        "cancelado",
+        "completado",
+      ];
       if (excludedStatuses.includes(loan.status?.toLowerCase())) {
-        continue
+        continue;
       }
 
       // Verificar si ya se envió notificación en las últimas 72 horas
@@ -59,26 +66,28 @@ export async function GET(request: Request) {
         .select("id")
         .eq("loan_id", loan.id)
         .gte("sent_at", seventyTwoHoursAgo)
-        .single()
+        .single();
 
       if (lastNotif) {
         // Ya existe notificación reciente
-        continue
+        continue;
       }
 
       // Obtener teléfono del cliente
-      const phone = (loan.clients as any)?.phone
+      const phone = (loan.clients as any)?.phone;
 
       // Saltar si el cliente no tiene teléfono registrado
       if (!phone) {
-        console.log(`Cliente ${loan.clients.name} no tiene teléfono registrado`)
-        continue
+        console.log(
+          `Cliente ${loan.clients.name} no tiene teléfono registrado`,
+        );
+        continue;
       }
 
       // Enviar notificación
-      const baseUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+      const baseUrl = process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
       try {
         const res = await fetch(`${baseUrl}/api/notifications/send`, {
@@ -92,15 +101,18 @@ export async function GET(request: Request) {
             content: `Estimado/a ${loan.clients.name}, le recordamos que tiene un pago pendiente de $${payment.amount_due}. Por favor realice el pago a tiempo.`,
             type: "whatsapp",
           }),
-        })
+        });
 
         if (res.ok) {
-          sentCount++
-          results.push({ loanId: loan.id, status: "sent" })
+          sentCount++;
+          results.push({ loanId: loan.id, status: "sent" });
         }
       } catch (err) {
-        console.error(`Error enviando notificación para préstamo ${loan.id}:`, err)
-        results.push({ loanId: loan.id, status: "failed" })
+        console.error(
+          `Error enviando notificación para préstamo ${loan.id}:`,
+          err,
+        );
+        results.push({ loanId: loan.id, status: "failed" });
       }
     }
 
@@ -108,9 +120,9 @@ export async function GET(request: Request) {
       ok: true,
       message: `Se enviaron ${sentCount} notificaciones`,
       results,
-    })
+    });
   } catch (error) {
-    console.error("Cron error:", error)
-    return NextResponse.json({ error: "Error en cron job" }, { status: 500 })
+    console.error("Cron error:", error);
+    return NextResponse.json({ error: "Error en cron job" }, { status: 500 });
   }
 }

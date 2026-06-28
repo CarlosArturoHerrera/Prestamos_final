@@ -1,15 +1,20 @@
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { LogOut, TrendingUp } from "lucide-react"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { LogOut, TrendingUp } from "lucide-react";
 
 interface HeroSectionProps {
-  title: string
-  subtitle: string
-  highlightBadges: string[]
-  onLogout?: () => void
+  title: string;
+  subtitle: string;
+  highlightBadges: string[];
+  onLogout?: () => void;
 }
 
-export function HeroSection({ title, subtitle, highlightBadges, onLogout }: HeroSectionProps) {
+export function HeroSection({
+  title,
+  subtitle,
+  highlightBadges,
+  onLogout,
+}: HeroSectionProps) {
   return (
     <section className="hero-surface relative overflow-hidden rounded-3xl px-6 py-7 animate-in fade-in slide-in-from-bottom-6 duration-700 sm:px-8 sm:py-8">
       {/* Decorative glows on the gradient */}
@@ -30,7 +35,9 @@ export function HeroSection({ title, subtitle, highlightBadges, onLogout }: Hero
             <h1 className="text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
               {title}
             </h1>
-            <p className="max-w-2xl text-sm leading-6 text-white/75">{subtitle}</p>
+            <p className="max-w-2xl text-sm leading-6 text-white/75">
+              {subtitle}
+            </p>
           </div>
 
           {/* Badges — fondo semitransparente blanco sobre gradiente */}
@@ -62,5 +69,5 @@ export function HeroSection({ title, subtitle, highlightBadges, onLogout }: Hero
         )}
       </div>
     </section>
-  )
+  );
 }

@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(request: Request) {
   // Verificar token de seguridad
-  const authHeader = request.headers.get("authorization")
+  const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
   try {
-    const today = new Date()
-    const currentDay = today.getDate()
+    const today = new Date();
+    const currentDay = today.getDate();
 
     // Obtener todos los préstamos activos con sus clientes
     const { data: loans, error } = await supabase
@@ -27,41 +27,43 @@ export async function GET(request: Request) {
           phone
         )
       `)
-      .in("status", ["activo", "pendiente"])
+      .in("status", ["activo", "pendiente"]);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    let sentCount = 0
-    const results = []
+    let sentCount = 0;
+    const results = [];
 
     for (const loan of loans || []) {
-      const paymentDaysStr = loan.payment_days || "15,30"
-      const paymentDays = paymentDaysStr.split(",").map((d: string) => Number(d.trim()))
+      const paymentDaysStr = loan.payment_days || "15,30";
+      const paymentDays = paymentDaysStr
+        .split(",")
+        .map((d: string) => Number(d.trim()));
 
       // Verificar si hoy es un día de pago o está cerca
-      const notificationDays: Record<number, string> = {}
+      const notificationDays: Record<number, string> = {};
 
       for (const payDay of paymentDays) {
-        notificationDays[payDay] = "payment_day" // Día de pago
-        notificationDays[Math.max(1, payDay - 3)] = "3_days_before" // 3 días antes
-        notificationDays[Math.max(1, payDay - 1)] = "1_day_before" // 1 día antes
+        notificationDays[payDay] = "payment_day"; // Día de pago
+        notificationDays[Math.max(1, payDay - 3)] = "3_days_before"; // 3 días antes
+        notificationDays[Math.max(1, payDay - 1)] = "1_day_before"; // 1 día antes
       }
 
       // Verificar si hoy es un día de notificación
-      const notificationType = notificationDays[currentDay]
+      const notificationType = notificationDays[currentDay];
       if (!notificationType) {
-        continue
+        continue;
       }
 
-      const clientName = (loan.clients as any)?.name || "Cliente"
-      const phone = (loan.clients as any)?.phone
+      const clientName = (loan.clients as any)?.name || "Cliente";
+      const phone = (loan.clients as any)?.phone;
 
       // Saltar si el cliente no tiene teléfono registrado
       if (!phone) {
-        console.log(`Cliente ${clientName} no tiene teléfono registrado`)
-        continue
+        console.log(`Cliente ${clientName} no tiene teléfono registrado`);
+        continue;
       }
 
       // Verificar si ya se envió notificación de este tipo hoy
@@ -72,13 +74,17 @@ export async function GET(request: Request) {
         .eq("notification_type", notificationType)
         .gte(
           "sent_at",
-          new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
+          new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate(),
+          ).toISOString(),
         )
-        .single()
+        .single();
 
       if (existingNotif) {
         // Ya existe notificación de este tipo hoy
-        continue
+        continue;
       }
 
       // Determinar mensaje según el tipo de notificación
@@ -95,54 +101,54 @@ export async function GET(request: Request) {
           subject: "Recordatorio: Tu pago vence en 3 días",
           content: `Estimado/a ${clientName}, le recordamos que su pago vence en 3 días. Prepare los fondos necesarios.`,
         },
-      }
+      };
 
-      const message = messages[notificationType]
-      if (!message) continue
+      const message = messages[notificationType];
+      if (!message) continue;
 
       // Enviar notificación
-      const baseUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+      const baseUrl = process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
       try {
-        const res = await fetch(
-          `${baseUrl}/api/notifications/send`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              loanId: loan.id,
-              clientId: loan.client_id,
-              phone,
-              subject: message.subject,
-              content: message.content,
-              type: "whatsapp",
-            }),
-          }
-        )
+        const res = await fetch(`${baseUrl}/api/notifications/send`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            loanId: loan.id,
+            clientId: loan.client_id,
+            phone,
+            subject: message.subject,
+            content: message.content,
+            type: "whatsapp",
+          }),
+        });
 
         if (res.ok) {
-          sentCount++
+          sentCount++;
           results.push({
             loanId: loan.id,
             type: notificationType,
             status: "sent",
-          })
+          });
         } else {
           results.push({
             loanId: loan.id,
             type: notificationType,
             status: "failed",
-          })
+          });
         }
       } catch (err) {
-        console.error(`Error enviando notificación para préstamo ${loan.id}:`, err)
+        console.error(
+          `Error enviando notificación para préstamo ${loan.id}:`,
+          err,
+        );
         results.push({
           loanId: loan.id,
           type: notificationType,
           status: "failed",
-        })
+        });
       }
     }
 
@@ -150,9 +156,9 @@ export async function GET(request: Request) {
       ok: true,
       message: `Se enviaron ${sentCount} notificaciones`,
       results,
-    })
+    });
   } catch (error) {
-    console.error("Cron error:", error)
-    return NextResponse.json({ error: "Error en cron job" }, { status: 500 })
+    console.error("Cron error:", error);
+    return NextResponse.json({ error: "Error en cron job" }, { status: 500 });
   }
 }
