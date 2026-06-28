@@ -65,7 +65,8 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       }
     }
 
-    // Handle password reset (send recovery email)
+    // Handle password reset — generate a Supabase recovery link, then deliver
+    // it via Resend (bypasses Supabase's built-in mailer and its rate limits).
     if (action === "reset_password") {
       const { data: target } = await adminClient
         .from("profiles")
@@ -77,8 +78,6 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       if (!targetEmail)
         return badRequest("Email no encontrado para este usuario");
 
-      // Build the redirect URL where Supabase will send the user after OTP verification.
-      // NEXT_PUBLIC_SITE_URL must match the deployed origin (e.g. https://app.example.com).
       const siteUrl =
         process.env.NEXT_PUBLIC_SITE_URL ??
         process.env.NEXTAUTH_URL ??
@@ -87,27 +86,89 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       const redirectTo = `${siteUrl}/auth/reset-password`;
 
       console.log(
-        `[admin/users PATCH] Sending recovery email → email=${targetEmail} redirectTo=${redirectTo}`,
+        `[admin/users PATCH] Generating recovery link → email=${targetEmail} redirectTo=${redirectTo}`,
       );
 
-      const { error: resetError } = await adminClient.auth.admin.generateLink({
-        type: "recovery",
-        email: targetEmail,
-        options: { redirectTo },
-      });
+      // generateLink returns data.properties.action_link — the one-time OTP URL.
+      // We send it ourselves via Resend instead of relying on Supabase's mailer.
+      const { data: linkData, error: linkError } =
+        await adminClient.auth.admin.generateLink({
+          type: "recovery",
+          email: targetEmail,
+          options: { redirectTo },
+        });
 
-      if (resetError) {
+      if (linkError) {
         console.error(
-          "[admin/users PATCH] Recovery email failed:",
-          resetError.message,
+          "[admin/users PATCH] generateLink failed:",
+          linkError.message,
         );
         return serverError(
-          "No se pudo enviar el correo de recuperación. Verifica que el email exista y que Supabase Auth tenga un proveedor de correo configurado.",
+          "No se pudo generar el enlace de recuperación: " + linkError.message,
+        );
+      }
+
+      const actionLink = linkData?.properties?.action_link;
+      if (!actionLink) {
+        console.error(
+          "[admin/users PATCH] generateLink returned no action_link",
+        );
+        return serverError(
+          "No se obtuvo un enlace de recuperación válido. Inténtalo de nuevo.",
+        );
+      }
+
+      // Send via Resend
+      const resendKey = process.env.RESEND_API_KEY;
+      const resendFrom = process.env.RESEND_FROM_EMAIL;
+
+      if (!resendKey || !resendFrom) {
+        console.error(
+          "[admin/users PATCH] RESEND_API_KEY o RESEND_FROM_EMAIL no configurados",
+        );
+        return serverError(
+          "El servidor no tiene configurado el proveedor de correo (Resend). Contacta al super administrador.",
+        );
+      }
+
+      const emailBody = [
+        "Hola,",
+        "",
+        "Recibiste este correo porque se solicitó restablecer la contraseña de tu cuenta en Préstamos Elicar.",
+        "",
+        "Haz clic en el siguiente enlace para establecer una nueva contraseña:",
+        "",
+        actionLink,
+        "",
+        "Este enlace expira en 1 hora. Si no solicitaste este cambio, puedes ignorar este correo.",
+        "",
+        "— Equipo Préstamos Elicar",
+      ].join("\n");
+
+      const resendRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: resendFrom,
+          to: [targetEmail],
+          subject: "Restablecer contraseña — Préstamos Elicar",
+          text: emailBody,
+        }),
+      });
+
+      if (!resendRes.ok) {
+        const resendErr = await resendRes.text();
+        console.error("[admin/users PATCH] Resend delivery failed:", resendErr);
+        return serverError(
+          "No se pudo enviar el correo de recuperación. Verifica la configuración de Resend.",
         );
       }
 
       console.log(
-        `[admin/users PATCH] Recovery email sent successfully → ${targetEmail}`,
+        `[admin/users PATCH] Recovery email sent via Resend → ${targetEmail}`,
       );
       return NextResponse.json({ message: "Email de recuperación enviado" });
     }
