@@ -161,10 +161,21 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
       if (!resendRes.ok) {
         const resendErr = await resendRes.text();
-        console.error("[admin/users PATCH] Resend delivery failed:", resendErr);
-        return serverError(
-          "No se pudo enviar el correo de recuperación. Verifica la configuración de Resend.",
-        );
+        console.error("[admin/users PATCH] Resend delivery failed:", {
+          status: resendRes.status,
+          body: resendErr,
+        });
+        let detail = `(HTTP ${resendRes.status})`;
+        try {
+          const parsed = JSON.parse(resendErr) as {
+            message?: string;
+            name?: string;
+          };
+          detail = parsed.message ?? parsed.name ?? resendErr;
+        } catch {
+          detail = resendErr || detail;
+        }
+        return serverError(`Resend: ${detail}`);
       }
 
       console.log(
