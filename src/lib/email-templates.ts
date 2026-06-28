@@ -152,13 +152,22 @@ function baseLayout({
 export function recoveryPasswordEmail(actionLink: string): EmailPayload {
   const year = new Date().getFullYear();
 
+  const siteUrl =
+    typeof process !== "undefined"
+      ? (process.env.NEXT_PUBLIC_SITE_URL ?? "https://elicar.dev")
+      : "https://elicar.dev";
+
   const header = `
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left">
       <tr>
-        <!-- Logo mark -->
-        <td style="width:52px;height:52px;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.28);border-radius:14px;text-align:center;vertical-align:middle;color:#FFFFFF;font-size:16px;font-weight:700;letter-spacing:-0.3px;"
-            align="center">
-          PE
+        <!-- Logo image -->
+        <td style="vertical-align:middle;">
+          <img src="${siteUrl}/logo.png"
+               alt="Préstamos Elicar"
+               width="52"
+               height="52"
+               style="display:block;border:0;outline:none;text-decoration:none;border-radius:12px;"
+          >
         </td>
         <td style="padding-left:14px;vertical-align:middle;">
           <p style="margin:0;color:#FFFFFF;font-size:18px;font-weight:700;letter-spacing:-0.3px;line-height:1.2;">
@@ -251,7 +260,7 @@ export function recoveryPasswordEmail(actionLink: string): EmailPayload {
     </p>
     <p class="text-muted"
       style="margin:0 0 28px;color:${T.muted};font-size:13px;line-height:1.7;">
-      🔒&nbsp; <strong class="text-security-label" style="color:${T.foreground};">No compartas este enlace</strong>
+      &nbsp; <strong class="text-security-label" style="color:${T.foreground};">No compartas este enlace</strong>
       con nadie. El equipo de Préstamos Elicar nunca te pedirá tu contraseña por correo electrónico.
     </p>
 
@@ -290,7 +299,7 @@ export function recoveryPasswordEmail(actionLink: string): EmailPayload {
     "",
     actionLink,
     "",
-    "⏱  Este enlace expira en 1 hora.",
+    "Este enlace expira en 1 hora.",
     "",
     "─".repeat(50),
     "Si no solicitaste este cambio, ignora este correo.",
