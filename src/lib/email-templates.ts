@@ -356,9 +356,8 @@ export function notificationReporteEmail(opts: {
   nombreRep: string;
   lineas: ClienteMorosoLinea[];
   totalCarteraMora: string;
-  actionUrl?: string;
 }): EmailPayload {
-  const { nombreRep, lineas, totalCarteraMora, actionUrl } = opts;
+  const { nombreRep, lineas, totalCarteraMora } = opts;
   const year = new Date().getFullYear();
   const fecha = new Date().toLocaleDateString("es-DO", {
     day: "2-digit",
@@ -372,8 +371,6 @@ export function notificationReporteEmail(opts: {
       : "https://elicar.dev";
 
   const logoUrl = `${siteUrl}/logo.png`;
-  const ctaUrl = actionUrl ?? siteUrl;
-
   const header = `
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left">
       <tr>
@@ -471,32 +468,6 @@ export function notificationReporteEmail(opts: {
       </tr>
     </table>`;
 
-  // ── CTA button ──
-  const ctaButton = `
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 28px;">
-      <tr>
-        <td align="left">
-          <!--[if mso]>
-          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
-            href="${ctaUrl}"
-            style="height:48px;v-text-anchor:middle;width:200px;"
-            arcsize="14%" stroke="f" fillcolor="${T.primary}">
-            <w:anchorlock/>
-            <center style="color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;">
-              Abrir sistema
-            </center>
-          </v:roundrect>
-          <![endif]-->
-          <!--[if !mso]><!-->
-          <a href="${ctaUrl}" class="btn-cta"
-            style="display:inline-block;background:linear-gradient(135deg,${T.primary} 0%,${T.primaryLight} 100%);color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;padding:13px 28px;border-radius:10px;letter-spacing:-0.1px;line-height:1;-webkit-text-size-adjust:none;mso-hide:all;">
-            Abrir sistema
-          </a>
-          <!--<![endif]-->
-        </td>
-      </tr>
-    </table>`;
-
   const body = `
     <!-- Badge -->
     <table role="presentation" cellspacing="0" cellpadding="0" border="0">
@@ -527,23 +498,7 @@ export function notificationReporteEmail(opts: {
     </p>
 
     ${statsBox}
-    ${debtorContent}
-
-    <!-- Divider -->
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 24px;">
-      <tr>
-        <td class="divider" style="border-top:1px solid ${T.border};height:0;line-height:0;font-size:0;">&nbsp;</td>
-      </tr>
-    </table>
-
-    ${ctaButton}
-
-    <!-- Disclaimer -->
-    <p class="text-muted"
-      style="margin:0;color:${T.mutedLight};font-size:12px;line-height:1.7;">
-      Este reporte es generado automáticamente por el sistema. Si tienes dudas sobre algún cliente,
-      ingresa al sistema para obtener información actualizada.
-    </p>`;
+    ${debtorContent}`;
 
   const footer = `
     <p class="text-muted"
@@ -588,7 +543,6 @@ export function notificationReporteEmail(opts: {
 
   textLines.push("");
   textLines.push("─".repeat(50));
-  textLines.push(`Accede al sistema: ${ctaUrl}`);
   textLines.push(`© ${year} Préstamos Elicar. Todos los derechos reservados.`);
 
   return {

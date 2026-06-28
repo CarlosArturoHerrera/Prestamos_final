@@ -242,12 +242,10 @@ export async function POST(request: Request) {
     }
 
     if (enviarEm) {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://elicar.dev";
       const emailPayload = notificationReporteEmail({
         nombreRep,
         lineas,
         totalCarteraMora: total_cartera_mora,
-        actionUrl: siteUrl,
       });
       const r = await enviarEmailResend(
         rep.email,
