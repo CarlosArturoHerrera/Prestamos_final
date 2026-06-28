@@ -9,6 +9,7 @@ import {
   serverError,
   forbidden,
 } from "@/lib/api-auth";
+import { recoveryPasswordEmail } from "@/lib/email-templates";
 
 const updateAdminSchema = z.object({
   fullName: z.string().min(1).optional(),
@@ -131,19 +132,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
         );
       }
 
-      const emailBody = [
-        "Hola,",
-        "",
-        "Recibiste este correo porque se solicitó restablecer la contraseña de tu cuenta en Préstamos Elicar.",
-        "",
-        "Haz clic en el siguiente enlace para establecer una nueva contraseña:",
-        "",
-        actionLink,
-        "",
-        "Este enlace expira en 1 hora. Si no solicitaste este cambio, puedes ignorar este correo.",
-        "",
-        "— Equipo Préstamos Elicar",
-      ].join("\n");
+      const { subject, html, text } = recoveryPasswordEmail(actionLink);
 
       const resendRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -154,8 +143,9 @@ export async function PATCH(req: Request, { params }: RouteParams) {
         body: JSON.stringify({
           from: resendFrom,
           to: [targetEmail],
-          subject: "Restablecer contraseña — Préstamos Elicar",
-          text: emailBody,
+          subject,
+          html,
+          text,
         }),
       });
 
