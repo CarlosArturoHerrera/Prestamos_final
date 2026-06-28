@@ -77,12 +77,38 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       if (!targetEmail)
         return badRequest("Email no encontrado para este usuario");
 
+      // Build the redirect URL where Supabase will send the user after OTP verification.
+      // NEXT_PUBLIC_SITE_URL must match the deployed origin (e.g. https://app.example.com).
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL ??
+        process.env.NEXTAUTH_URL ??
+        "http://localhost:3000";
+
+      const redirectTo = `${siteUrl}/auth/reset-password`;
+
+      console.log(
+        `[admin/users PATCH] Sending recovery email → email=${targetEmail} redirectTo=${redirectTo}`,
+      );
+
       const { error: resetError } = await adminClient.auth.admin.generateLink({
         type: "recovery",
         email: targetEmail,
+        options: { redirectTo },
       });
 
-      if (resetError) return serverError(resetError.message);
+      if (resetError) {
+        console.error(
+          "[admin/users PATCH] Recovery email failed:",
+          resetError.message,
+        );
+        return serverError(
+          "No se pudo enviar el correo de recuperación. Verifica que el email exista y que Supabase Auth tenga un proveedor de correo configurado.",
+        );
+      }
+
+      console.log(
+        `[admin/users PATCH] Recovery email sent successfully → ${targetEmail}`,
+      );
       return NextResponse.json({ message: "Email de recuperación enviado" });
     }
 
