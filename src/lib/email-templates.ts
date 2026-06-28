@@ -21,6 +21,9 @@ export type EmailPayload = {
 const T = {
   primary: "#0052CC",
   primaryLight: "#3385FF",
+  // Header uses a deeper gradient for a more corporate, high-contrast look
+  headerFrom: "#002B6B",
+  headerTo: "#0044AA",
   background: "#F1F5F9",
   card: "#FFFFFF",
   foreground: "#0A0E17",
@@ -114,7 +117,7 @@ function baseLayout({
           <!-- ── HEADER ── -->
           <tr>
             <td class="card-header"
-              style="border-radius:20px 20px 0 0;background:linear-gradient(135deg,${T.primary} 0%,${T.primaryLight} 100%);padding:36px 48px;"
+              style="border-radius:20px 20px 0 0;background:linear-gradient(135deg,${T.headerFrom} 0%,${T.headerTo} 100%);padding:36px 48px;"
               align="left">
               ${headerContent}
             </td>
@@ -187,7 +190,7 @@ export function recoveryPasswordEmail(actionLink: string): EmailPayload {
         <td class="bg-accent-badge"
           style="background-color:${T.accentBg};border:1px solid ${T.accentBorder};border-radius:999px;padding:5px 14px;">
           <span class="text-badge" style="color:${T.accentText};font-size:12px;font-weight:600;letter-spacing:0.2px;">
-            🔐&nbsp; Solicitud de seguridad
+            Solicitud de seguridad
           </span>
         </td>
       </tr>
@@ -238,7 +241,7 @@ export function recoveryPasswordEmail(actionLink: string): EmailPayload {
           style="background-color:${T.warningBg};border:1px solid ${T.warningBorder};border-left:3px solid ${T.warningAccent};border-radius:8px;padding:14px 16px;">
           <p class="text-warning"
             style="margin:0;color:${T.warningText};font-size:13px;line-height:1.6;">
-            ⏱&nbsp; <strong>Este enlace expira en 1 hora.</strong>
+            <strong>Enlace de un solo uso.</strong> Expira en 1 hora.
             Si no lo usas a tiempo, solicita uno nuevo al administrador del sistema.
           </p>
         </td>
@@ -260,7 +263,7 @@ export function recoveryPasswordEmail(actionLink: string): EmailPayload {
     </p>
     <p class="text-muted"
       style="margin:0 0 28px;color:${T.muted};font-size:13px;line-height:1.7;">
-      &nbsp; <strong class="text-security-label" style="color:${T.foreground};">No compartas este enlace</strong>
+      <strong class="text-security-label" style="color:${T.foreground};">No compartas este enlace</strong>
       con nadie. El equipo de Préstamos Elicar nunca te pedirá tu contraseña por correo electrónico.
     </p>
 
