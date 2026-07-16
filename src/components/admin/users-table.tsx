@@ -344,7 +344,7 @@ export function UsersTable({
       {/* Mobile cards */}
       <div className="md:hidden space-y-3">
         {filtered.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card/60 p-4 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl border border-border bg-card/60 p-4 text-center text-sm text-muted-foreground shadow-sm">
             No se encontraron usuarios
           </div>
         ) : (
@@ -359,7 +359,7 @@ export function UsersTable({
               <div
                 key={user.id}
                 className={cn(
-                  "rounded-xl border border-border bg-card/80 p-4",
+                  "rounded-xl border border-border bg-card/80 p-4 shadow-sm",
                   !user.is_active && "opacity-60",
                 )}
               >
@@ -480,7 +480,7 @@ export function UsersTable({
       </div>
 
       {/* Desktop table */}
-      <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
         <Table className="min-w-[380px]">
           <TableHeader>
             <TableRow className="bg-muted/50">

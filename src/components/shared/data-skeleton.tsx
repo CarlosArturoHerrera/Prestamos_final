@@ -9,7 +9,7 @@ export function TableSkeleton({
   cols?: number;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card">
+    <div className="rounded-xl border border-border bg-card shadow-sm">
       {/* Header row */}
       <div className="border-b border-border px-4 py-3">
         <div className="flex gap-4">

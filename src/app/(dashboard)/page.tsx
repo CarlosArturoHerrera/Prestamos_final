@@ -505,7 +505,7 @@ export default function DashboardPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Cola de seguimiento
           </h2>
-          <div className="rounded-xl border border-border bg-card">
+          <div className="rounded-xl border border-border bg-card shadow-sm">
             <div className="border-b border-border px-4 py-3">
               <p className="text-sm font-medium text-foreground">
                 {gestionPendientes.total} caso
@@ -717,7 +717,7 @@ export default function DashboardPage() {
               <Link
                 href={q.href}
                 className={cn(
-                  "group flex items-center gap-3 rounded-xl border p-3.5 text-sm transition-all duration-150 hover:shadow-sm cursor-pointer",
+                  "group flex items-center gap-3 rounded-xl border p-3.5 text-sm shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md cursor-pointer",
                   q.bg,
                 )}
               >

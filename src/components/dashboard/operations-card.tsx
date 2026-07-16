@@ -36,7 +36,7 @@ export function OperationsCard({
         <CardTitle className="text-xl">Colocación y cobro hoy</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-3">
           <div className="space-y-1 text-sm">
             <p className="text-muted-foreground">Desembolsos agendados</p>
             <p className="font-semibold">{scheduledAmount}</p>
@@ -49,7 +49,7 @@ export function OperationsCard({
           </div>
         </div>
 
-        <div className="space-y-3 rounded-lg border px-4 py-3">
+        <div className="space-y-3 rounded-lg border bg-muted/40 px-4 py-3">
           <div className="flex items-center justify-between text-sm font-medium">
             <span>Recuperaciones esperadas</span>
             <span>{expectedRecoveries}</span>
@@ -68,7 +68,7 @@ export function OperationsCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 rounded-lg border px-4 py-3">
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-4 py-3">
           <div className="bg-orange-500/10 text-orange-600 dark:text-orange-300 flex size-10 items-center justify-center rounded-full">
             <Bell className="size-5" />
           </div>

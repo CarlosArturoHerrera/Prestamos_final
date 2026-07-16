@@ -164,7 +164,7 @@ export function PrestamoInteresesHistorial({
                     </Button>
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="default"
                       size="sm"
                       className="h-7 px-2.5 text-xs"
                       onClick={() => onMarcarInteresPagado(id)}
@@ -255,7 +255,7 @@ export function PrestamoInteresesHistorial({
                               </Button>
                               <Button
                                 type="button"
-                                variant="outline"
+                                variant="default"
                                 size="sm"
                                 className="h-8 px-2 text-xs"
                                 onClick={() => onMarcarInteresPagado(id)}

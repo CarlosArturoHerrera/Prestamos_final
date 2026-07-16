@@ -991,7 +991,7 @@ export default function PrestamosPage() {
                           setForm({ ...form, tipoPlazo: v })
                         }
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1058,7 +1058,7 @@ export default function PrestamosPage() {
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Panel financiero
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {[
               {
                 title: "Total prestado",
@@ -1098,11 +1098,11 @@ export default function PrestamosPage() {
                 value: resumen ? formatRD(resumen.capitalizacionManual) : "—",
               },
             ].map((k) => (
-              <div key={k.title} className="stat-card">
+              <div key={k.title} className="stat-card min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {k.title}
                 </p>
-                <p className="mt-1 text-lg font-semibold tabular sm:text-xl">
+                <p className="mt-1 min-w-0 break-words text-lg font-semibold tabular sm:text-xl">
                   {resumenLoading ? "…" : k.value}
                 </p>
                 <p className="text-[10px] text-muted-foreground">{k.desc}</p>
@@ -1202,7 +1202,7 @@ export default function PrestamosPage() {
                   value={estadoFiltro || "__all__"}
                   onValueChange={onEstadoChange}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1285,7 +1285,7 @@ export default function PrestamosPage() {
         </div>
 
         {/* ── Desktop table ── */}
-        <div className="hidden lg:block overflow-x-auto rounded-xl border border-border/60">
+        <div className="hidden lg:block overflow-x-auto rounded-xl border border-border/60 bg-card shadow-sm">
           <Table className="min-w-[560px]">
             <TableHeader>
               <TableRow className="bg-muted/30">
@@ -1316,7 +1316,7 @@ export default function PrestamosPage() {
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="animate-pulse rounded-xl border border-border bg-card p-4"
+                  className="animate-pulse rounded-xl border border-border bg-card p-4 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-2">
@@ -1339,7 +1339,7 @@ export default function PrestamosPage() {
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-14 text-center">
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-14 text-center shadow-sm">
               <div className="flex size-12 items-center justify-center rounded-full bg-muted">
                 <Search className="size-5 text-muted-foreground" />
               </div>
@@ -1368,7 +1368,7 @@ export default function PrestamosPage() {
                   <div
                     key={p.id}
                     className={cn(
-                      "rounded-xl border border-border bg-card p-4",
+                      "rounded-xl border border-border bg-card p-4 shadow-sm",
                       rowVisualClasses(p),
                     )}
                   >

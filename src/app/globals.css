@@ -86,15 +86,15 @@
 
 /* ─────────────────────────────────────────────────────────
    LIGHT MODE  (Corporate — Préstamos Elicar)
-   Background: #FFFFFF  |  Cards: #FFFFFF (elevated by shadow)
+   Background: #F4F6FA  |  Cards: #FFFFFF (elevated by shadow)
    Primary: #0052CC  |  Accent: #00D2FF
    Sidebar: white with brand-blue active state
    ───────────────────────────────────────────────────────── */
 :root {
   --radius: 0.75rem;
 
-  /* Surfaces — white dominates, cards elevated by shadow */
-  --background:         #FFFFFF;
+  /* Surfaces — soft gray canvas so white cards read as elevated */
+  --background:         #F4F6FA;
   --foreground:         #0A0E17;
   --surface:            #FFFFFF;
   --surface-foreground: #0A0E17;
@@ -133,7 +133,7 @@
   --destructive: #DC2626;
 
   /* Chrome */
-  --border: #E2E8F0;
+  --border: #DDE4EE;
   --input:  #F8FAFC;
   --ring:   #00D2FF;
 
@@ -191,7 +191,7 @@
   --brand-secondary:    #3385FF;
 
   --muted:              #1E2A40;
-  --muted-foreground:   #94A3B8;
+  --muted-foreground:   #A3B2C9;
 
   --accent:             #1A2C4A;
   --accent-foreground:  #00D2FF;
@@ -202,8 +202,8 @@
 
   --destructive: #F87171;
 
-  --border: #1E2A40;
-  --input:  #1A2540;
+  --border: #334155;
+  --input:  #1D2B4A;
   --ring:   #00D2FF;
 
   --chart-1: #3385FF;
@@ -307,8 +307,8 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.05), 0 0 0 0.5px rgba(0, 0, 0, 0.03);
   }
   .dark .surface-panel {
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
-    border-color: rgba(255, 255, 255, 0.04);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
+    border-color: rgba(255, 255, 255, 0.10);
   }
 
   /* ── Hero gradient banner ── */
@@ -337,11 +337,12 @@
     transform: translateY(-1px);
   }
   .dark .stat-card {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    border-color: rgba(255, 255, 255, 0.09);
   }
   .dark .stat-card:hover {
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
-    border-color: rgba(0, 210, 255, 0.15);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
+    border-color: rgba(0, 210, 255, 0.25);
   }
 
   /* ── Metric icon container ── */

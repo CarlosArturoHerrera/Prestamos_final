@@ -130,21 +130,21 @@ export default function ReportesPage() {
 
       {kpis && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-border/60 p-4">
+          <div className="stat-card">
             <p className="text-xs text-muted-foreground">Total prestado</p>
             <p className="text-xl font-bold">{formatRD(kpis.total_prestado)}</p>
           </div>
-          <div className="rounded-xl border border-border/60 p-4">
+          <div className="stat-card">
             <p className="text-xs text-muted-foreground">Total pendiente</p>
             <p className="text-xl font-bold">
               {formatRD(kpis.total_pendiente)}
             </p>
           </div>
-          <div className="rounded-xl border border-border/60 p-4">
+          <div className="stat-card">
             <p className="text-xs text-muted-foreground">En mora</p>
             <p className="text-xl font-bold">{formatRD(kpis.total_en_mora)}</p>
           </div>
-          <div className="rounded-xl border border-border/60 p-4">
+          <div className="stat-card">
             <p className="text-xs text-muted-foreground">Clientes activos</p>
             <p className="text-xl font-bold">{kpis.clientes_activos}</p>
           </div>
@@ -152,7 +152,7 @@ export default function ReportesPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-3 rounded-xl border border-border/60 p-4 lg:col-span-2">
+        <div className="space-y-3 rounded-xl border border-border/60 bg-card p-4 shadow-sm lg:col-span-2">
           <p className="font-medium">Filtros</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
@@ -272,7 +272,7 @@ export default function ReportesPage() {
           </div>
         </div>
 
-        <div className="min-h-[280px] w-full min-w-0 overflow-hidden rounded-xl border border-border/60 p-3">
+        <div className="min-h-[280px] w-full min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card p-3 shadow-sm">
           <p className="mb-2 text-center text-sm font-medium">
             Estados (resultado filtrado)
           </p>
@@ -280,7 +280,7 @@ export default function ReportesPage() {
         </div>
       </div>
 
-      <div className="hidden lg:block overflow-x-auto rounded-xl border border-border/60">
+      <div className="hidden lg:block overflow-x-auto rounded-xl border border-border/60 bg-card shadow-sm">
         <Table className="min-w-[520px]">
           <TableHeader>
             <TableRow>
@@ -326,7 +326,7 @@ export default function ReportesPage() {
 
       <div className="lg:hidden block space-y-3">
         {rows.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
+          <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
             Sin datos
           </div>
         ) : (
@@ -350,7 +350,7 @@ export default function ReportesPage() {
             return (
               <div
                 key={String(r.id)}
-                className="rounded-xl border border-border bg-card/80 p-4"
+                className="rounded-xl border border-border bg-card/80 p-4 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">

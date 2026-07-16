@@ -273,7 +273,7 @@ export const ReportsTab = forwardRef<ReportsTabRef>((_, ref) => {
             Resumen Ejecutivo
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-border/80 bg-surface p-4">
+            <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-muted-foreground">
                   Capital Total Prestado
@@ -291,7 +291,7 @@ export const ReportsTab = forwardRef<ReportsTabRef>((_, ref) => {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-surface p-4">
+            <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-muted-foreground">
                   Préstamos Activos
@@ -309,7 +309,7 @@ export const ReportsTab = forwardRef<ReportsTabRef>((_, ref) => {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-surface p-4">
+            <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-muted-foreground">
                   Tasa de Interés Promedio
@@ -332,7 +332,7 @@ export const ReportsTab = forwardRef<ReportsTabRef>((_, ref) => {
             <AlertCircle className="h-5 w-5 text-primary" />
             Distribución por Estado
           </h3>
-          <div className="rounded-2xl border border-border/80 bg-surface p-6">
+          <div className="rounded-2xl border border-border/80 bg-surface p-6 shadow-sm">
             <div className="space-y-3">
               {Object.entries(stats.statusBreakdown).map(([status, count]) => {
                 const percentage =
@@ -380,7 +380,7 @@ export const ReportsTab = forwardRef<ReportsTabRef>((_, ref) => {
             <Users className="h-5 w-5 text-primary" />
             Top 5 Clientes por Monto Prestado
           </h3>
-          <div className="overflow-hidden rounded-2xl border border-border/80 bg-surface">
+          <div className="overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm">
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/50">
                 <tr>
@@ -437,7 +437,7 @@ export const ReportsTab = forwardRef<ReportsTabRef>((_, ref) => {
             <Calendar className="h-5 w-5 text-primary" />
             Préstamos Recientes
           </h3>
-          <div className="overflow-hidden rounded-2xl border border-border/80 bg-surface">
+          <div className="overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm">
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/50">
                 <tr>

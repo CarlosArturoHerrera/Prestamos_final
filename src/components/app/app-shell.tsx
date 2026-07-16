@@ -278,7 +278,7 @@ export function AppShell({ children, role }: AppShellProps) {
       </aside>
 
       {/* ── Main content area ── */}
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Top header */}
         <header className="z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">

@@ -10,13 +10,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border border-transparent bg-primary text-primary-foreground shadow-[0_2px_8px_rgba(0,82,204,0.3)] hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,82,204,0.4)] active:translate-y-0 active:shadow-[0_1px_4px_rgba(0,82,204,0.2)]",
+          "border border-transparent bg-linear-to-b from-[#2563EB] to-[#0052CC] text-white shadow-[0_2px_8px_rgba(0,82,204,0.35),inset_0_1px_0_rgba(255,255,255,0.18)] hover:brightness-110 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,82,204,0.45)] active:translate-y-0 active:brightness-95 active:shadow-[0_1px_4px_rgba(0,82,204,0.25)] dark:from-[#3385FF] dark:to-[#1D6AE5] dark:shadow-[0_2px_14px_rgba(51,133,255,0.35),inset_0_1px_0_rgba(255,255,255,0.22)] dark:hover:shadow-[0_6px_24px_rgba(51,133,255,0.5)]",
         destructive:
           "border border-destructive/70 bg-destructive text-white shadow-[0_4px_14px_rgba(220,38,38,0.3)] hover:-translate-y-0.5 hover:bg-destructive/92 active:translate-y-0 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/70",
         outline:
-          "border border-border bg-card text-foreground shadow-sm hover:border-primary/40 hover:bg-accent/60 hover:text-foreground dark:bg-card/80",
+          "border border-border bg-card text-foreground shadow-sm hover:border-primary/40 hover:bg-accent/60 hover:text-foreground dark:bg-input/60 dark:hover:border-primary/60 dark:hover:bg-accent/70",
         secondary:
-          "border border-primary/20 bg-primary/10 text-primary hover:-translate-y-0.5 hover:bg-primary/16 active:translate-y-0 dark:border-primary/25 dark:bg-primary/15 dark:text-primary",
+          "border border-primary/20 bg-primary/10 text-primary hover:-translate-y-0.5 hover:bg-primary/16 active:translate-y-0 dark:border-primary/40 dark:bg-primary/20 dark:text-[#7EB2FF] dark:hover:bg-primary/28",
         ghost:
           "text-foreground/80 hover:bg-accent/70 hover:text-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",

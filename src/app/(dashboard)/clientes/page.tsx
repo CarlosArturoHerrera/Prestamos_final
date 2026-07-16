@@ -606,7 +606,7 @@ export default function ClientesPage() {
                         })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -636,7 +636,7 @@ export default function ClientesPage() {
                       value={form.empresaId}
                       onValueChange={(v) => setForm({ ...form, empresaId: v })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue
                           placeholder={
                             empresas.length
@@ -690,7 +690,7 @@ export default function ClientesPage() {
                         setForm({ ...form, representanteId: v })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue
                           placeholder={
                             reps.length
@@ -807,7 +807,7 @@ export default function ClientesPage() {
                 value={filtroEmpresa || "all"}
                 onValueChange={(v) => setFiltroEmpresa(v === "all" ? "" : v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
@@ -826,7 +826,7 @@ export default function ClientesPage() {
                 value={filtroRep || "all"}
                 onValueChange={(v) => setFiltroRep(v === "all" ? "" : v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -847,7 +847,7 @@ export default function ClientesPage() {
                   setFiltroEstadoValidacion(v === "all" ? "" : v)
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -889,7 +889,7 @@ export default function ClientesPage() {
           </p>
         </div>
 
-        <div className="hidden lg:block overflow-x-auto rounded-xl border border-border/60">
+        <div className="hidden lg:block overflow-x-auto rounded-xl border border-border/60 bg-card shadow-sm">
           <Table className="min-w-[500px]">
             <TableHeader>
               <TableRow>
@@ -927,11 +927,11 @@ export default function ClientesPage() {
 
         <div className="lg:hidden block space-y-3">
           {loading ? (
-            <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
+            <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
               Cargando…
             </div>
           ) : rows.length === 0 ? (
-            <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
+            <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
               Sin clientes con estos filtros
             </div>
           ) : (
@@ -940,7 +940,7 @@ export default function ClientesPage() {
                 <div
                   key={c.id}
                   className={cn(
-                    "rounded-xl border border-border bg-card/80 p-4",
+                    "rounded-xl border border-border bg-card/80 p-4 shadow-sm",
                     rowClass(c),
                   )}
                 >

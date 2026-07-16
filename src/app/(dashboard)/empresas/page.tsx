@@ -194,7 +194,7 @@ const EmpresaMobileCard = memo(function EmpresaMobileCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border/60 bg-card/80 p-4",
+        "rounded-xl border border-border/60 bg-card/80 p-4 shadow-sm",
         empresa.rowClass,
       )}
     >
@@ -731,17 +731,17 @@ export default function EmpresasPage() {
         </div>
 
         {!viewportReady ? (
-          <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+          <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
             Cargando vista…
           </div>
         ) : isMobile ? (
           <div className="space-y-3">
             {loading ? (
-              <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
                 Cargando…
               </div>
             ) : rows.length === 0 ? (
-              <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
                 Sin empresas con estos filtros
               </div>
             ) : (
