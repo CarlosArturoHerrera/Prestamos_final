@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type {
   PieLabelRenderProps,
   PieSectorShapeProps,
@@ -94,6 +95,10 @@ function renderOuterLabel(props: PieLabelRenderProps) {
 
 function ActiveAwareSlice(props: PieSectorShapeProps) {
   const { fill, isActive, outerRadius, ...rest } = props;
+  // Sin filtro SVG por sector en reposo: recharts redibuja cada frame durante
+  // la animación de entrada y rasterizar N drop-shadows por frame congela el
+  // hilo principal. La sombra ambiental vive en el contenedor (una sola capa
+  // CSS compuesta por GPU); aquí solo se aplica el glow al sector en hover.
   return (
     <Sector
       {...rest}
@@ -102,9 +107,8 @@ function ActiveAwareSlice(props: PieSectorShapeProps) {
       style={{
         filter: isActive
           ? "drop-shadow(0 6px 10px rgba(0, 82, 204, 0.35))"
-          : "drop-shadow(0 2px 4px rgba(15, 23, 42, 0.18))",
-        transition:
-          "outer-radius 250ms cubic-bezier(0.4, 0, 0.2, 1), filter 250ms ease",
+          : undefined,
+        transition: "filter 200ms ease",
       }}
     />
   );
@@ -153,6 +157,23 @@ function CustomTooltip({
 export function EstadoPieChart({ data }: { data: PieDatum[] }) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
+  // Posición del tooltip anclada al cursor (offset exterior) — sin esto,
+  // recharts ancla el tooltip del Pie al centro del sector y tapa la cifra
+  // central de la dona.
+  const [tooltipPos, setTooltipPos] = useState<
+    { x: number; y: number } | undefined
+  >(undefined);
+
+  const handleMouseMove = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltipPos({
+      x: e.clientX - rect.left + 14,
+      y: e.clientY - rect.top + 14,
+    });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => setTooltipPos(undefined), []);
+
   const entries = useMemo(
     () =>
       data.map((d, i) => ({
@@ -172,8 +193,17 @@ export function EstadoPieChart({ data }: { data: PieDatum[] }) {
 
   return (
     <div className="flex w-full flex-col items-center gap-4">
-      <div className="relative w-full">
-        <ResponsiveContainer width="100%" height={300}>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: solo rastrea el puntero para posicionar el tooltip; no es un elemento interactivo */}
+      <div
+        className="relative w-full"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
+        <ResponsiveContainer
+          width="100%"
+          height={300}
+          className="drop-shadow-[0_4px_10px_rgba(15,23,42,0.22)]"
+        >
           <PieChart>
             <defs>
               {entries.map((entry) => (
@@ -214,7 +244,11 @@ export function EstadoPieChart({ data }: { data: PieDatum[] }) {
                 <Cell key={entry.name} fill={`url(#${entry.gradientId})`} />
               ))}
             </Pie>
-            <Tooltip content={<CustomTooltip total={total} />} />
+            <Tooltip
+              content={<CustomTooltip total={total} />}
+              position={tooltipPos}
+              isAnimationActive={false}
+            />
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">

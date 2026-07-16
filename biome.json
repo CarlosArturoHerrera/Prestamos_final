@@ -18,6 +18,14 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "correctness": {
+        "useExhaustiveDependencies": {
+          "level": "error",
+          "options": {
+            "hooks": [{ "name": "usePageCachedState", "stableResult": [1] }]
+          }
+        }
+      },
       "suspicious": {
         "noUnknownAtRules": "off"
       }

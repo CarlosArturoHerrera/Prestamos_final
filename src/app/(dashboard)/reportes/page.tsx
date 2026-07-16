@@ -1,10 +1,11 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -22,24 +24,46 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatRD } from "@/lib/format-currency";
 import { usePageCachedState } from "@/lib/page-cache";
+
+function EstadoPieChartSkeleton() {
+  // Mismo footprint que el gráfico real (300px de dona + leyenda) para
+  // evitar saltos de layout mientras carga el chunk de recharts.
+  return (
+    <div className="flex w-full flex-col items-center gap-4">
+      <div className="flex h-[300px] w-full items-center justify-center">
+        <div className="relative size-48">
+          <Skeleton className="size-full rounded-full" />
+          <div className="absolute inset-[30px] rounded-full bg-card" />
+        </div>
+      </div>
+      <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+        <Skeleton className="h-10 rounded-lg" />
+        <Skeleton className="h-10 rounded-lg" />
+      </div>
+    </div>
+  );
+}
 
 const EstadoPieChart = dynamic(
   () =>
     import("@/components/reportes/estado-pie-chart").then(
       (m) => m.EstadoPieChart,
     ),
-  { ssr: false },
+  { ssr: false, loading: () => <EstadoPieChartSkeleton /> },
 );
 
 export default function ReportesPage() {
-  const [kpis, setKpis] = usePageCachedState<Record<string, string> | null>(
-    "reportes:kpis",
-    null,
-  );
+  const [kpis, setKpis, kpisCached] = usePageCachedState<Record<
+    string,
+    string
+  > | null>("reportes:kpis", null);
+  // El gráfico solo se monta cuando la petición inicial está resuelta
+  // (o si hay datos en caché de una visita anterior) — montar recharts
+  // con datos a medio llegar causa el stuttering de entrada.
+  const [reporteResuelto, setReporteResuelto] = useState(kpisCached);
   const [rows, setRows] = usePageCachedState<Record<string, unknown>[]>(
     "reportes:rows",
     [],
@@ -76,10 +100,12 @@ export default function ReportesPage() {
     if (!res.ok) {
       redirectToLoginIfUnauthorized(res.status);
       toast.error(res.message);
+      setReporteResuelto(true);
       return;
     }
     setKpis(res.data.kpis);
     setRows(res.data.data ?? []);
+    setReporteResuelto(true);
   }, [filtros]);
 
   useEffect(() => {
@@ -283,7 +309,11 @@ export default function ReportesPage() {
           <p className="mb-2 text-center text-sm font-medium">
             Estados (resultado filtrado)
           </p>
-          <EstadoPieChart data={pieData} />
+          {reporteResuelto ? (
+            <EstadoPieChart data={pieData} />
+          ) : (
+            <EstadoPieChartSkeleton />
+          )}
         </div>
       </div>
 
