@@ -272,7 +272,7 @@ export default function ReportesPage() {
           </div>
         </div>
 
-        <div className="min-h-[280px] w-full min-w-0 rounded-xl border border-border/60 p-2">
+        <div className="min-h-[280px] w-full min-w-0 overflow-hidden rounded-xl border border-border/60 p-3">
           <p className="mb-2 text-center text-sm font-medium">
             Estados (resultado filtrado)
           </p>
