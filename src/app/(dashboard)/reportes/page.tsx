@@ -25,6 +25,7 @@ import {
 import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatRD } from "@/lib/format-currency";
+import { usePageCachedState } from "@/lib/page-cache";
 
 const EstadoPieChart = dynamic(
   () =>
@@ -35,14 +36,20 @@ const EstadoPieChart = dynamic(
 );
 
 export default function ReportesPage() {
-  const [kpis, setKpis] = useState<Record<string, string> | null>(null);
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  const [empresas, setEmpresas] = useState<{ id: number; nombre: string }[]>(
+  const [kpis, setKpis] = usePageCachedState<Record<string, string> | null>(
+    "reportes:kpis",
+    null,
+  );
+  const [rows, setRows] = usePageCachedState<Record<string, unknown>[]>(
+    "reportes:rows",
     [],
   );
-  const [reps, setReps] = useState<
+  const [empresas, setEmpresas] = usePageCachedState<
+    { id: number; nombre: string }[]
+  >("reportes:empresas", []);
+  const [reps, setReps] = usePageCachedState<
     { id: number; nombre: string; apellido: string }[]
-  >([]);
+  >("reportes:reps", []);
   const [filtros, setFiltros] = useState({
     empresaId: "",
     representanteId: "",

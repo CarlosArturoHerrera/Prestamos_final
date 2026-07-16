@@ -37,6 +37,7 @@ import {
   TableSkeleton,
 } from "@/components/shared/data-skeleton";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
+import { usePageCachedState } from "@/lib/page-cache";
 import { formatRD } from "@/lib/format-currency";
 import { labelResultadoGestion } from "@/lib/gestion-cobranza";
 import { isSupabaseConfiguredOnClient } from "@/lib/env-public";
@@ -222,9 +223,12 @@ function StatCard({
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [data, setData, dataCached] = usePageCachedState<DashboardData | null>(
+    "dashboard:data",
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!dataCached);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -300,7 +304,7 @@ export default function DashboardPage() {
     void load();
   }, [load]);
 
-  if (loading && !error) {
+  if (loading && !error && !data) {
     return (
       <div className="space-y-8 animate-pulse">
         <div className="h-8 w-48 rounded-lg bg-muted" />

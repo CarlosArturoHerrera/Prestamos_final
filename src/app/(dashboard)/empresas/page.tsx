@@ -65,6 +65,8 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatPhone } from "@/lib/formatters";
+import { TableSkeleton } from "@/components/shared/data-skeleton";
+import { usePageCachedState } from "@/lib/page-cache";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { cn } from "@/lib/utils";
 
@@ -277,15 +279,21 @@ const EmpresaMobileCard = memo(function EmpresaMobileCard({
 });
 
 export default function EmpresasPage() {
-  const [rows, setRows] = useState<Empresa[]>([]);
-  const [total, setTotal] = useState(0);
+  const [rows, setRows, rowsCached] = usePageCachedState<Empresa[]>(
+    "empresas:rows",
+    [],
+  );
+  const [total, setTotal] = usePageCachedState("empresas:total", 0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const searchDebounced = useDebouncedValue(search, 350);
   const [conRnc, setConRnc] = useState(false);
   const [sinRncFilter, setSinRncFilter] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [resumen, setResumen] = useState<ResumenEmp | null>(null);
+  const [loading, setLoading] = useState(!rowsCached);
+  const [resumen, setResumen] = usePageCachedState<ResumenEmp | null>(
+    "empresas:resumen",
+    null,
+  );
   const [resumenLoading, setResumenLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Empresa | null>(null);
@@ -480,7 +488,7 @@ export default function EmpresasPage() {
   }, []);
 
   const tableRows = useMemo(() => {
-    if (loading) {
+    if (loading && rows.length === 0) {
       return (
         <TableRow>
           <TableCell colSpan={6}>Cargando…</TableCell>
@@ -633,7 +641,7 @@ export default function EmpresasPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold tabular-nums">
-                  {resumenLoading ? "…" : (resumen?.total ?? "—")}
+                  {resumenLoading && !resumen ? "…" : (resumen?.total ?? "—")}
                 </p>
               </CardContent>
             </Card>
@@ -644,7 +652,7 @@ export default function EmpresasPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold tabular-nums">
-                  {resumenLoading ? "…" : (resumen?.conRnc ?? "—")}
+                  {resumenLoading && !resumen ? "…" : (resumen?.conRnc ?? "—")}
                 </p>
               </CardContent>
             </Card>
@@ -715,7 +723,7 @@ export default function EmpresasPage() {
             </Button>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            {loading ? (
+            {loading && rows.length === 0 ? (
               "Cargando…"
             ) : total === 0 ? (
               "Sin resultados."
@@ -731,15 +739,11 @@ export default function EmpresasPage() {
         </div>
 
         {!viewportReady ? (
-          <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
-            Cargando vista…
-          </div>
+          <TableSkeleton rows={5} cols={5} />
         ) : isMobile ? (
           <div className="space-y-3">
-            {loading ? (
-              <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
-                Cargando…
-              </div>
+            {loading && rows.length === 0 ? (
+              <TableSkeleton rows={4} cols={3} />
             ) : rows.length === 0 ? (
               <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
                 Sin empresas con estos filtros

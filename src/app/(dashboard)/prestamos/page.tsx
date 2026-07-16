@@ -91,6 +91,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
+import { usePageCachedState } from "@/lib/page-cache";
 import { formatCedula, formatPhone } from "@/lib/formatters";
 import { formatRD } from "@/lib/format-currency";
 import { cn } from "@/lib/utils";
@@ -296,11 +297,17 @@ function fmtFecha(iso: string): string {
 const PAGE_SIZE = 50;
 
 export default function PrestamosPage() {
-  const [rows, setRows] = useState<PrestamoList[]>([]);
-  const [total, setTotal] = useState(0);
+  const [rows, setRows, rowsCached] = usePageCachedState<PrestamoList[]>(
+    "prestamos:rows",
+    [],
+  );
+  const [total, setTotal] = usePageCachedState("prestamos:total", 0);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [resumen, setResumen] = useState<ResumenFin | null>(null);
+  const [loading, setLoading] = useState(!rowsCached);
+  const [resumen, setResumen] = usePageCachedState<ResumenFin | null>(
+    "prestamos:resumen",
+    null,
+  );
   const [resumenLoading, setResumenLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -524,7 +531,7 @@ export default function PrestamosPage() {
 
   const tableRows = useMemo(() => {
     // ── Skeleton loading ─────────────────────────────────────────────
-    if (loading) {
+    if (loading && rows.length === 0) {
       return Array.from({ length: 7 }).map((_, i) => (
         <TableRow key={`sk-${i}`} className="animate-pulse">
           <TableCell className="py-3">
@@ -1103,7 +1110,7 @@ export default function PrestamosPage() {
                   {k.title}
                 </p>
                 <p className="mt-1 min-w-0 break-words text-lg font-semibold tabular sm:text-xl">
-                  {resumenLoading ? "…" : k.value}
+                  {resumenLoading && !resumen ? "…" : k.value}
                 </p>
                 <p className="text-[10px] text-muted-foreground">{k.desc}</p>
               </div>
@@ -1164,7 +1171,9 @@ export default function PrestamosPage() {
                         {a.title}
                       </p>
                       <p className="mt-1 text-2xl font-bold tabular">
-                        {resumenLoading ? "…" : String(a.value ?? "—")}
+                        {resumenLoading && !resumen
+                          ? "…"
+                          : String(a.value ?? "—")}
                       </p>
                       <p className="mt-0.5 text-[10px] text-muted-foreground">
                         {a.desc}
@@ -1267,7 +1276,7 @@ export default function PrestamosPage() {
             con proyección de cuota).
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            {loading ? (
+            {loading && rows.length === 0 ? (
               "Cargando resultados…"
             ) : total === 0 ? (
               "Sin resultados."
@@ -1311,7 +1320,7 @@ export default function PrestamosPage() {
 
         {/* ── Mobile cards ── */}
         <div className="lg:hidden space-y-3">
-          {loading ? (
+          {loading && rows.length === 0 ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div

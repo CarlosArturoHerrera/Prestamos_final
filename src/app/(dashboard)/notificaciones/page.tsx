@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/tooltip";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatPhone } from "@/lib/formatters";
+import { usePageCachedState } from "@/lib/page-cache";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { cn } from "@/lib/utils";
 
@@ -110,8 +111,11 @@ function fmtDate(iso: string): string {
 }
 
 export default function NotificacionesPage() {
-  const [rows, setRows] = useState<NotifRow[]>([]);
-  const [reps, setReps] = useState<Rep[]>([]);
+  const [rows, setRows] = usePageCachedState<NotifRow[]>(
+    "notificaciones:rows",
+    [],
+  );
+  const [reps, setReps] = usePageCachedState<Rep[]>("notificaciones:reps", []);
   const [filtroRep, setFiltroRep] = useState("");
   const [filtroCedula, setFiltroCedula] = useState("");
   const filtroCedulaDebounced = useDebouncedValue(filtroCedula, 350);
@@ -561,7 +565,7 @@ export default function NotificacionesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loadingHistorial ? (
+              {loadingHistorial && rows.length === 0 ? (
                 <>
                   {Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i} className="animate-pulse">
@@ -687,7 +691,7 @@ export default function NotificacionesPage() {
 
         {/* ── Mobile cards ── */}
         <div className="md:hidden space-y-3">
-          {loadingHistorial ? (
+          {loadingHistorial && rows.length === 0 ? (
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div

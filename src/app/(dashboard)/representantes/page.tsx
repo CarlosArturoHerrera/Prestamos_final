@@ -66,6 +66,8 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatPhone } from "@/lib/formatters";
+import { TableSkeleton } from "@/components/shared/data-skeleton";
+import { usePageCachedState } from "@/lib/page-cache";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { cn } from "@/lib/utils";
 
@@ -263,14 +265,20 @@ const RepresentanteMobileCard = memo(function RepresentanteMobileCard({
 });
 
 export default function RepresentantesPage() {
-  const [rows, setRows] = useState<Rep[]>([]);
-  const [total, setTotal] = useState(0);
+  const [rows, setRows, rowsCached] = usePageCachedState<Rep[]>(
+    "representantes:rows",
+    [],
+  );
+  const [total, setTotal] = usePageCachedState("representantes:total", 0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const searchDebounced = useDebouncedValue(search, 350);
   const [conClientes, setConClientes] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [resumen, setResumen] = useState<ResumenRep | null>(null);
+  const [loading, setLoading] = useState(!rowsCached);
+  const [resumen, setResumen] = usePageCachedState<ResumenRep | null>(
+    "representantes:resumen",
+    null,
+  );
   const [resumenLoading, setResumenLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Rep | null>(null);
@@ -448,7 +456,7 @@ export default function RepresentantesPage() {
   }, []);
 
   const tableRows = useMemo(() => {
-    if (loading) {
+    if (loading && rows.length === 0) {
       return (
         <TableRow>
           <TableCell colSpan={6}>Cargando…</TableCell>
@@ -598,7 +606,9 @@ export default function RepresentantesPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold tabular-nums">
-                  {resumenLoading ? "…" : (resumen?.totalRepresentantes ?? "—")}
+                  {resumenLoading && !resumen
+                    ? "…"
+                    : (resumen?.totalRepresentantes ?? "—")}
                 </p>
               </CardContent>
             </Card>
@@ -615,7 +625,7 @@ export default function RepresentantesPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold tabular-nums">
-                  {resumenLoading
+                  {resumenLoading && !resumen
                     ? "…"
                     : (resumen?.totalClientesVinculados ?? "—")}
                 </p>
@@ -665,7 +675,7 @@ export default function RepresentantesPage() {
             </Button>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            {loading ? (
+            {loading && rows.length === 0 ? (
               "Cargando…"
             ) : total === 0 ? (
               "Sin resultados."
@@ -681,15 +691,11 @@ export default function RepresentantesPage() {
         </div>
 
         {!viewportReady ? (
-          <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
-            Cargando vista…
-          </div>
+          <TableSkeleton rows={5} cols={5} />
         ) : isMobile ? (
           <div className="space-y-3">
-            {loading ? (
-              <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
-                Cargando…
-              </div>
+            {loading && rows.length === 0 ? (
+              <TableSkeleton rows={4} cols={3} />
             ) : rows.length === 0 ? (
               <div className="rounded-xl border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
                 Sin representantes con estos filtros

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Banknote,
   BarChart3,
@@ -65,14 +65,21 @@ export function AppShell({ children, role }: AppShellProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const superAdmin = isSuperAdmin(role);
-  const nav = superAdmin ? [...navBase, navAdminItem] : navBase;
+  const nav = useMemo(
+    () => (superAdmin ? [...navBase, navAdminItem] : navBase),
+    [superAdmin],
+  );
 
   // Current page label for header breadcrumb
-  const currentNav = [...nav]
-    .reverse()
-    .find((item) =>
-      item.href === "/" ? pathname === "/" : pathname.startsWith(item.href),
-    );
+  const currentNav = useMemo(
+    () =>
+      [...nav]
+        .reverse()
+        .find((item) =>
+          item.href === "/" ? pathname === "/" : pathname.startsWith(item.href),
+        ),
+    [nav, pathname],
+  );
 
   useEffect(() => {
     try {

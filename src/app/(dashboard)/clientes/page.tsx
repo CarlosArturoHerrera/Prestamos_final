@@ -81,6 +81,7 @@ import { CedulaInput } from "@/components/ui/cedula-input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatCedula, formatPhone } from "@/lib/formatters";
+import { usePageCachedState } from "@/lib/page-cache";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { cn } from "@/lib/utils";
 
@@ -132,16 +133,22 @@ function validacionBadge(estado: string | undefined) {
 }
 
 export default function ClientesPage() {
-  const [rows, setRows] = useState<ClienteRow[]>([]);
-  const [total, setTotal] = useState(0);
+  const [rows, setRows, rowsCached] = usePageCachedState<ClienteRow[]>(
+    "clientes:rows",
+    [],
+  );
+  const [total, setTotal] = usePageCachedState("clientes:total", 0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const searchDebounced = useDebouncedValue(search, 350);
   const [filtroEmpresa, setFiltroEmpresa] = useState("");
   const [filtroRep, setFiltroRep] = useState("");
   const [filtroEstadoValidacion, setFiltroEstadoValidacion] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [resumen, setResumen] = useState<ResumenCli | null>(null);
+  const [loading, setLoading] = useState(!rowsCached);
+  const [resumen, setResumen] = usePageCachedState<ResumenCli | null>(
+    "clientes:resumen",
+    null,
+  );
   const [resumenLoading, setResumenLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -368,7 +375,7 @@ export default function ClientesPage() {
       : "border-l-[5px] border-emerald-500/35 bg-emerald-500/[0.04]";
 
   const tableRows = useMemo(() => {
-    if (loading) {
+    if (loading && rows.length === 0) {
       return (
         <TableRow>
           <TableCell colSpan={9}>Cargando…</TableCell>
@@ -762,7 +769,7 @@ export default function ClientesPage() {
               Total clientes
             </p>
             <p className="mt-1 text-2xl font-bold tabular">
-              {resumenLoading ? "…" : (resumen?.total ?? "—")}
+              {resumenLoading && !resumen ? "…" : (resumen?.total ?? "—")}
             </p>
             <p className="text-xs text-muted-foreground">Registrados</p>
           </div>
@@ -771,7 +778,7 @@ export default function ClientesPage() {
               Validados
             </p>
             <p className="mt-1 text-2xl font-bold tabular">
-              {resumenLoading ? "…" : (resumen?.validados ?? "—")}
+              {resumenLoading && !resumen ? "…" : (resumen?.validados ?? "—")}
             </p>
             <p className="text-xs text-muted-foreground">Listos para operar</p>
           </div>
@@ -780,7 +787,9 @@ export default function ClientesPage() {
               Pendientes de validar
             </p>
             <p className="mt-1 text-2xl font-bold tabular text-amber-600 dark:text-amber-400">
-              {resumenLoading ? "…" : (resumen?.pendientesValidacion ?? "—")}
+              {resumenLoading && !resumen
+                ? "…"
+                : (resumen?.pendientesValidacion ?? "—")}
             </p>
             <p className="text-xs text-muted-foreground">Requieren revisión</p>
           </div>
@@ -872,7 +881,7 @@ export default function ClientesPage() {
             </div>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            {loading ? (
+            {loading && rows.length === 0 ? (
               "Cargando…"
             ) : total === 0 ? (
               "Sin resultados."
@@ -926,7 +935,7 @@ export default function ClientesPage() {
         </div>
 
         <div className="lg:hidden block space-y-3">
-          {loading ? (
+          {loading && rows.length === 0 ? (
             <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground shadow-sm">
               Cargando…
             </div>
