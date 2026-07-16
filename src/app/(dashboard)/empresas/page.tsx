@@ -65,7 +65,9 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatPhone } from "@/lib/formatters";
+import { motion } from "framer-motion";
 import { TableSkeleton } from "@/components/shared/data-skeleton";
+import { stagger, staggerChild } from "@/lib/motion";
 import { usePageCachedState } from "@/lib/page-cache";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { cn } from "@/lib/utils";
@@ -102,15 +104,23 @@ type EmpresaViewModel = {
 
 const EmpresaDesktopRow = memo(function EmpresaDesktopRow({
   empresa,
+  index = 0,
   onOpenEdit,
   onDelete,
 }: {
   empresa: EmpresaViewModel;
+  index?: number;
   onOpenEdit: (id: number) => void;
   onDelete: (id: number) => void;
 }) {
   return (
-    <TableRow className={empresa.rowClass}>
+    <TableRow
+      className={cn(
+        "animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-both duration-300",
+        empresa.rowClass,
+      )}
+      style={{ animationDelay: `${Math.min(index * 45, 360)}ms` }}
+    >
       <TableCell className="font-mono text-xs text-muted-foreground">
         #{empresa.id}
       </TableCell>
@@ -186,19 +196,23 @@ const EmpresaDesktopRow = memo(function EmpresaDesktopRow({
 
 const EmpresaMobileCard = memo(function EmpresaMobileCard({
   empresa,
+  index = 0,
   onOpenEdit,
   onDelete,
 }: {
   empresa: EmpresaViewModel;
+  index?: number;
   onOpenEdit: (id: number) => void;
   onDelete: (id: number) => void;
 }) {
   return (
     <div
       className={cn(
+        "animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-both duration-300",
         "rounded-xl border border-border/60 bg-card/80 p-4 shadow-sm",
         empresa.rowClass,
       )}
+      style={{ animationDelay: `${Math.min(index * 45, 360)}ms` }}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="space-y-1">
@@ -502,10 +516,11 @@ export default function EmpresasPage() {
         </TableRow>
       );
     }
-    return empresasView.map((empresa) => (
+    return empresasView.map((empresa, index) => (
       <EmpresaDesktopRow
         key={empresa.id}
         empresa={empresa}
+        index={index}
         onOpenEdit={openEditById}
         onDelete={handleDeleteById}
       />
@@ -630,33 +645,48 @@ export default function EmpresasPage() {
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Panel
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Card className="border-border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <Building2 className="size-4 text-primary" />
-                  Total empresas
-                </CardTitle>
-                <CardDescription>Registradas en el sistema</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold tabular-nums">
-                  {resumenLoading && !resumen ? "…" : (resumen?.total ?? "—")}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold">Con RNC</CardTitle>
-                <CardDescription>Identificación fiscal cargada</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold tabular-nums">
-                  {resumenLoading && !resumen ? "…" : (resumen?.conRnc ?? "—")}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+          <motion.div
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            variants={stagger(0.05)}
+            initial="initial"
+            animate="animate"
+          >
+            <motion.div variants={staggerChild}>
+              <Card className="border-border shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                    <Building2 className="size-4 text-primary" />
+                    Total empresas
+                  </CardTitle>
+                  <CardDescription>Registradas en el sistema</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold tabular-nums">
+                    {resumenLoading && !resumen ? "…" : (resumen?.total ?? "—")}
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+            <motion.div variants={staggerChild}>
+              <Card className="border-border shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold">
+                    Con RNC
+                  </CardTitle>
+                  <CardDescription>
+                    Identificación fiscal cargada
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold tabular-nums">
+                    {resumenLoading && !resumen
+                      ? "…"
+                      : (resumen?.conRnc ?? "—")}
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
         </section>
 
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -750,10 +780,11 @@ export default function EmpresasPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {empresasView.map((empresa) => (
+                {empresasView.map((empresa, index) => (
                   <EmpresaMobileCard
                     key={empresa.id}
                     empresa={empresa}
+                    index={index}
                     onOpenEdit={openEditById}
                     onDelete={handleDeleteById}
                   />

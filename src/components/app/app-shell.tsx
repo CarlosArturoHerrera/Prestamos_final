@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -32,6 +33,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { EASE } from "@/lib/motion";
 import { isSuperAdmin } from "@/lib/roles";
 import type { AppRole } from "@/lib/api-auth";
 
@@ -63,6 +65,12 @@ export function AppShell({ children, role }: AppShellProps) {
   const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const reducedMotion = useReducedMotion();
+
+  // Sliding active-pill transition (GPU transform only)
+  const pillTransition = reducedMotion
+    ? { duration: 0 }
+    : { duration: 0.25, ease: EASE.out };
 
   const superAdmin = isSuperAdmin(role);
   const nav = useMemo(
@@ -122,7 +130,7 @@ export function AppShell({ children, role }: AppShellProps) {
       "group relative flex items-center rounded-lg text-sm font-medium transition-all duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
       collapsed ? "justify-center size-9 mx-auto" : "gap-3 px-3 py-2",
       active
-        ? "bg-sidebar-accent text-sidebar-primary font-semibold"
+        ? "text-sidebar-primary font-semibold"
         : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
     );
 
@@ -190,17 +198,31 @@ export function AppShell({ children, role }: AppShellProps) {
                   isAdminItem && sidebarCollapsed && "mt-3",
                 )}
               >
+                {active && (
+                  <motion.span
+                    layoutId="sidebar-active-pill"
+                    transition={pillTransition}
+                    className={cn(
+                      "absolute inset-0 rounded-lg bg-sidebar-accent",
+                      isAdminItem && !sidebarCollapsed && "top-3",
+                    )}
+                  />
+                )}
                 {active && !sidebarCollapsed && (
-                  <span className="nav-active-indicator" />
+                  <motion.span
+                    layoutId="sidebar-active-bar"
+                    transition={pillTransition}
+                    className="nav-active-indicator"
+                  />
                 )}
                 <Icon
                   className={cn(
-                    "shrink-0",
+                    "relative shrink-0",
                     sidebarCollapsed ? "size-[18px]" : "size-4",
                   )}
                 />
                 {!sidebarCollapsed && (
-                  <span className="flex-1 truncate">{item.label}</span>
+                  <span className="relative flex-1 truncate">{item.label}</span>
                 )}
               </Link>
             );
@@ -453,11 +475,18 @@ export function AppShell({ children, role }: AppShellProps) {
             >
               <div
                 className={cn(
-                  "bottom-nav-item-icon",
-                  active && "bg-accent text-primary",
+                  "bottom-nav-item-icon relative",
+                  active && "text-primary",
                 )}
               >
-                <Icon className="size-5" />
+                {active && (
+                  <motion.span
+                    layoutId="bottomnav-active-pill"
+                    transition={pillTransition}
+                    className="absolute inset-0 rounded-xl bg-accent"
+                  />
+                )}
+                <Icon className="relative size-5" />
               </div>
               <span className={cn(active && "font-semibold")}>
                 {item.label}

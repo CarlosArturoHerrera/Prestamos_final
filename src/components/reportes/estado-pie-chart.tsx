@@ -203,8 +203,8 @@ export function EstadoPieChart({ data }: { data: PieDatum[] }) {
               stroke="#ffffff"
               strokeWidth={2}
               isAnimationActive
-              animationBegin={80}
-              animationDuration={900}
+              animationBegin={40}
+              animationDuration={600}
               animationEasing="ease-out"
               labelLine={false}
               label={renderOuterLabel}
