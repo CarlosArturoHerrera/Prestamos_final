@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import Decimal from "decimal.js";
 import { jsPDF } from "jspdf";
 import { NextResponse } from "next/server";
@@ -92,6 +94,20 @@ function colLetter(n: number): string {
   return String.fromCharCode(64 + n); // works for 1-26
 }
 
+// ── Logo del proyecto (public/logo.png) en base64, cacheado por proceso ───────
+// undefined = aún no intentado · null = no se pudo leer (usa chip de respaldo)
+let logoCache: string | null | undefined;
+async function getLogoBase64(): Promise<string | null> {
+  if (logoCache !== undefined) return logoCache;
+  try {
+    const buf = await readFile(join(process.cwd(), "public", "logo.png"));
+    logoCache = buf.toString("base64");
+  } catch {
+    logoCache = null;
+  }
+  return logoCache;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // PDF GENERATION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -118,15 +134,20 @@ function drawPageHeader(
   userName: string,
   now: Date,
   filters: { fechaDesde?: string; fechaHasta?: string },
+  logo: string | null,
 ): number {
   const H = 38;
-  // Logo mark (chip de marca, sutil sobre fondo blanco)
-  sf(doc, C.brand);
-  doc.roundedRect(ML, 12, 13, 13, 2.6, 2.6, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  st(doc, C.white);
-  doc.text("PE", ML + 6.5, 19.9, { align: "center" });
+  // Logo del proyecto (o chip de respaldo si no se pudo cargar)
+  if (logo) {
+    doc.addImage(`data:image/png;base64,${logo}`, "PNG", ML, 11, 15, 15);
+  } else {
+    sf(doc, C.brand);
+    doc.roundedRect(ML, 12, 13, 13, 2.6, 2.6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    st(doc, C.white);
+    doc.text("PE", ML + 6.5, 19.9, { align: "center" });
+  }
   // Nombre del sistema + subtítulo (texto oscuro sobre blanco)
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
@@ -162,13 +183,17 @@ function drawPageHeader(
   gradientLine(doc, ML, H, CW);
   return H + 3;
 }
-function drawMiniHeader(doc: jsPDF): number {
-  sf(doc, C.brand);
-  doc.roundedRect(ML, 5, 8, 8, 1.8, 1.8, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(6);
-  st(doc, C.white);
-  doc.text("PE", ML + 4, 9.7, { align: "center" });
+function drawMiniHeader(doc: jsPDF, logo: string | null): number {
+  if (logo) {
+    doc.addImage(`data:image/png;base64,${logo}`, "PNG", ML, 3.5, 9, 9);
+  } else {
+    sf(doc, C.brand);
+    doc.roundedRect(ML, 5, 8, 8, 1.8, 1.8, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6);
+    st(doc, C.white);
+    doc.text("PE", ML + 4, 9.7, { align: "center" });
+  }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   st(doc, C.text);
@@ -544,22 +569,26 @@ function xlHeader(
   userName: string,
   nowStr: string,
   filters: { fechaDesde?: string; fechaHasta?: string },
+  logoId: number | null,
 ): number {
   const L = colLetter(numCols);
-  // Encabezado corporativo: fondo blanco, texto oscuro
-  sheet.getRow(1).height = 30;
+  // Encabezado corporativo: fondo blanco, texto oscuro.
+  // Si hay logo, se indenta el título/subtítulo para dejar espacio al logotipo.
+  const withLogo = logoId != null;
+  const ind = withLogo ? 8 : 2;
+  sheet.getRow(1).height = withLogo ? 36 : 30;
   xMerge(sheet, `A1:${L}1`, {
     value: "Préstamos Elicar",
     fill: XL.white,
     font: xFont({ bold: true, size: 18, color: XL.text }),
-    align: xAlign("left", 2),
+    align: xAlign("left", ind),
   });
   sheet.getRow(2).height = 18;
   xMerge(sheet, `A2:${L}2`, {
     value: "Microfinanzas y Soluciones Crediticias",
     fill: XL.white,
     font: xFont({ size: 10, color: XL.muted }),
-    align: xAlign("left", 2),
+    align: xAlign("left", ind),
   });
   sheet.getRow(3).height = 22;
   xMerge(sheet, `A3:${L}3`, {
@@ -581,6 +610,13 @@ function xlHeader(
     font: xFont({ size: 9, color: XL.muted }),
     align: xAlign("left", 1),
   });
+  // Logo del proyecto flotando en la esquina superior izquierda (letterhead)
+  if (logoId != null) {
+    sheet.addImage(logoId, {
+      tl: { col: 0.12, row: 0.12 },
+      ext: { width: 40, height: 40 },
+    });
+  }
   // Línea divisoria con degradado azul muy sutil
   sheet.getRow(5).height = 5;
   sheet.mergeCells(`A5:${L}5`);
@@ -880,12 +916,16 @@ async function generateExcel(params: {
   userName: string;
   now: Date;
   filters: { fechaDesde?: string; fechaHasta?: string };
+  logo: string | null;
 }): Promise<Buffer> {
   const { Workbook } = await import("exceljs");
   const wb = new Workbook();
   wb.creator = "Préstamos Elicar";
   wb.created = params.now;
   wb.modified = params.now;
+  const logoId = params.logo
+    ? wb.addImage({ base64: params.logo, extension: "png" })
+    : null;
 
   const nowStr = params.now.toLocaleString("es-DO", {
     day: "2-digit",
@@ -942,6 +982,7 @@ async function generateExcel(params: {
     params.userName,
     nowStr,
     params.filters,
+    logoId,
   );
   y = xlKpis(shRes, y, 6, params.kpis);
   shRes.getRow(y).height = 16;
@@ -969,6 +1010,7 @@ async function generateExcel(params: {
     params.userName,
     nowStr,
     params.filters,
+    logoId,
   );
   y++;
   const colsAct: XlCol[] = [
@@ -1035,6 +1077,7 @@ async function generateExcel(params: {
     params.userName,
     nowStr,
     params.filters,
+    logoId,
   );
   y++;
   const colsMora: XlCol[] = [
@@ -1101,6 +1144,7 @@ async function generateExcel(params: {
     params.userName,
     nowStr,
     params.filters,
+    logoId,
   );
   y++;
   const colsCli: XlCol[] = [
@@ -1299,6 +1343,7 @@ export async function GET(request: Request) {
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
   const filters = { fechaDesde: f.fechaDesde, fechaHasta: f.fechaHasta };
+  const logo = await getLogoBase64();
 
   // ── Excel ────────────────────────────────────────────────────────────────
   if (formato === "excel") {
@@ -1310,6 +1355,7 @@ export async function GET(request: Request) {
       userName,
       now,
       filters,
+      logo,
     });
     return new NextResponse(excelBuf.buffer as ArrayBuffer, {
       headers: {
@@ -1324,10 +1370,10 @@ export async function GET(request: Request) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const addPage = (): number => {
     doc.addPage();
-    return drawMiniHeader(doc);
+    return drawMiniHeader(doc, logo);
   };
 
-  let y = drawPageHeader(doc, userName, now, filters);
+  let y = drawPageHeader(doc, userName, now, filters, logo);
   y = drawKPIs(doc, y, kpis);
 
   const colsAct: ColDef[] = [
