@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { jsPDF } from "jspdf";
 import Decimal from "decimal.js";
+import { jsPDF } from "jspdf";
+import { NextResponse } from "next/server";
 import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatCedula, formatPhone } from "@/lib/formatters";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { reportesQuerySchema } from "@/lib/validations/schemas";
 
 // ── Shared layout / color constants ──────────────────────────────────────────
@@ -14,28 +14,38 @@ const CW = PAGE_W - ML * 2;
 const FOOTER_Y = PAGE_H - 13;
 
 type RGB = [number, number, number];
+// Paleta suave y de bajo contraste (Stripe/Notion/Vercel) con identidad Elicar.
+// Superficies claras, texto slate, azules apagados; nada saturado ni fluorescente.
 const C: Record<string, RGB> = {
-  headerBg: [0, 82, 204], // #0052CC brand primary
   white: [255, 255, 255],
-  headerSub: [0, 210, 255], // #00D2FF brand accent
-  accent: [0, 82, 204], // #0052CC
-  tblHead: [0, 82, 204], // #0052CC
-  tblAlt: [244, 246, 250], // #F4F6FA light bg
+  text: [30, 41, 59], // #1E293B texto principal
+  muted: [100, 116, 139], // #64748B texto secundario
   border: [226, 232, 240], // #E2E8F0
-  moraHead: [153, 27, 27],
-  moraRowA: [254, 242, 242],
-  moraRowB: [254, 226, 226],
-  totalBg: [232, 240, 254], // #E8F0FE brand tint
-  totalTxt: [0, 52, 163], // #0034A3 dark brand
-  kpiBg: [244, 246, 250], // #F4F6FA
+  borderSoft: [241, 245, 249], // #F1F5F9 separadores discretos
+  bgSoft: [248, 250, 252], // #F8FAFC
+  brand: [0, 82, 204], // #0052CC (solo logo)
+  brand2: [37, 99, 235], // #2563EB (acentos finos)
+  lightBlue: [96, 165, 250], // #60A5FA
+  accent: [0, 210, 255], // #00D2FF (degradado)
+  tblHeadBg: [239, 244, 255], // #EFF4FF azul muy suave
+  tblHeadTxt: [30, 41, 59], // texto oscuro sobre header claro
+  rowAlt: [248, 250, 252], // #F8FAFC fila par
+  sectBg: [241, 245, 249], // #F1F5F9 barra de sección clara
+  sectTxt: [30, 41, 59],
+  totalBg: [239, 244, 255], // #EFF4FF
+  totalTxt: [30, 58, 138], // #1E3A8A azul elegante
+  kpiBg: [248, 250, 252], // #F8FAFC
   kpiBorder: [226, 232, 240], // #E2E8F0
-  body: [10, 14, 23], // #0A0E17
-  muted: [92, 107, 137], // #5C6B89
-  sectionBg: [0, 82, 204], // #0052CC
-  green: [5, 150, 105],
-  amber: [180, 83, 9],
-  red: [185, 28, 28],
-  gray: [92, 107, 137], // #5C6B89
+  blue: [37, 99, 235], // estado activo (azul suave)
+  green: [4, 120, 87], // #047857 verde elegante
+  amber: [180, 83, 9], // #B45309
+  orange: [194, 65, 12], // #C2410C mora (naranja desaturado)
+  gray: [100, 116, 139], // #64748B
+  warnBg: [254, 242, 242], // #FEF2F2 barra mora clara
+  warnTxt: [154, 52, 18], // #9A3412 texto mora legible
+  warnHeadBg: [255, 237, 226], // #FFEDE2 header tabla mora
+  warnRowAlt: [254, 247, 244], // #FEF7F4 fila par mora
+  warnAccent: [194, 65, 12], // #C2410C
 };
 function sf(doc: jsPDF, c: RGB) {
   doc.setFillColor(c[0], c[1], c[2]);
@@ -86,6 +96,23 @@ function colLetter(n: number): string {
 // PDF GENERATION
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Línea divisoria con degradado azul muy sutil (lightBlue → accent).
+function gradientLine(doc: jsPDF, x: number, y: number, w: number, h = 0.8) {
+  const steps = 60;
+  const seg = w / steps;
+  const a = C.lightBlue;
+  const b = C.accent;
+  for (let i = 0; i < steps; i++) {
+    const t = i / (steps - 1);
+    sf(doc, [
+      Math.round(a[0] + (b[0] - a[0]) * t),
+      Math.round(a[1] + (b[1] - a[1]) * t),
+      Math.round(a[2] + (b[2] - a[2]) * t),
+    ]);
+    doc.rect(x + i * seg, y, seg + 0.35, h, "F");
+  }
+}
+
 function drawPageHeader(
   doc: jsPDF,
   userName: string,
@@ -93,22 +120,23 @@ function drawPageHeader(
   filters: { fechaDesde?: string; fechaHasta?: string },
 ): number {
   const H = 38;
-  sf(doc, C.headerBg);
-  doc.rect(0, 0, PAGE_W, H, "F");
-  sf(doc, C.accent);
-  doc.circle(ML + 9, H / 2, 8, "F");
+  // Logo mark (chip de marca, sutil sobre fondo blanco)
+  sf(doc, C.brand);
+  doc.roundedRect(ML, 12, 13, 13, 2.6, 2.6, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  st(doc, C.white);
-  doc.text("MP", ML + 9, H / 2 + 1.2, { align: "center" });
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(17);
-  st(doc, C.white);
-  doc.text("Préstamos Elicar", ML + 22, H / 2 - 2.5);
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
-  st(doc, C.headerSub);
-  doc.text("Microfinanzas y Soluciones Crediticias", ML + 22, H / 2 + 5.5);
+  st(doc, C.white);
+  doc.text("PE", ML + 6.5, 19.9, { align: "center" });
+  // Nombre del sistema + subtítulo (texto oscuro sobre blanco)
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  st(doc, C.text);
+  doc.text("Préstamos Elicar", ML + 18, 17);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  st(doc, C.muted);
+  doc.text("Microfinanzas y Soluciones Crediticias", ML + 18, 22.5);
+  // Metadatos (fecha / usuario / período) alineados a la derecha
   const nowStr = now.toLocaleString("es-DO", {
     day: "2-digit",
     month: "2-digit",
@@ -117,12 +145,12 @@ function drawPageHeader(
     minute: "2-digit",
   });
   doc.setFontSize(8);
-  st(doc, C.headerSub);
-  let ry = H / 2 - 7.5;
+  st(doc, C.muted);
+  let ry = 14;
   doc.text(`Generado: ${nowStr}`, PAGE_W - ML, ry, { align: "right" });
-  ry += 5.5;
+  ry += 5;
   doc.text(`Usuario: ${userName}`, PAGE_W - ML, ry, { align: "right" });
-  ry += 5.5;
+  ry += 5;
   if (filters.fechaDesde || filters.fechaHasta) {
     const desde = filters.fechaDesde ? fmtDate(filters.fechaDesde) : "Inicio";
     const hasta = filters.fechaHasta ? fmtDate(filters.fechaHasta) : "Hoy";
@@ -130,28 +158,31 @@ function drawPageHeader(
       align: "right",
     });
   }
-  sf(doc, C.accent);
-  doc.rect(0, H, PAGE_W, 3, "F");
+  // Divisor degradado
+  gradientLine(doc, ML, H, CW);
   return H + 3;
 }
 function drawMiniHeader(doc: jsPDF): number {
-  sf(doc, C.headerBg);
-  doc.rect(0, 0, PAGE_W, 16, "F");
-  sf(doc, C.accent);
-  doc.rect(0, 16, PAGE_W, 2, "F");
+  sf(doc, C.brand);
+  doc.roundedRect(ML, 5, 8, 8, 1.8, 1.8, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
+  doc.setFontSize(6);
   st(doc, C.white);
-  doc.text("Préstamos Elicar", ML, 11);
+  doc.text("PE", ML + 4, 9.7, { align: "center" });
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  st(doc, C.text);
+  doc.text("Préstamos Elicar", ML + 11, 10.7);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  st(doc, C.headerSub);
+  doc.setFontSize(7.5);
+  st(doc, C.muted);
   doc.text(
     "Microfinanzas y Soluciones Crediticias — continuación",
     PAGE_W - ML,
-    11,
+    10.7,
     { align: "right" },
   );
+  gradientLine(doc, ML, 15, CW, 0.7);
   return 22;
 }
 function drawKPIs(
@@ -169,8 +200,10 @@ function drawKPIs(
   let y = startY + 7;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  st(doc, C.sectionBg);
+  st(doc, C.text);
   doc.text("RESUMEN EJECUTIVO", ML, y);
+  sf(doc, C.brand2);
+  doc.rect(ML, y + 1.8, 28, 0.6, "F");
   y += 5;
   const gap = 4;
   const cardW = (CW - gap * 2) / 3;
@@ -179,7 +212,7 @@ function drawKPIs(
     {
       label: "Total Prestado",
       value: fmtRD(kpis.totalPrestado),
-      color: C.accent,
+      color: C.brand2,
     },
     { label: "Total Cobrado", value: fmtRD(kpis.totalCobrado), color: C.green },
     {
@@ -190,9 +223,9 @@ function drawKPIs(
     {
       label: "Préstamos Activos",
       value: String(kpis.activos),
-      color: C.accent,
+      color: C.blue,
     },
-    { label: "Préstamos Vencidos", value: String(kpis.mora), color: C.red },
+    { label: "Préstamos Vencidos", value: String(kpis.mora), color: C.orange },
     { label: "Total Clientes", value: String(kpis.clientes), color: C.gray },
   ];
   for (let i = 0; i < items.length; i++) {
@@ -200,17 +233,20 @@ function drawKPIs(
     const row = Math.floor(i / 3);
     const cx = ML + col * (cardW + gap);
     const cy = y + row * (cardH + gap);
+    // Tarjeta: fondo gris muy claro, borde suave, acento lateral + ícono
     sf(doc, C.kpiBg);
     doc.roundedRect(cx, cy, cardW, cardH, 2, 2, "F");
-    sf(doc, items[i].color);
-    doc.rect(cx, cy, 3.5, cardH, "F");
     sd(doc, C.kpiBorder);
     doc.setLineWidth(0.2);
     doc.roundedRect(cx, cy, cardW, cardH, 2, 2, "S");
+    sf(doc, items[i].color);
+    doc.rect(cx, cy, 2.4, cardH, "F");
+    doc.circle(cx + cardW / 2, cy + 5, 1.4, "F");
+    // Valor grande (oscuro) + título pequeño (secundario)
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    st(doc, items[i].color);
-    doc.text(items[i].value, cx + cardW / 2, cy + 12.5, { align: "center" });
+    st(doc, C.text);
+    doc.text(items[i].value, cx + cardW / 2, cy + 13.2, { align: "center" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     st(doc, C.muted);
@@ -239,22 +275,35 @@ function drawSection(
   const ROW_H = 7;
   let y = startY + 7;
   if (y + 35 > FOOTER_Y) y = addPage();
-  sf(doc, warningMode ? C.moraHead : C.sectionBg);
+  const sectBg = warningMode ? C.warnBg : C.sectBg;
+  const sectTxt = warningMode ? C.warnTxt : C.sectTxt;
+  const accent = warningMode ? C.warnAccent : C.brand2;
+  const headBg = warningMode ? C.warnHeadBg : C.tblHeadBg;
+  const headTxt = warningMode ? C.warnTxt : C.tblHeadTxt;
+  const altRow = warningMode ? C.warnRowAlt : C.rowAlt;
+  // Barra de sección clara con acento lateral (sin encabezados pesados)
+  sf(doc, sectBg);
   doc.rect(ML, y - 5.5, CW, 10, "F");
+  sf(doc, accent);
+  doc.rect(ML, y - 5.5, 1.6, 10, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9.5);
-  st(doc, C.white);
-  doc.text(title, ML + 3, y + 0.5);
+  st(doc, sectTxt);
+  doc.text(title, ML + 4, y + 0.5);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  st(doc, C.headerSub);
+  st(doc, C.muted);
   doc.text(badge, PAGE_W - ML - 3, y + 0.5, { align: "right" });
   y += 6;
-  sf(doc, warningMode ? ([220, 38, 38] as RGB) : C.tblHead);
+  // Encabezado de columnas: azul muy suave, texto oscuro
+  sf(doc, headBg);
   doc.rect(ML, y, CW, ROW_H, "F");
+  sd(doc, C.border);
+  doc.setLineWidth(0.3);
+  doc.line(ML, y + ROW_H, ML + CW, y + ROW_H);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
-  st(doc, C.white);
+  st(doc, headTxt);
   let cx = ML;
   for (const col of cols) {
     const tx =
@@ -279,15 +328,12 @@ function drawSection(
   for (let i = 0; i < rows.length; i++) {
     if (y + ROW_H > FOOTER_Y) y = addPage();
     const alt = i % 2 === 1;
-    sf(
-      doc,
-      warningMode ? (alt ? C.moraRowB : C.moraRowA) : alt ? C.tblAlt : C.white,
-    );
+    sf(doc, alt ? altRow : C.white);
     doc.rect(ML, y, CW, ROW_H, "F");
-    sd(doc, C.border);
+    sd(doc, C.borderSoft);
     doc.setLineWidth(0.1);
     doc.line(ML, y + ROW_H, ML + CW, y + ROW_H);
-    st(doc, C.body);
+    st(doc, C.text);
     cx = ML;
     for (const col of cols) {
       const val = rows[i][col.key];
@@ -315,9 +361,12 @@ function drawSection(
     if (y + ROW_H + 2 > FOOTER_Y) y = addPage();
     sf(doc, C.totalBg);
     doc.rect(ML, y, CW, ROW_H + 1, "F");
+    sd(doc, accent);
+    doc.setLineWidth(0.4);
+    doc.line(ML, y, ML + CW, y);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
-    st(doc, C.totalTxt);
+    st(doc, warningMode ? C.warnTxt : C.totalTxt);
     cx = ML;
     for (const col of cols) {
       const val = totalRow[col.key];
@@ -374,35 +423,38 @@ function stampFooters(doc: jsPDF, now: Date) {
 // EXCEL GENERATION (exceljs — styled)
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Misma identidad suave que el PDF: superficies claras, texto slate, azules apagados.
 const XL = {
-  hdrBg: "FF0052CC",
-  hdrTxt: "FFFFFFFF",
-  hdrSub: "FF00D2FF", // brand primary + accent
-  accBg: "FF0052CC",
-  accTxt: "FFFFFFFF",
-  tblHd: "FF0052CC",
-  tblTxt: "FFFFFFFF",
-  tblAlt: "FFF4F6FA",
   white: "FFFFFFFF",
-  lgray: "FFF4F6FA",
-  bdr: "FFE2E8F0",
-  moraHd: "FF991B1B",
-  moraTx: "FFFFFFFF",
-  moraA: "FFFEF2F2",
-  moraB: "FFFEE2E2",
-  totBg: "FFE8F0FE",
-  totTx: "FF0044AA", // brand tint + dark brand
-  kpiBg: "FFF4F6FA",
+  text: "FF1E293B", // texto principal
+  muted: "FF64748B", // texto secundario
+  border: "FFE2E8F0",
+  borderSoft: "FFF1F5F9",
+  bgSoft: "FFF8FAFC",
+  brand2: "FF2563EB", // acentos finos
+  lightBlue: "FF60A5FA",
+  accent: "FF00D2FF",
+  tblHeadBg: "FFEFF4FF", // azul muy suave
+  tblHeadTx: "FF1E293B", // texto oscuro
+  rowAlt: "FFF8FAFC", // fila par
+  totBg: "FFEFF4FF",
+  totTx: "FF1E3A8A", // azul elegante
+  sectBg: "FFF1F5F9",
+  sectTx: "FF1E293B",
+  kpiBg: "FFF8FAFC",
   kpiBdr: "FFE2E8F0",
-  blue: "FF0052CC",
-  green: "FF059669",
+  blue: "FF2563EB",
+  green: "FF047857",
   amber: "FFB45309",
-  red: "FFB91C1C",
-  gray: "FF5C6B89",
-  body: "FF0A0E17",
-  muted: "FF5C6B89",
-  infoBg: "FFE8F0FE",
-  infoTx: "FF003499", // brand tint + deep brand
+  orange: "FFC2410C",
+  gray: "FF64748B",
+  warnBg: "FFFEF2F2",
+  warnTx: "FF9A3412",
+  warnHead: "FFFFEDE2",
+  warnRow: "FFFEF7F4",
+  warnAcc: "FFC2410C",
+  infoBg: "FFEFF4FF",
+  infoTx: "FF1E3A8A",
 };
 // biome-ignore lint: any needed for exceljs dynamic shape
 function xFill(argb: string): any {
@@ -424,7 +476,7 @@ function xFont(opts: {
   };
 }
 // biome-ignore lint: any needed for exceljs dynamic shape
-function xBorder(c = XL.bdr): any {
+function xBorder(c = XL.border): any {
   const s = { style: "thin", color: { argb: c } };
   return { top: s, left: s, bottom: s, right: s };
 }
@@ -471,6 +523,19 @@ function xMerge(
   xCell(sheet, topLeft, opts);
 }
 
+// biome-ignore lint: any needed for exceljs gradient fill
+function xGradient(from: string, to: string): any {
+  return {
+    type: "gradient",
+    gradient: "angle",
+    degree: 0,
+    stops: [
+      { position: 0, color: { argb: from } },
+      { position: 1, color: { argb: to } },
+    ],
+  };
+}
+
 // biome-ignore lint: any needed for exceljs sheet
 function xlHeader(
   sheet: any,
@@ -481,25 +546,26 @@ function xlHeader(
   filters: { fechaDesde?: string; fechaHasta?: string },
 ): number {
   const L = colLetter(numCols);
-  sheet.getRow(1).height = 32;
+  // Encabezado corporativo: fondo blanco, texto oscuro
+  sheet.getRow(1).height = 30;
   xMerge(sheet, `A1:${L}1`, {
     value: "Préstamos Elicar",
-    fill: XL.hdrBg,
-    font: xFont({ bold: true, size: 18, color: XL.hdrTxt }),
+    fill: XL.white,
+    font: xFont({ bold: true, size: 18, color: XL.text }),
     align: xAlign("left", 2),
   });
   sheet.getRow(2).height = 18;
   xMerge(sheet, `A2:${L}2`, {
     value: "Microfinanzas y Soluciones Crediticias",
-    fill: XL.hdrBg,
-    font: xFont({ size: 10, color: XL.hdrSub }),
+    fill: XL.white,
+    font: xFont({ size: 10, color: XL.muted }),
     align: xAlign("left", 2),
   });
   sheet.getRow(3).height = 22;
   xMerge(sheet, `A3:${L}3`, {
     value: reportTitle,
-    fill: XL.accBg,
-    font: xFont({ bold: true, size: 11, color: XL.accTxt }),
+    fill: XL.sectBg,
+    font: xFont({ bold: true, size: 11, color: XL.sectTx }),
     align: xAlign("center"),
   });
   sheet.getRow(4).height = 16;
@@ -511,12 +577,14 @@ function xlHeader(
   }
   xMerge(sheet, `A4:${L}4`, {
     value: info,
-    fill: XL.lgray,
+    fill: XL.bgSoft,
     font: xFont({ size: 9, color: XL.muted }),
     align: xAlign("left", 1),
   });
-  sheet.getRow(5).height = 8;
-  xMerge(sheet, `A5:${L}5`, { value: "", fill: XL.white });
+  // Línea divisoria con degradado azul muy sutil
+  sheet.getRow(5).height = 5;
+  sheet.mergeCells(`A5:${L}5`);
+  sheet.getCell("A5").fill = xGradient(XL.lightBlue, XL.accent);
   return 5;
 }
 
@@ -528,7 +596,7 @@ function xlFooter(sheet: any, row: number, numCols: number, dateStr: string) {
   sheet.getRow(row + 1).height = 14;
   xMerge(sheet, `A${row + 1}:${L}${row + 1}`, {
     value: `Documento Confidencial — Préstamos Elicar. Uso interno exclusivo.  •  ${dateStr}`,
-    fill: XL.lgray,
+    fill: XL.bgSoft,
     font: xFont({ size: 8, italic: true, color: XL.muted }),
     align: xAlign("center"),
   });
@@ -557,40 +625,47 @@ function xlTable(
   const L = colLetter(numCols);
   let row = startRow;
 
-  // Section title bar
+  const sectBg = warningMode ? XL.warnBg : XL.sectBg;
+  const sectTx = warningMode ? XL.warnTx : XL.sectTx;
+  const headBg = warningMode ? XL.warnHead : XL.tblHeadBg;
+  const headTx = warningMode ? XL.warnTx : XL.tblHeadTx;
+  const accent = warningMode ? XL.warnAcc : XL.brand2;
+
+  // Barra de sección (clara, acento lateral)
   sheet.getRow(row).height = 20;
   xMerge(sheet, `A${row}:${L}${row}`, {
     value: title,
-    fill: warningMode ? XL.moraHd : XL.hdrBg,
-    font: xFont({ bold: true, size: 11, color: XL.tblTxt }),
+    fill: sectBg,
+    font: xFont({ bold: true, size: 11, color: sectTx }),
     align: xAlign("left", 2),
+    border: { left: { style: "medium", color: { argb: accent } } },
   });
   row++;
 
-  // Column headers
+  // Encabezados de columna (azul muy suave, texto oscuro)
   sheet.getRow(row).height = 20;
   for (let j = 0; j < cols.length; j++) {
     xCell(sheet, `${colLetter(j + 1)}${row}`, {
       value: cols[j].header,
-      fill: warningMode ? "FFDC2626" : XL.tblHd,
-      font: xFont({ bold: true, size: 10, color: XL.tblTxt }),
+      fill: headBg,
+      font: xFont({ bold: true, size: 10, color: headTx }),
       align: xAlign(cols[j].align ?? "left", cols[j].align !== "right" ? 1 : 0),
-      border: xBorder(warningMode ? "FFEF4444" : XL.tblHd),
+      border: xBorder(XL.border),
     });
   }
   // biome-ignore lint: dynamic property for autoFilter
   sheet.autoFilter = { from: `A${row}`, to: `${L}${row}` };
   row++;
 
-  // Data rows
+  // Filas de datos (alternancia blanco / #F8FAFC, separadores discretos)
   for (let i = 0; i < rows.length; i++) {
     const alt = i % 2 === 1;
     const bg = warningMode
       ? alt
-        ? XL.moraB
-        : XL.moraA
+        ? XL.warnRow
+        : XL.white
       : alt
-        ? XL.tblAlt
+        ? XL.rowAlt
         : XL.white;
     sheet.getRow(row).height = 18;
 
@@ -599,14 +674,14 @@ function xlTable(
       const val = rows[i][col.key];
       const cell = sheet.getCell(`${colLetter(j + 1)}${row}`);
       cell.fill = xFill(bg);
-      cell.font = xFont({ size: 10, color: warningMode ? XL.red : XL.body });
+      cell.font = xFont({ size: 10, color: XL.text });
       cell.alignment = xAlign(
         col.align ?? "left",
         col.align !== "right" ? 1 : 0,
       );
       cell.border = {
-        bottom: { style: "thin", color: { argb: XL.bdr } },
-        right: { style: "thin", color: { argb: XL.bdr } },
+        bottom: { style: "thin", color: { argb: XL.border } },
+        right: { style: "thin", color: { argb: XL.borderSoft } },
       };
       if (col.fmt && val != null && !Number.isNaN(Number(val))) {
         cell.value = Number(val);
@@ -618,23 +693,27 @@ function xlTable(
     row++;
   }
 
-  // Totals row
+  // Fila de totales
   if (totals) {
     sheet.getRow(row).height = 20;
     for (let j = 0; j < cols.length; j++) {
       const col = cols[j];
       const val = totals[col.key];
       const cell = sheet.getCell(`${colLetter(j + 1)}${row}`);
-      cell.fill = xFill(XL.totBg);
-      cell.font = xFont({ bold: true, size: 10, color: XL.totTx });
+      cell.fill = xFill(warningMode ? XL.warnBg : XL.totBg);
+      cell.font = xFont({
+        bold: true,
+        size: 10,
+        color: warningMode ? XL.warnTx : XL.totTx,
+      });
       cell.alignment = xAlign(
         col.align ?? "left",
         col.align !== "right" ? 1 : 0,
       );
       cell.border = {
-        top: { style: "medium", color: { argb: XL.blue } },
-        bottom: { style: "thin", color: { argb: XL.bdr } },
-        right: { style: "thin", color: { argb: XL.bdr } },
+        top: { style: "medium", color: { argb: accent } },
+        bottom: { style: "thin", color: { argb: XL.border } },
+        right: { style: "thin", color: { argb: XL.borderSoft } },
       };
       if (val == null) {
         cell.value = "";
@@ -667,13 +746,14 @@ function xlKpis(
   const L = colLetter(numCols);
   let row = startRow + 1;
 
-  // RESUMEN EJECUTIVO title
+  // RESUMEN EJECUTIVO title (suave, acento lateral)
   sheet.getRow(row).height = 20;
   xMerge(sheet, `A${row}:${L}${row}`, {
     value: "RESUMEN EJECUTIVO",
-    fill: XL.hdrBg,
-    font: xFont({ bold: true, size: 11, color: XL.hdrTxt }),
+    fill: XL.sectBg,
+    font: xFont({ bold: true, size: 11, color: XL.sectTx }),
     align: xAlign("left", 2),
+    border: { left: { style: "medium", color: { argb: XL.brand2 } } },
   });
   row++;
 
@@ -688,7 +768,7 @@ function xlKpis(
       {
         label: "Total Prestado",
         value: fmtRD(kpis.totalPrestado),
-        color: XL.blue,
+        color: XL.brand2,
       },
       {
         label: "Total Cobrado",
@@ -707,7 +787,11 @@ function xlKpis(
         value: String(kpis.activos),
         color: XL.blue,
       },
-      { label: "Préstamos Vencidos", value: String(kpis.mora), color: XL.red },
+      {
+        label: "Préstamos Vencidos",
+        value: String(kpis.mora),
+        color: XL.orange,
+      },
       { label: "Total Clientes", value: String(kpis.clientes), color: XL.gray },
     ],
   ];
@@ -741,7 +825,7 @@ function xlKpis(
       xMerge(sheet, r2, {
         value: item.value,
         fill: XL.kpiBg,
-        font: xFont({ bold: true, size: 14, color: item.color }),
+        font: xFont({ bold: true, size: 14, color: XL.text }),
         align: { vertical: "middle", horizontal: "center" },
         border: {
           bottom: { style: "thin", color: { argb: XL.kpiBdr } },
@@ -939,7 +1023,7 @@ async function generateExcel(params: {
   // ── Hoja 3: Préstamos Mora ────────────────────────────────────────────────
   const shMora = wb.addWorksheet("Préstamos Mora", {
     views: [{ state: "frozen", ySplit: 7 }],
-    properties: { tabColor: { argb: "FFDC2626" } },
+    properties: { tabColor: { argb: XL.warnAcc } },
   });
   [5, 28, 18, 18, 18, 12, 14].forEach((w, i) => {
     shMora.getColumn(i + 1).width = w;
