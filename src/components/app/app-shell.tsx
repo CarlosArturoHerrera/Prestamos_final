@@ -1,9 +1,6 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
 import {
   Banknote,
   BarChart3,
@@ -21,21 +18,24 @@ import {
   Users,
   X,
 } from "lucide-react";
-import {
-  createSupabaseBrowserClient,
-  isSupabaseConfiguredOnClient,
-} from "@/lib/supabase/browser";
-import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import type { AppRole } from "@/lib/api-auth";
 import { EASE } from "@/lib/motion";
 import { isSuperAdmin } from "@/lib/roles";
-import type { AppRole } from "@/lib/api-auth";
+import {
+  createSupabaseBrowserClient,
+  isSupabaseConfiguredOnClient,
+} from "@/lib/supabase/browser";
+import { cn } from "@/lib/utils";
 
 const navBase = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -190,22 +190,13 @@ export function AppShell({ children, role }: AppShellProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={cn(
-                  navItemClass(active, sidebarCollapsed),
-                  isAdminItem &&
-                    !sidebarCollapsed &&
-                    "mt-3 border-t border-sidebar-border pt-3",
-                  isAdminItem && sidebarCollapsed && "mt-3",
-                )}
+                className={navItemClass(active, sidebarCollapsed)}
               >
                 {active && (
                   <motion.span
                     layoutId="sidebar-active-pill"
                     transition={pillTransition}
-                    className={cn(
-                      "absolute inset-0 rounded-lg bg-sidebar-accent",
-                      isAdminItem && !sidebarCollapsed && "top-3",
-                    )}
+                    className="absolute inset-0 rounded-lg bg-sidebar-accent"
                   />
                 )}
                 {active && !sidebarCollapsed && (
@@ -227,17 +218,34 @@ export function AppShell({ children, role }: AppShellProps) {
               </Link>
             );
 
+            // El separador de la sección admin vive en un contenedor, no en el
+            // <Link> — así el enlace y su pill quedan idénticos a los demás.
+            const item_ = isAdminItem ? (
+              <div
+                key={item.href}
+                className={cn(
+                  sidebarCollapsed
+                    ? "mt-3"
+                    : "mt-3 border-t border-sidebar-border pt-3",
+                )}
+              >
+                {link}
+              </div>
+            ) : (
+              link
+            );
+
             if (sidebarCollapsed) {
               return (
                 <Tooltip key={item.href}>
-                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipTrigger asChild>{item_}</TooltipTrigger>
                   <TooltipContent side="right" sideOffset={8}>
                     {item.label}
                   </TooltipContent>
                 </Tooltip>
               );
             }
-            return link;
+            return item_;
           })}
         </nav>
 
