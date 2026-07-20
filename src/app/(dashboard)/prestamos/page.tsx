@@ -1238,7 +1238,7 @@ export default function PrestamosPage() {
                   htmlFor="solo-int-pend"
                   className="cursor-pointer text-sm font-normal leading-snug"
                 >
-                  Con interés pendiente (histórico)
+                  Con interés pendiente 
                 </Label>
               </div>
             </div>
@@ -1281,9 +1281,7 @@ export default function PrestamosPage() {
             </div>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Exportación: mismo criterio que los filtros actuales; hasta {8000}{" "}
-            filas por archivo (sin sincronizar listado en servidor, coherente
-            con proyección de cuota).
+            
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
             {loading && rows.length === 0 ? (
