@@ -296,6 +296,12 @@ function fmtFecha(iso: string): string {
 
 const PAGE_SIZE = 50;
 
+// Los botones de exportación CSV/Excel quedan ocultos en la UI de Préstamos.
+// La lógica (descargarExport, estado `exporting`, API /api/prestamos/export)
+// se conserva intacta; solo se oculta su renderizado. Cambiar a true para
+// volver a mostrarlos.
+const MOSTRAR_EXPORT_PRESTAMOS = false;
+
 export default function PrestamosPage() {
   const [rows, setRows, rowsCached] = usePageCachedState<PrestamoList[]>(
     "prestamos:rows",
@@ -1237,28 +1243,32 @@ export default function PrestamosPage() {
               </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="w-full sm:w-auto"
-                disabled={!!exporting}
-                onClick={() => void descargarExport("csv")}
-              >
-                <Download className="mr-1.5 size-4" />
-                {exporting === "csv" ? "CSV…" : "CSV"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="w-full sm:w-auto"
-                disabled={!!exporting}
-                onClick={() => void descargarExport("xlsx")}
-              >
-                <FileSpreadsheet className="mr-1.5 size-4" />
-                {exporting === "xlsx" ? "Excel…" : "Excel"}
-              </Button>
+              {MOSTRAR_EXPORT_PRESTAMOS && (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    disabled={!!exporting}
+                    onClick={() => void descargarExport("csv")}
+                  >
+                    <Download className="mr-1.5 size-4" />
+                    {exporting === "csv" ? "CSV…" : "CSV"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    disabled={!!exporting}
+                    onClick={() => void descargarExport("xlsx")}
+                  >
+                    <FileSpreadsheet className="mr-1.5 size-4" />
+                    {exporting === "xlsx" ? "Excel…" : "Excel"}
+                  </Button>
+                </>
+              )}
               <Button
                 type="button"
                 variant="outline"
