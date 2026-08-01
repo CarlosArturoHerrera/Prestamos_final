@@ -116,8 +116,8 @@ export async function generarInteresesAtrasadosSiCorresponde(
   const proximo = new Date(`${fechaProx}T12:00:00`);
   const limiteMora = addDays(proximo, 3);
   // Si ya venció el período, se registra el interés generado como pendiente (si aplica).
-  // La capitalización al capital tras +3 días sin cubrir el interés la aplica
-  // `capitalizarInteresPendienteAutomaticoSiCorresponde` al cargar el detalle (u otras rutas que la invoquen).
+  // El registro permanece en estado PENDIENTE indefinidamente: no existe capitalización
+  // automática. La única capitalización es manual, vía `/api/prestamos/[id]/aplicar-interes-atrasado`.
   if (hoy >= proximo) {
     const monto = interesPeriodo(capital, tasa);
     await upsertInteresPendientePeriodo(supabase, {
@@ -134,143 +134,31 @@ export async function generarInteresesAtrasadosSiCorresponde(
 }
 
 /**
- * Tras la fecha de pago del período + 3 días calendario, si sigue habiendo interés pendiente
- * sin cubrir, suma ese monto al capital y marca el registro como CAPITALIZADO (origen AUTO).
- * Idempotente: solo actualiza filas en estado PENDIENTE; no duplica si se ejecuta varias veces.
- * Deja auditoría en `reganches` (monto agregado al capital) y en la fila de `intereses_atrasados`.
- */
-export async function capitalizarInteresPendienteAutomaticoSiCorresponde(
-  supabase: SupabaseClient,
-  prestamo: Record<string, unknown>,
-): Promise<void> {
-  if (prestamo.estado === "SALDADO") return;
-
-  const id = prestamo.id as number;
-  const fechaHoy = new Date().toISOString().slice(0, 10);
-
-  const { data: pendientes, error } = await supabase
-    .from("intereses_atrasados")
-    .select("*")
-    .eq("prestamo_id", id)
-    .eq("estado", "PENDIENTE");
-
-  if (error || !pendientes?.length) return;
-
-  const ordenados = [...pendientes].sort((a, b) => {
-    const fa = String(a.fecha_periodo ?? a.fecha_generado ?? "");
-    const fb = String(b.fecha_periodo ?? b.fecha_generado ?? "");
-    return fa.localeCompare(fb);
-  });
-
-  let capitalActual = String(prestamo.capital_pendiente);
-
-  for (const row of ordenados) {
-    const fp = String(row.fecha_periodo ?? row.fecha_generado ?? "");
-    if (!fp || fp.length < 10) continue;
-
-    const pendiente = new Decimal(
-      String(row.interes_pendiente ?? row.monto ?? 0),
-    );
-    if (pendiente.lte(0)) continue;
-
-    const limiteStr = addDays(new Date(`${fp.slice(0, 10)}T12:00:00`), 3)
-      .toISOString()
-      .slice(0, 10);
-    if (fechaHoy <= limiteStr) continue;
-
-    const monto = pendiente.toFixed(2);
-    const nuevoCapital = sumDecimal(capitalActual, monto);
-
-    const snap = {
-      estado: String(row.estado ?? "PENDIENTE"),
-      interes_pendiente: String(row.interes_pendiente ?? row.monto ?? "0"),
-      monto: String(row.monto ?? row.interes_pendiente ?? "0"),
-      interes_pagado: String(row.interes_pagado ?? "0"),
-      interes_generado: String(row.interes_generado ?? "0"),
-      aplicado: Boolean(row.aplicado),
-      fecha_aplicado: row.fecha_aplicado as string | null,
-      origen_capitalizacion:
-        (row.origen_capitalizacion as string | null) ?? null,
-    };
-
-    const { data: tocado, error: uerr } = await supabase
-      .from("intereses_atrasados")
-      .update({
-        aplicado: true,
-        fecha_aplicado: fechaHoy,
-        estado: "CAPITALIZADO",
-        interes_pendiente: "0.00",
-        monto: "0.00",
-        origen_capitalizacion: "AUTO",
-      })
-      .eq("id", row.id)
-      .eq("estado", "PENDIENTE")
-      .select("id")
-      .maybeSingle();
-
-    if (uerr || !tocado) continue;
-
-    const { error: pe } = await supabase
-      .from("prestamos")
-      .update({ capital_pendiente: nuevoCapital })
-      .eq("id", id);
-
-    if (pe) {
-      await supabase
-        .from("intereses_atrasados")
-        .update({
-          estado: snap.estado,
-          interes_pendiente: snap.interes_pendiente,
-          monto: snap.monto,
-          interes_pagado: snap.interes_pagado,
-          interes_generado: snap.interes_generado,
-          aplicado: snap.aplicado,
-          fecha_aplicado: snap.fecha_aplicado,
-          origen_capitalizacion: snap.origen_capitalizacion,
-        })
-        .eq("id", row.id);
-      continue;
-    }
-
-    capitalActual = nuevoCapital;
-
-    await supabase.from("reganches").insert({
-      prestamo_id: id,
-      monto_agregado: monto,
-      notas: `AUTO: Capitalización automática — interés pendiente período ${fp.slice(0, 10)} (interés #${row.id})`,
-    });
-  }
-}
-
-/**
- * Ejecuta en bucle (máx. 3) generación de interés pendiente + capitalización automática,
- * recargando el préstamo entre vueltas. Tras capitalizar, sube el capital y el interés del
- * período debe recalcularse antes de una nueva pasada (evita montos incoherentes en detalle).
+ * Genera el interés pendiente del período vencido y devuelve el préstamo recargado.
+ *
+ * NO capitaliza nada de forma automática: los registros de `intereses_atrasados`
+ * permanecen en PENDIENTE indefinidamente, sin importar los días transcurridos.
+ * La capitalización al capital es exclusivamente manual («Al capital» / «Aplicar
+ * todos al capital») vía `/api/prestamos/[id]/aplicar-interes-atrasado`.
  */
 export async function sincronizarInteresesYCapitalizacionAuto(
   supabase: SupabaseClient,
   prestamo: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const id = prestamo.id as number;
-  let current: Record<string, unknown> = prestamo;
-  for (let i = 0; i < 3; i++) {
-    await generarInteresesAtrasadosSiCorresponde(supabase, current);
-    await capitalizarInteresPendienteAutomaticoSiCorresponde(supabase, current);
-    const { data } = await supabase
-      .from("prestamos")
-      .select("*")
-      .eq("id", id)
-      .single();
-    if (!data) return current;
-    current = data;
-  }
-  return current;
+  await generarInteresesAtrasadosSiCorresponde(supabase, prestamo);
+  const { data } = await supabase
+    .from("prestamos")
+    .select("*")
+    .eq("id", id)
+    .single();
+  return data ?? prestamo;
 }
 
 /**
  * Listado `/prestamos`: solo hace falta sincronizar préstamos que podrían haber cambiado sin abrir el detalle:
  * - en MORA, o
- * - con próximo vencimiento ya alcanzado (hoy ≥ fecha), donde pueden correr generación de interés / capitalización AUTO.
+ * - con próximo vencimiento ya alcanzado (hoy ≥ fecha), donde puede correr la generación de interés del período.
  * Préstamos ACTIVO con vencimiento futuro no tocan BD aquí.
  */
 export function prestamoPodriaRequerirSyncLista(
