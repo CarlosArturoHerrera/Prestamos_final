@@ -1,5 +1,6 @@
 "use client";
 
+import Decimal from "decimal.js";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -55,10 +56,28 @@ type PrestamoAgregados = {
 
 type AbonoFormValues = {
   fechaAbono: string;
-  interesRecibido: string;
-  montoCapitalDebitado: string;
+  /** Monto único recibido: cubre primero el interés y el excedente va al capital. */
+  montoRecibido: string;
   observaciones: string;
 };
+
+/**
+ * Reparte el monto recibido: primero cubre el interés del período y, solo si
+ * sobra, el excedente se aplica como abono al capital.
+ */
+function repartirMontoRecibido(
+  montoRecibido: string,
+  interesCalculado: string,
+) {
+  const monto = new Decimal(montoRecibido || "0");
+  const interes = new Decimal(interesCalculado || "0");
+  const interesPagado = Decimal.min(monto, interes);
+  const capitalDebitado = Decimal.max(new Decimal(0), monto.minus(interes));
+  return {
+    interesPagado: interesPagado.toFixed(2),
+    capitalDebitado: capitalDebitado.toFixed(2),
+  };
+}
 
 type RegancheFormValues = {
   monto: string;
@@ -243,7 +262,7 @@ const RegancheFormCard = memo(function RegancheFormCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Reganche (mismo préstamo)</CardTitle>
+        <CardTitle className="text-base">Reganche</CardTitle>
         <CardDescription>Carga adicional al capital pendiente</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -281,11 +300,19 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
 }) {
   const [form, setForm] = useState<AbonoFormValues>({
     fechaAbono: new Date().toISOString().slice(0, 10),
-    interesRecibido: "",
-    montoCapitalDebitado: "0",
+    montoRecibido: "",
     observaciones: "",
   });
   const [saving, setSaving] = useState(false);
+
+  const desglose = useMemo(() => {
+    if (!form.montoRecibido.trim()) return null;
+    try {
+      return repartirMontoRecibido(form.montoRecibido, interesCalculadoPeriodo);
+    } catch {
+      return null;
+    }
+  }, [form.montoRecibido, interesCalculadoPeriodo]);
 
   const submit = useCallback(async () => {
     if (saving) return;
@@ -294,8 +321,7 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
     if (ok) {
       setForm((prev) => ({
         ...prev,
-        interesRecibido: "",
-        montoCapitalDebitado: "0",
+        montoRecibido: "",
         observaciones: "",
       }));
     }
@@ -307,14 +333,14 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
       <CardHeader>
         <CardTitle className="text-base">Registrar abono</CardTitle>
         <CardDescription>
-          Referencia de interés del período:{" "}
+            Interes calculado en el período:{" "}
           <span className="font-medium text-foreground">
             {formatRD(interesCalculadoPeriodo)}
           </span>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-2">
             <Label>Fecha</Label>
             <CalendarDatePicker
@@ -326,33 +352,21 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
             />
           </div>
           <div className="space-y-2">
-            <Label>Interés recibido</Label>
+            <Label>Monto recibido</Label>
             <CurrencyInput
-              value={form.interesRecibido}
+              value={form.montoRecibido}
               onChange={(raw) =>
                 setForm((prev) => ({
                   ...prev,
-                  interesRecibido: raw,
+                  montoRecibido: raw,
                 }))
               }
-              placeholder="Monto de interés que pagó el cliente"
+              placeholder="Monto total que pagó el cliente"
             />
             <p className="text-xs text-muted-foreground leading-snug">
-              Si es menor que el interés calculado, la diferencia queda en
-              intereses pendientes.
+              Cubre primero el interés del período; el excedente se abona
+              automáticamente al capital.
             </p>
-          </div>
-          <div className="space-y-2">
-            <Label>Capital a debitar (manual)</Label>
-            <CurrencyInput
-              value={form.montoCapitalDebitado}
-              onChange={(raw) =>
-                setForm((prev) => ({
-                  ...prev,
-                  montoCapitalDebitado: raw,
-                }))
-              }
-            />
           </div>
           <div className="space-y-2">
             <Label>Observaciones</Label>
@@ -364,6 +378,22 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
             />
           </div>
         </div>
+        {desglose ? (
+          <div className="grid gap-2 rounded-lg border bg-muted/40 p-3 text-sm sm:grid-cols-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Interés pagado</span>
+              <span className="font-medium tabular-nums">
+                {formatRD(desglose.interesPagado)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Capital debitado</span>
+              <span className="font-medium tabular-nums">
+                {formatRD(desglose.capitalDebitado)}
+              </span>
+            </div>
+          </div>
+        ) : null}
         <Button onClick={submit} disabled={saving} className="w-full sm:w-auto">
           {saving ? "Registrando..." : "Registrar abono"}
         </Button>
@@ -412,12 +442,47 @@ export default function PrestamoDetallePage() {
     [],
   );
 
+  const prestamoResumen = data?.prestamo;
+  const interesCalculadoPeriodo = useMemo(() => {
+    if (!prestamoResumen) return "0.00";
+    try {
+      return interesPeriodo(
+        String(prestamoResumen.capital_pendiente ?? "0"),
+        String(prestamoResumen.tasa_interes ?? "0"),
+      );
+    } catch {
+      return "0.00";
+    }
+  }, [
+    prestamoResumen,
+    prestamoResumen?.capital_pendiente,
+    prestamoResumen?.tasa_interes,
+  ]);
+
   const registrarAbono = useCallback(
     async (abonoForm: AbonoFormValues) => {
+      const monto = Number(abonoForm.montoRecibido);
+      if (!abonoForm.montoRecibido.trim() || !Number.isFinite(monto)) {
+        toast.error("Indica el monto recibido");
+        return false;
+      }
+      if (monto < 0) {
+        toast.error("El monto recibido no puede ser negativo");
+        return false;
+      }
+      const { interesPagado, capitalDebitado } = repartirMontoRecibido(
+        abonoForm.montoRecibido,
+        interesCalculadoPeriodo,
+      );
       const res = await fetchApi(`/api/prestamos/${id}/abonos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(abonoForm),
+        body: JSON.stringify({
+          fechaAbono: abonoForm.fechaAbono,
+          interesRecibido: interesPagado,
+          montoCapitalDebitado: capitalDebitado,
+          observaciones: abonoForm.observaciones,
+        }),
       });
       if (!res.ok) {
         redirectToLoginIfUnauthorized(res.status);
@@ -428,7 +493,7 @@ export default function PrestamoDetallePage() {
       await load();
       return true;
     },
-    [id, load],
+    [id, load, interesCalculadoPeriodo],
   );
 
   const reganche = useCallback(
@@ -543,23 +608,6 @@ export default function PrestamoDetallePage() {
     },
     [id, updateInteresLocal],
   );
-
-  const prestamoResumen = data?.prestamo;
-  const interesCalculadoPeriodo = useMemo(() => {
-    if (!prestamoResumen) return "0.00";
-    try {
-      return interesPeriodo(
-        String(prestamoResumen.capital_pendiente ?? "0"),
-        String(prestamoResumen.tasa_interes ?? "0"),
-      );
-    } catch {
-      return "0.00";
-    }
-  }, [
-    prestamoResumen,
-    prestamoResumen?.capital_pendiente,
-    prestamoResumen?.tasa_interes,
-  ]);
 
   const agregados = useMemo(() => {
     if (!data) return null;
