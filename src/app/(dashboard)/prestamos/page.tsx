@@ -23,6 +23,7 @@ import {
   PenLine,
   Plus,
   Search,
+  Trash2,
   User,
   Zap,
 } from "lucide-react";
@@ -51,6 +52,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -90,6 +92,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { EliminarPrestamoDialog } from "@/components/prestamos/eliminar-prestamo-dialog";
+import { useIsSuperAdmin } from "@/hooks/use-is-super-admin";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { usePageCachedState } from "@/lib/page-cache";
 import { formatCedula, formatPhone } from "@/lib/formatters";
@@ -323,6 +327,11 @@ export default function PrestamosPage() {
   const [clienteResults, setClienteResults] = useState<ClientePickRow[]>([]);
   const [clientePickerLoading, setClientePickerLoading] = useState(false);
   const [clienteLabel, setClienteLabel] = useState("");
+
+  const superAdmin = useIsSuperAdmin();
+  const [prestamoAEliminar, setPrestamoAEliminar] = useState<number | null>(
+    null,
+  );
 
   const [estadoFiltro, setEstadoFiltro] = useState<string>("");
   const [conInteresPendiente, setConInteresPendiente] = useState(false);
@@ -791,13 +800,25 @@ export default function PrestamosPage() {
                     </Link>
                   </DropdownMenuItem>
                 ) : null}
+                {superAdmin ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => setPrestamoAEliminar(p.id)}
+                    >
+                      <Trash2 className="mr-2 size-4" />
+                      Eliminar préstamo
+                    </DropdownMenuItem>
+                  </>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </TableCell>
         </TableRow>
       );
     });
-  }, [loading, rows, load]);
+  }, [loading, rows, load, superAdmin]);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -1512,6 +1533,17 @@ export default function PrestamosPage() {
                           </Link>
                         </Button>
                       ) : null}
+                      {superAdmin ? (
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="size-9 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          aria-label={`Eliminar préstamo #${p.id}`}
+                          onClick={() => setPrestamoAEliminar(p.id)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -1549,6 +1581,17 @@ export default function PrestamosPage() {
             </div>
           </div>
         ) : null}
+
+        <EliminarPrestamoDialog
+          prestamoId={prestamoAEliminar}
+          onOpenChange={(abierto) => {
+            if (!abierto) setPrestamoAEliminar(null);
+          }}
+          onEliminado={() => {
+            setPrestamoAEliminar(null);
+            void load();
+          }}
+        />
       </div>
     </TooltipProvider>
   );

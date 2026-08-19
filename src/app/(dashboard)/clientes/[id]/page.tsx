@@ -8,6 +8,7 @@ import {
   ChevronRight,
   MapPin,
   Phone,
+  Trash2,
   UserCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,6 +33,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { GestionCobranzaPanel } from "@/components/gestion-cobranza-panel";
+import { EliminarPrestamoDialog } from "@/components/prestamos/eliminar-prestamo-dialog";
+import { useIsSuperAdmin } from "@/hooks/use-is-super-admin";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatCedula, formatPhone } from "@/lib/formatters";
 import { formatRD } from "@/lib/format-currency";
@@ -65,6 +68,10 @@ export default function ClienteDetallePage() {
   const id = Number(params.id);
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
+  const superAdmin = useIsSuperAdmin();
+  const [prestamoAEliminar, setPrestamoAEliminar] = useState<number | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -313,11 +320,27 @@ export default function ClienteDetallePage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button asChild size="sm" variant="secondary">
-                            <Link href={`/prestamos/${p.id}`}>
-                              Ver préstamo
-                            </Link>
-                          </Button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button asChild size="sm" variant="secondary">
+                              <Link href={`/prestamos/${p.id}`}>
+                                Ver préstamo
+                              </Link>
+                            </Button>
+                            {superAdmin ? (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                aria-label={`Eliminar préstamo #${String(p.id)}`}
+                                title="Eliminar préstamo"
+                                onClick={() =>
+                                  setPrestamoAEliminar(Number(p.id))
+                                }
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            ) : null}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -328,6 +351,17 @@ export default function ClienteDetallePage() {
           </div>
         </CardContent>
       </Card>
+
+      <EliminarPrestamoDialog
+        prestamoId={prestamoAEliminar}
+        onOpenChange={(abierto) => {
+          if (!abierto) setPrestamoAEliminar(null);
+        }}
+        onEliminado={() => {
+          setPrestamoAEliminar(null);
+          void load();
+        }}
+      />
     </div>
   );
 }

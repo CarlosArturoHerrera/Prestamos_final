@@ -4,6 +4,7 @@ import {
   forbidden,
   getUserAndRole,
   requireAdmin,
+  requireSuperAdmin,
   unauthorized,
 } from "@/lib/api-auth";
 import { sincronizarInteresesYCapitalizacionAuto } from "@/lib/prestamo-logic";
@@ -136,4 +137,47 @@ export async function PUT(request: Request, ctx: Ctx) {
   }
 
   return NextResponse.json(data);
+}
+
+/**
+ * Elimina un préstamo. Reservado a super_admin: además de este guard, la policy
+ * RESTRICTIVE `prestamos_delete_super_admin_only` rechaza el DELETE en la propia
+ * base de datos, de modo que el permiso no depende del frontend.
+ *
+ * Sólo se borra la fila del préstamo. Sus registros dependientes se resuelven
+ * con las reglas de integridad ya definidas en el esquema (cascade en abonos,
+ * reganches e intereses_atrasados; set null en gestion_cobranza). El cliente y
+ * el resto de préstamos quedan intactos.
+ */
+export async function DELETE(_request: Request, ctx: Ctx) {
+  const supabase = await createSupabaseServerClient();
+  const session = await getUserAndRole(supabase);
+
+  const auth = requireSuperAdmin(session);
+  if (auth instanceof NextResponse) return auth;
+
+  const { id: idParam } = await ctx.params;
+  const id = Number(idParam);
+  if (!Number.isFinite(id)) return badRequest("ID inválido");
+
+  // `select()` devuelve las filas afectadas: si viene vacío, o el préstamo no
+  // existe o la policy bloqueó el borrado. En ambos casos no se borró nada.
+  const { data, error } = await supabase
+    .from("prestamos")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  if (!data || data.length === 0) {
+    return NextResponse.json(
+      { error: "El préstamo no existe o no se pudo eliminar" },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json({ ok: true, id });
 }
