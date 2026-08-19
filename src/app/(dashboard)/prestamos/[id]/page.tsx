@@ -9,6 +9,16 @@ import { GestionCobranzaPanel } from "@/components/gestion-cobranza-panel";
 import { PrestamoAbonosHistorial } from "@/components/loan-detail/prestamo-abonos-historial";
 import { PrestamoInteresesHistorial } from "@/components/loan-detail/prestamo-intereses-historial";
 import { PrestamoReganchesHistorial } from "@/components/loan-detail/prestamo-reganches-historial";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
@@ -292,11 +302,21 @@ const RegancheFormCard = memo(function RegancheFormCard({
 });
 
 const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
+  prestamoId,
+  cliente,
+  capitalPendiente,
   interesCalculadoPeriodo,
+  saldado,
   onSubmit,
+  onSaldar,
 }: {
+  prestamoId: number;
+  cliente: string;
+  capitalPendiente: string;
   interesCalculadoPeriodo: string;
+  saldado: boolean;
   onSubmit: (values: AbonoFormValues) => Promise<boolean>;
+  onSaldar: () => Promise<void>;
 }) {
   const [form, setForm] = useState<AbonoFormValues>({
     fechaAbono: new Date().toISOString().slice(0, 10),
@@ -304,6 +324,20 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
     observaciones: "",
   });
   const [saving, setSaving] = useState(false);
+  const [confirmarSaldar, setConfirmarSaldar] = useState(false);
+  const [saldando, setSaldando] = useState(false);
+
+  // Vista previa de lo que se pagará. Es orientativa: el servidor recalcula
+  // sobre el estado real del préstamo en el momento de ejecutar.
+  const totalASaldar = useMemo(() => {
+    try {
+      return new Decimal(capitalPendiente || "0")
+        .plus(interesCalculadoPeriodo || "0")
+        .toFixed(2);
+    } catch {
+      return "0.00";
+    }
+  }, [capitalPendiente, interesCalculadoPeriodo]);
 
   const desglose = useMemo(() => {
     if (!form.montoRecibido.trim()) return null;
@@ -394,10 +428,107 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
             </div>
           </div>
         ) : null}
-        <Button onClick={submit} disabled={saving} className="w-full sm:w-auto">
-          {saving ? "Registrando..." : "Registrar abono"}
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button
+            onClick={submit}
+            disabled={saving || saldando}
+            className="w-full sm:w-auto"
+          >
+            {saving ? "Registrando..." : "Registrar abono"}
+          </Button>
+          <Button
+            type="button"
+            onClick={() => setConfirmarSaldar(true)}
+            disabled={saving || saldando || saldado}
+            className={cn(
+              "w-full sm:w-auto",
+              // Mismo tratamiento que el botón principal —degradado, sombra y
+              // elevación al hover— en el ámbar que el módulo ya usa para
+              // señalar atención.
+              "from-[#D97706] to-[#B45309] shadow-[0_2px_8px_rgba(180,83,9,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]",
+              "hover:shadow-[0_6px_20px_rgba(180,83,9,0.45)]",
+              "active:shadow-[0_1px_4px_rgba(180,83,9,0.25)]",
+              "focus-visible:ring-amber-500/45",
+              // En oscuro se aclara el ámbar y el texto pasa a ser oscuro, que
+              // es como el módulo trata los fondos ámbar intensos.
+              "dark:from-[#FBBF24] dark:to-[#F59E0B] dark:text-amber-950",
+              "dark:shadow-[0_2px_14px_rgba(251,191,36,0.35),inset_0_1px_0_rgba(255,255,255,0.22)]",
+              "dark:hover:shadow-[0_6px_24px_rgba(251,191,36,0.5)]",
+            )}
+          >
+            {saldando ? "Saldando..." : "Saldar"}
+          </Button>
+        </div>
       </CardContent>
+
+      <AlertDialog
+        open={confirmarSaldar}
+        onOpenChange={(abierto) => {
+          // Cerrar a media petición dejaría el estado de carga colgado.
+          if (saldando) return;
+          setConfirmarSaldar(abierto);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Saldar préstamo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción realizará automáticamente los abonos necesarios para
+              cubrir el total pendiente del préstamo y marcarlo como saldado.
+              ¿Deseas continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {/* Identifica el préstamo concreto y lo que se va a pagar, para que
+              la confirmación no sea un «sí» a ciegas. */}
+          <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm">
+            <p className="font-medium">
+              Préstamo #{prestamoId}
+              {cliente ? ` · ${cliente}` : ""}
+            </p>
+            <div className="mt-2 space-y-1 text-xs">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground">
+                  Interés del período
+                </span>
+                <span className="tabular-nums">
+                  {formatRD(interesCalculadoPeriodo)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground">Capital pendiente</span>
+                <span className="tabular-nums">
+                  {formatRD(capitalPendiente)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-1 text-sm font-semibold">
+                <span>Total a saldar</span>
+                <span className="tabular-nums">{formatRD(totalASaldar)}</span>
+              </div>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saldando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saldando}
+              onClick={(e) => {
+                // El diálogo cierra por defecto al pulsar; hay que evitarlo
+                // para poder mostrar el estado de carga.
+                e.preventDefault();
+                void (async () => {
+                  if (saldando) return;
+                  setSaldando(true);
+                  await onSaldar();
+                  setSaldando(false);
+                  setConfirmarSaldar(false);
+                })();
+              }}
+            >
+              {saldando ? "Saldando..." : "Aceptar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 });
@@ -458,6 +589,20 @@ export default function PrestamoDetallePage() {
     prestamoResumen?.capital_pendiente,
     prestamoResumen?.tasa_interes,
   ]);
+
+  /** Delega en `/saldar`, que reutiliza el propio handler de abonos. */
+  const saldarPrestamo = useCallback(async () => {
+    const res = await fetchApi(`/api/prestamos/${id}/saldar`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status);
+      toast.error(res.message);
+      return;
+    }
+    toast.success("Préstamo saldado");
+    await load();
+  }, [id, load]);
 
   const registrarAbono = useCallback(
     async (abonoForm: AbonoFormValues) => {
@@ -724,8 +869,17 @@ export default function PrestamoDetallePage() {
         <RegancheFormCard onSubmit={reganche} />
       </div>
       <RegistrarAbonoCard
+        prestamoId={id}
+        cliente={
+          cliente
+            ? `${cliente.nombre ?? ""} ${cliente.apellido ?? ""}`.trim()
+            : ""
+        }
+        capitalPendiente={String(p.capital_pendiente ?? "0")}
         interesCalculadoPeriodo={interesCalculadoPeriodo}
+        saldado={estadoStr.toUpperCase() === "SALDADO"}
         onSubmit={registrarAbono}
+        onSaldar={saldarPrestamo}
       />
 
       <div ref={interesesRef}>
