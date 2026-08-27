@@ -155,6 +155,12 @@ const fechaOpt = z
     v === "" || v === null || v === undefined ? undefined : v,
   );
 
+/** Rango opcional (`YYYY-MM-DD`) para las ganancias de un representante. */
+export const gananciasRepresentanteQuerySchema = z.object({
+  desde: fechaOpt,
+  hasta: fechaOpt,
+});
+
 export const gestionCobranzaCreateSchema = z.object({
   notas: z.string().max(5000).optional().nullable(),
   promesaMonto: z

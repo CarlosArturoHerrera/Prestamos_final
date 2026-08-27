@@ -10,12 +10,15 @@ import {
   Plus,
   Search,
   Trash2,
+  TrendingUp,
   UserCircle2,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { RepresentanteGananciasDialog } from "@/components/representantes/representante-ganancias-dialog";
+import { TableSkeleton } from "@/components/shared/data-skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +56,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Table,
   TableBody,
@@ -62,11 +66,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { PhoneInput } from "@/components/ui/phone-input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatPhone } from "@/lib/formatters";
-import { TableSkeleton } from "@/components/shared/data-skeleton";
 import { usePageCachedState } from "@/lib/page-cache";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { cn } from "@/lib/utils";
@@ -102,10 +104,12 @@ const RepresentanteDesktopRow = memo(function RepresentanteDesktopRow({
   rep,
   onOpenEdit,
   onDelete,
+  onOpenGanancias,
 }: {
   rep: RepViewModel;
   onOpenEdit: (id: number) => void;
   onDelete: (id: number) => void;
+  onOpenGanancias: (id: number) => void;
 }) {
   return (
     <TableRow className={rep.rowClass}>
@@ -161,6 +165,10 @@ const RepresentanteDesktopRow = memo(function RepresentanteDesktopRow({
                 Ver cartera en préstamos
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onOpenGanancias(rep.id)}>
+              <TrendingUp className="mr-2 size-4 opacity-70" />
+              Ganancias
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onOpenEdit(rep.id)}>
               <Pencil className="mr-2 size-4 opacity-70" />
               Editar
@@ -184,10 +192,12 @@ const RepresentanteMobileCard = memo(function RepresentanteMobileCard({
   rep,
   onOpenEdit,
   onDelete,
+  onOpenGanancias,
 }: {
   rep: RepViewModel;
   onOpenEdit: (id: number) => void;
   onDelete: (id: number) => void;
+  onOpenGanancias: (id: number) => void;
 }) {
   return (
     <div
@@ -248,6 +258,14 @@ const RepresentanteMobileCard = memo(function RepresentanteMobileCard({
         <Button
           variant="outline"
           className="w-full justify-center"
+          onClick={() => onOpenGanancias(rep.id)}
+        >
+          <TrendingUp className="mr-2 size-4 opacity-70" />
+          Ganancias
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full justify-center"
           onClick={() => onOpenEdit(rep.id)}
         >
           Editar
@@ -283,6 +301,7 @@ export default function RepresentantesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Rep | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [gananciasId, setGananciasId] = useState<number | null>(null);
   const [viewportReady, setViewportReady] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -455,6 +474,16 @@ export default function RepresentantesPage() {
     setDeleteId(id);
   }, []);
 
+  const handleGananciasById = useCallback((id: number) => {
+    setGananciasId(id);
+  }, []);
+
+  const gananciasNombre = useMemo(() => {
+    if (gananciasId === null) return "";
+    const r = rowsById.get(gananciasId);
+    return r ? `${r.nombre} ${r.apellido}`.trim() : "";
+  }, [gananciasId, rowsById]);
+
   const tableRows = useMemo(() => {
     if (loading && rows.length === 0) {
       return (
@@ -478,9 +507,17 @@ export default function RepresentantesPage() {
         rep={rep}
         onOpenEdit={openEditById}
         onDelete={handleDeleteById}
+        onOpenGanancias={handleGananciasById}
       />
     ));
-  }, [handleDeleteById, loading, openEditById, repsView, rows.length]);
+  }, [
+    handleDeleteById,
+    handleGananciasById,
+    loading,
+    openEditById,
+    repsView,
+    rows.length,
+  ]);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -708,6 +745,7 @@ export default function RepresentantesPage() {
                     rep={rep}
                     onOpenEdit={openEditById}
                     onDelete={handleDeleteById}
+                    onOpenGanancias={handleGananciasById}
                   />
                 ))}
               </div>
@@ -758,6 +796,14 @@ export default function RepresentantesPage() {
             </div>
           </div>
         ) : null}
+
+        <RepresentanteGananciasDialog
+          representanteId={gananciasId}
+          nombreCompleto={gananciasNombre}
+          onOpenChange={(v) => {
+            if (!v) setGananciasId(null);
+          }}
+        />
 
         <AlertDialog
           open={deleteId !== null}
