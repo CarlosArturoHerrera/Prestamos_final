@@ -4,9 +4,14 @@ import Decimal from "decimal.js";
  * Ganancias del representante a partir del interés EFECTIVAMENTE PAGADO por sus
  * clientes asignados.
  *
- * Regla de comisión (sobre el capital, expresada como fracción del interés):
- *   - Préstamo al 4 % → el representante gana 1 %   → interésPagado × (1 / 4)
- *   - Préstamo al 5 % → el representante gana 1.5 % → interésPagado × (1.5 / 5)
+ * Regla de comisión, siempre sobre el interés EFECTIVAMENTE PAGADO del período:
+ *   - Préstamo al 4 % → interésPagado × (1 / 4)   = 25 % del interés pagado.
+ *     Equivale a 1 % del capital: RD$100 000 → interés RD$4 000 → comisión RD$1 000.
+ *   - Préstamo al 5 % → interésPagado × (1.5 / 5) = 30 % del interés pagado.
+ *     Equivale a 1.5 % del capital: RD$100 000 → interés RD$5 000 → comisión RD$1 500.
+ * No es una comisión fija por cuota: escala proporcionalmente con lo que el cliente
+ * pagó. Un abono que cubre RD$3 000 de un interés de RD$5 000 al 5 % genera RD$900,
+ * y los RD$2 000 restantes generan después los RD$600 que completan el período.
  * Cualquier otra tasa no tiene comisión configurada: aporta 0.00.
  *
  * Fuentes de «interés pagado» (las dos que produce el sistema hoy, sin solaparse):
