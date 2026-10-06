@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -12,13 +10,16 @@ import {
   Shield,
   TrendingUp,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isSupabaseConfiguredOnClient } from "@/lib/env-public";
+import { fetchApi } from "@/lib/fetch-api";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { toast } from "sonner";
 
 const features = [
   { icon: Banknote, text: "Gestión de cartera de préstamos" },
@@ -45,7 +46,10 @@ export default function LoginPage() {
 
   const hasSupabaseEnv = isSupabaseConfiguredOnClient();
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({
+    identificador: "",
+    password: "",
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,13 +61,33 @@ export default function LoginPage() {
         );
         return;
       }
+      // Supabase Auth autentica por correo, pero la jerarquía identifica a
+      // cada persona por su nombre de usuario. Si lo introducido no parece un
+      // correo, se pide al servidor que lo traduzca. Cuando el usuario no
+      // existe, la ruta devuelve lo mismo que recibió: el login falla después
+      // con el error genérico de siempre y no se delata qué usuarios hay.
+      let email = formData.identificador.trim();
+      if (!email.includes("@")) {
+        const res = await fetchApi<{ email: string }>(
+          "/api/auth/identificador",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ identificador: email }),
+          },
+        );
+        if (res.ok) email = res.data.email;
+      }
+
       const supabase = createSupabaseBrowserClient();
       const { error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
+        email,
         password: formData.password,
       });
       if (error) {
-        toast.error("Credenciales inválidas. Verifica tu correo y contraseña.");
+        toast.error(
+          "Credenciales inválidas. Verifica tu usuario o correo y tu contraseña.",
+        );
       } else {
         router.push("/");
         router.refresh();
@@ -245,20 +269,22 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium">
-                Correo electrónico
+              <Label htmlFor="identificador" className="text-sm font-medium">
+                Usuario o correo
               </Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="correo@empresa.com"
-                value={formData.email}
+                id="identificador"
+                type="text"
+                placeholder="tu.usuario  ·  correo@empresa.com"
+                value={formData.identificador}
                 onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
+                  setFormData({ ...formData, identificador: e.target.value })
                 }
                 required
                 disabled={isLoading}
-                autoComplete="email"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
                 className="h-10"
               />
             </div>

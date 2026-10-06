@@ -10,6 +10,7 @@ npm run build        # Production build
 npm run lint         # Biome check (linter)
 npm run format       # Biome format with auto-fix
 npm run db:seed      # Verify and seed the database (scripts/verify-and-seed.js)
+npm run bootstrap    # Create megaadmin + assign existing data to its owner admin
 ```
 
 No test suite is configured — there are no test files in this project.
@@ -46,7 +47,30 @@ Two auth systems coexist:
 - **Supabase Auth** — primary session management. Server routes use `createSupabaseServerClient()` from `src/lib/supabase/server.ts` (cookie-based SSR client). Browser components use `createSupabaseBrowserClient()` from `src/lib/supabase/browser.ts`.
 - **NextAuth** — legacy/parallel session layer used for JWT tokens via `authOptions` in `src/lib/auth.ts`.
 
-Every API route must call `getUserAndRole(supabase)` from `src/lib/api-auth.ts` to authenticate. Roles are `ADMIN` | `OPERADOR`; the `profiles` table stores the role. Helper functions `unauthorized()`, `forbidden()`, `badRequest()`, `serverError()` return typed `NextResponse` objects.
+Every API route must call `getUserAndRole(supabase)` from `src/lib/api-auth.ts` to authenticate. It returns a `Session` with `role`, `adminId` (tenant) and `permissions`. Helper functions `unauthorized()`, `forbidden()`, `notFound()`, `badRequest()`, `serverError()` return typed `NextResponse` objects; guards are `requireSuperAdmin()`, `requireTenant()` and `requirePermission(session, code)`.
+
+### Multi-tenant hierarchy
+
+Roles are `super_admin` (MEGAADMINISTRADOR — manages *accounts*, **has no access to business data**) | `admin` (ADMINISTRADOR, owns a tenant) | `sub_user` (SUBUSUARIO, belongs to an admin, granular permissions). See [JERARQUIA_USUARIOS.md](JERARQUIA_USUARIOS.md) for the full model and deployment steps.
+
+Tenant isolation lives in the **database**, not in route code:
+
+- `admin_id` columns on `empresas`, `representantes`, `clientes`, `prestamos`, `notificaciones`, `gestion_cobranza`. Child tables (`abonos`, `reganches`, `intereses_atrasados`) derive ownership from their `prestamos` row via `EXISTS`.
+- BEFORE INSERT triggers stamp `admin_id` from the session — an `admin_id` sent by the client is overwritten.
+- `RESTRICTIVE` RLS policies AND a tenant filter on top of the existing permissive ones, so every existing query is scoped automatically and IDOR is blocked at the DB layer.
+
+**Do not add a manual `admin_id` filter in new routes** — it is redundant with RLS and risks diverging.
+
+Every business-data route must start with:
+
+```ts
+const bloqueo = soloOrganizacion(session);
+if (bloqueo) return bloqueo;
+```
+
+or `requireTenant(session)` when the handler needs the session afterwards. The super_admin has `adminId === null` and gets a 403: it administers accounts, never clientes/prestamos/abonos. `current_tenant_id()` returns NULL for it, so RLS already returns zero rows — the guard only turns that into a clear error.
+
+Permissions: catalog in `public.permissions` + `src/lib/permissions.ts`, assignments in `user_permissions`, evaluated by `public.has_permission()` in SQL and `hasPermission(session, code)` in TS.
 
 ### Loan Business Logic
 
@@ -61,7 +85,9 @@ All financial calculations are in `src/lib/finance.ts` using `decimal.js` for pr
 
 Client-side fetches use `fetchApi<T>()` from `src/lib/fetch-api.ts`, which handles credentials, JSON parsing, and standardized error messages. Validation uses Zod schemas from `src/lib/validations/schemas.ts`.
 
-Dual API path exists: newer routes are under `/api/prestamos/`, `/api/clientes/`, `/api/empresas/`; legacy routes exist under `/api/loans/`, `/api/clients/`. Both are active.
+Active routes are under `/api/prestamos/`, `/api/clientes/`, `/api/empresas/`, `/api/representantes/`, `/api/notificaciones/`, `/api/reportes/`.
+
+The older `/api/loans/`, `/api/clients/`, `/api/notifications/`, `/api/segments/`, `/api/dashboard/*-segment/`, `/api/cron/*` routes and `src/actions/dashboard.ts` are **dead code**: they query `clients`, `loans`, `payments`, `segments` and `notifications`, which `20250321000000_microfinanzas.sql` dropped. They can only return errors.
 
 ### Notifications
 

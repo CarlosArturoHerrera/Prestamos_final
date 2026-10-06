@@ -1,8 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import {
   Building2,
   ChevronRight,
@@ -11,7 +8,13 @@ import {
   Trash2,
   UserCircle,
 } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { GestionCobranzaPanel } from "@/components/gestion-cobranza-panel";
+import { EliminarPrestamoDialog } from "@/components/prestamos/eliminar-prestamo-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +24,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -32,12 +34,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { GestionCobranzaPanel } from "@/components/gestion-cobranza-panel";
-import { EliminarPrestamoDialog } from "@/components/prestamos/eliminar-prestamo-dialog";
-import { useIsSuperAdmin } from "@/hooks/use-is-super-admin";
+import { useIsAdminTitular } from "@/hooks/use-is-super-admin";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
-import { formatCedula, formatPhone } from "@/lib/formatters";
 import { formatRD } from "@/lib/format-currency";
+import { formatCedula, formatPhone } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
 function estPrestamoBadge(
@@ -68,7 +68,7 @@ export default function ClienteDetallePage() {
   const id = Number(params.id);
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
-  const superAdmin = useIsSuperAdmin();
+  const superAdmin = useIsAdminTitular();
   const [prestamoAEliminar, setPrestamoAEliminar] = useState<number | null>(
     null,
   );

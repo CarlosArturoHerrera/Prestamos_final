@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth";
+import {
+  badRequest,
+  getUserAndRole,
+  soloOrganizacion,
+  unauthorized,
+} from "@/lib/api-auth";
 import {
   calcularFechasNuevoPrestamo,
   sincronizarPrestamosListadoSiCorresponde,
@@ -16,7 +21,10 @@ import { prestamoCreateSchema } from "@/lib/validations/schemas";
 export async function GET(request: Request) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  const bloqueo = soloOrganizacion(session);
+  if (bloqueo) return bloqueo;
 
   const { searchParams } = new URL(request.url);
   const clienteId = searchParams.get("clienteId");
@@ -67,7 +75,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  const bloqueo = soloOrganizacion(session);
+  if (bloqueo) return bloqueo;
 
   let body: unknown;
   try {

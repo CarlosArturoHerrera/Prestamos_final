@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth";
+import {
+  badRequest,
+  getUserAndRole,
+  soloOrganizacion,
+  unauthorized,
+} from "@/lib/api-auth";
 import {
   COMISION_POR_TASA,
   construirGananciasRepresentante,
@@ -45,7 +50,10 @@ async function fetchAll<T>(
 export async function GET(request: Request, ctx: Ctx) {
   const supabase: SupabaseClient = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  const bloqueo = soloOrganizacion(session);
+  if (bloqueo) return bloqueo;
 
   const { id: idParam } = await ctx.params;
   const id = Number(idParam);

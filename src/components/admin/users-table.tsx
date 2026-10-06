@@ -1,36 +1,31 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
+  CalendarClock,
   CheckCircle2,
+  KeyRound,
   Loader2,
   MoreHorizontal,
   PlusCircle,
   RefreshCw,
   Search,
+  Send,
   ShieldAlert,
   Trash2,
   UserCog,
   UserX,
   XCircle,
-  KeyRound,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import type { AdminUser } from "@/app/(dashboard)/admin/users/page";
-import { getRoleLabel, getRoleBadgeVariant } from "@/lib/roles";
-import {
-  canShowRowActions,
-  canToggleUser,
-  canDeleteUser,
-  type AuthActor,
-  type AuthTarget,
-} from "@/lib/authorization";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { CedulaInput } from "@/components/ui/cedula-input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +43,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -56,6 +59,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  type AuthActor,
+  type AuthTarget,
+  canDeleteUser,
+  canShowRowActions,
+  canToggleUser,
+} from "@/lib/authorization";
+import { getRoleBadgeVariant, getRoleLabel } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 
 interface UsersTableProps {
   users: AdminUser[];
@@ -69,14 +82,34 @@ type DialogState =
   | { type: "edit"; user: AdminUser }
   | { type: "delete"; user: AdminUser }
   | { type: "toggle"; user: AdminUser }
-  | { type: "reset_password"; user: AdminUser };
+  | { type: "reset_password"; user: AdminUser }
+  | { type: "mantenimiento"; user: AdminUser }
+  | { type: "mensaje"; user: AdminUser };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Etiqueta y tono del estado de mantenimiento (§21). */
+const MANTENIMIENTO_UI = {
+  AL_DIA: { label: "Al día", variant: "secondary" as const },
+  PENDIENTE: { label: "Pendiente", variant: "outline" as const },
+  VENCIDO: { label: "Vencido", variant: "destructive" as const },
+  EXENTO: { label: "Exento", variant: "secondary" as const },
+};
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
   try {
     return format(new Date(iso), "dd MMM yyyy HH:mm", { locale: es });
+  } catch {
+    return "—";
+  }
+}
+
+/** Fecha sin hora, para columnas estrechas. */
+function fmtDateShort(iso: string | null) {
+  if (!iso) return "—";
+  try {
+    return format(new Date(iso), "dd MMM yyyy", { locale: es });
   } catch {
     return "—";
   }
@@ -110,14 +143,43 @@ export function UsersTable({
     "all" | "active" | "inactive"
   >("all");
 
-  // Create form state
-  const [createEmail, setCreateEmail] = useState("");
-  const [createPassword, setCreatePassword] = useState("");
-  const [createName, setCreateName] = useState("");
+  // Formularios: la API de administradores pide los campos de §9/§10
+  // (nombre y apellido por separado, cédula, teléfono y nombre de usuario).
+  const FORM_VACIO = {
+    nombre: "",
+    apellido: "",
+    cedula: "",
+    telefono: "",
+    email: "",
+    username: "",
+    password: "",
+  };
+  const [form, setForm] = useState(FORM_VACIO);
 
-  // Edit form state
-  const [editName, setEditName] = useState("");
-  const [editEmail, setEditEmail] = useState("");
+  // Mantenimiento (§21) y mensajes (§23). Se cargan al abrir cada diálogo.
+  // `diaPagoFecha` es solo el selector: de el se extrae el dia del mes que
+  // se repite cada periodo. `proximoPago` es la fecha concreta del siguiente
+  // vencimiento, y avanza sola al registrar un pago.
+  const MANT_VACIO = {
+    diaPagoFecha: "",
+    monto: "",
+    estado: "",
+    proximoPago: "",
+  };
+  const [mant, setMant] = useState(MANT_VACIO);
+
+  // La fecha del pago arranca en hoy y se puede cambiar.
+  const hoyISO = new Date().toISOString().slice(0, 10);
+  const PAGO_VACIO = { monto: "", fechaPago: hoyISO };
+  const [pago, setPago] = useState(PAGO_VACIO);
+
+  const MENSAJE_VACIO = {
+    titulo: "",
+    cuerpo: "",
+    tipo: "INFO",
+    expiraEn: "",
+  };
+  const [mensaje, setMensaje] = useState(MENSAJE_VACIO);
 
   const [loading, setLoading] = useState(false);
 
@@ -126,14 +188,60 @@ export function UsersTable({
 
   function closeDialog() {
     setDialog({ type: "none" });
-    setCreateEmail("");
-    setCreatePassword("");
-    setCreateName("");
+    setForm(FORM_VACIO);
+    setMant(MANT_VACIO);
+    setPago(PAGO_VACIO);
+    setMensaje(MENSAJE_VACIO);
+  }
+
+  /** Precarga el diálogo de mantenimiento con lo que ya esté configurado. */
+  function openMantenimiento(user: AdminUser) {
+    // El estado lo deduce el servidor de las fechas y los pagos, asi que el
+    // selector arranca en "Automatico". La unica excepcion es EXENTO: es una
+    // decision manual del megaadministrador y no debe perderla un recalculo.
+    const estadoActual = user.mantenimiento?.estado;
+
+    // En la base solo vive el DIA (1-31). Para poder elegirlo con un
+    // calendario se sintetiza una fecha del mes en curso con ese dia.
+    const dia = user.mantenimiento?.dia_pago;
+    let diaPagoFecha = "";
+    if (dia != null) {
+      const hoy = new Date();
+      const diasDelMes = new Date(
+        hoy.getFullYear(),
+        hoy.getMonth() + 1,
+        0,
+      ).getDate();
+      const d = String(Math.min(dia, diasDelMes)).padStart(2, "0");
+      const m = String(hoy.getMonth() + 1).padStart(2, "0");
+      diaPagoFecha = `${hoy.getFullYear()}-${m}-${d}`;
+    }
+
+    setMant({
+      diaPagoFecha,
+      monto: user.mantenimiento?.monto?.toString() ?? "",
+      estado: estadoActual === "EXENTO" ? "EXENTO" : "AUTO",
+      proximoPago: user.mantenimiento?.proximo_pago ?? "",
+    });
+    setPago(PAGO_VACIO);
+    setDialog({ type: "mantenimiento", user });
+  }
+
+  function openCreate() {
+    setForm(FORM_VACIO);
+    setDialog({ type: "create" });
   }
 
   function openEdit(user: AdminUser) {
-    setEditName(user.full_name ?? "");
-    setEditEmail(user.email ?? "");
+    setForm({
+      nombre: user.first_name ?? "",
+      apellido: user.last_name ?? "",
+      cedula: user.cedula ?? "",
+      telefono: user.telefono ?? "",
+      email: user.email ?? "",
+      username: user.username ?? "",
+      password: "",
+    });
     setDialog({ type: "edit", user });
   }
 
@@ -161,16 +269,30 @@ export function UsersTable({
   // ── Actions ───────────────────────────────────────────────────────────────
 
   async function handleCreate() {
-    if (!createEmail || !createPassword) {
-      toast.error("Email y contraseña son requeridos");
+    if (
+      !form.nombre ||
+      !form.apellido ||
+      !form.email ||
+      !form.username ||
+      !form.password ||
+      !form.telefono
+    ) {
+      toast.error(
+        "Nombre, apellido, teléfono, correo, usuario y contraseña son obligatorios",
+      );
       return;
     }
     setLoading(true);
     try {
+      // El rol NO se envía: lo fija el servidor como 'admin' (§29).
       const res = await apiFetch("/api/admin/users", "POST", {
-        email: createEmail,
-        password: createPassword,
-        fullName: createName || undefined,
+        nombre: form.nombre,
+        apellido: form.apellido,
+        cedula: form.cedula || undefined,
+        telefono: form.telefono,
+        email: form.email,
+        username: form.username,
+        password: form.password,
       });
       if (res.error) {
         toast.error(res.error);
@@ -190,8 +312,12 @@ export function UsersTable({
     setLoading(true);
     try {
       const body: Record<string, string> = {};
-      if (editName) body.fullName = editName;
-      if (editEmail) body.email = editEmail;
+      if (form.nombre) body.nombre = form.nombre;
+      if (form.apellido) body.apellido = form.apellido;
+      if (form.cedula) body.cedula = form.cedula;
+      if (form.telefono) body.telefono = form.telefono;
+      if (form.email) body.email = form.email;
+      if (form.username) body.username = form.username;
 
       const res = await apiFetch(`/api/admin/users/${userId}`, "PATCH", body);
       if (res.error) {
@@ -200,6 +326,97 @@ export function UsersTable({
         toast.success("Usuario actualizado");
         closeDialog();
         refresh();
+      }
+    } catch {
+      toast.error("Error de red");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Mantenimiento (§21) ───────────────────────────────────────────────────
+
+  async function handleGuardarMantenimiento(userId: string) {
+    setLoading(true);
+    try {
+      // Sólo se envía lo que el megaadministrador haya rellenado: así un
+      // campo vacío no borra un valor ya configurado.
+      const body: Record<string, unknown> = {};
+
+      // Del selector de fecha solo interesa el dia del mes. Se extrae por
+      // posicion (YYYY-MM-DD) en vez de con new Date(), que desplazaria la
+      // fecha un dia segun la zona horaria del navegador.
+      if (mant.diaPagoFecha !== "") {
+        body.diaPago = Number(mant.diaPagoFecha.slice(8, 10));
+      }
+      if (mant.proximoPago !== "") body.proximoPago = mant.proximoPago;
+      if (mant.monto !== "") body.monto = Number(mant.monto);
+      // El estado viaja SIEMPRE. Pasar de "Exento" a "Automático" es un cambio
+      // real aunque no se toque ningún otro campo, y antes se perdía: el cuerpo
+      // quedaba vacío y la pantalla respondía "No hay nada que guardar".
+      body.estado = mant.estado || "AUTO";
+
+      const res = await apiFetch(
+        `/api/admin/users/${userId}/mantenimiento`,
+        "PATCH",
+        body,
+      );
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Mantenimiento actualizado");
+        closeDialog();
+        refresh();
+      }
+    } catch {
+      toast.error("Error de red");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRegistrarPago(userId: string) {
+    setLoading(true);
+    try {
+      const res = await apiFetch(
+        `/api/admin/users/${userId}/mantenimiento`,
+        "POST",
+        {
+          monto: Number(pago.monto),
+          fechaPago: pago.fechaPago || undefined,
+        },
+      );
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Pago registrado");
+        closeDialog();
+        refresh();
+      }
+    } catch {
+      toast.error("Error de red");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Mensajes personalizados (§23) ─────────────────────────────────────────
+
+  async function handleEnviarMensaje(userId: string) {
+    setLoading(true);
+    try {
+      const res = await apiFetch("/api/admin/mensajes", "POST", {
+        adminId: userId,
+        titulo: mensaje.titulo,
+        cuerpo: mensaje.cuerpo,
+        tipo: mensaje.tipo,
+        expiraEn: mensaje.expiraEn || undefined,
+      });
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Mensaje enviado");
+        closeDialog();
       }
     } catch {
       toast.error("Error de red");
@@ -315,7 +532,7 @@ export function UsersTable({
               <RefreshCw className="size-4" />
             )}
           </Button>
-          <Button size="sm" onClick={() => setDialog({ type: "create" })}>
+          <Button size="sm" onClick={openCreate}>
             <PlusCircle className="size-4 mr-1.5" />
             Nuevo administrador
           </Button>
@@ -488,6 +705,12 @@ export function UsersTable({
               <TableHead className="hidden lg:table-cell">Email</TableHead>
               <TableHead>Rol</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead className="hidden lg:table-cell">
+                Mantenimiento
+              </TableHead>
+              <TableHead className="hidden xl:table-cell">
+                Subusuarios
+              </TableHead>
               <TableHead className="hidden xl:table-cell">Creado</TableHead>
               <TableHead className="hidden xl:table-cell">
                 Último acceso
@@ -562,6 +785,36 @@ export function UsersTable({
                         </span>
                       )}
                     </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {user.role === "super_admin" ? (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      ) : user.mantenimiento ? (
+                        <div className="flex flex-col gap-0.5">
+                          <Badge
+                            variant={
+                              MANTENIMIENTO_UI[user.mantenimiento.estado]
+                                .variant
+                            }
+                            className="w-fit"
+                          >
+                            {MANTENIMIENTO_UI[user.mantenimiento.estado].label}
+                          </Badge>
+                          {user.mantenimiento.proximo_pago && (
+                            <span className="text-xs text-muted-foreground">
+                              Vence{" "}
+                              {fmtDateShort(user.mantenimiento.proximo_pago)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          Sin configurar
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell text-muted-foreground text-sm tabular-nums">
+                      {user.role === "super_admin" ? "—" : user.subusuarios}
+                    </TableCell>
                     <TableCell className="hidden xl:table-cell text-muted-foreground text-sm">
                       {fmtDate(user.created_at)}
                     </TableCell>
@@ -595,6 +848,24 @@ export function UsersTable({
                                 ? "Restablecer mi contraseña"
                                 : "Restablecer contraseña"}
                             </DropdownMenuItem>
+                            {user.role === "admin" && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => openMantenimiento(user)}
+                                >
+                                  <CalendarClock className="size-4 mr-2" />
+                                  Mantenimiento
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setDialog({ type: "mensaje", user })
+                                  }
+                                >
+                                  <Send className="size-4 mr-2" />
+                                  Enviar mensaje
+                                </DropdownMenuItem>
+                              </>
+                            )}
                             {showToggle && (
                               <>
                                 <DropdownMenuSeparator />
@@ -657,37 +928,77 @@ export function UsersTable({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="create-name">Nombre completo</Label>
-              <Input
-                id="create-name"
-                placeholder="Juan Pérez"
-                value={createName}
-                onChange={(e) => setCreateName(e.target.value)}
-              />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="adm-nombre">Nombre *</Label>
+                <Input
+                  id="adm-nombre"
+                  placeholder="Juan"
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="adm-apellido">Apellido *</Label>
+                <Input
+                  id="adm-apellido"
+                  placeholder="Pérez"
+                  value={form.apellido}
+                  onChange={(e) =>
+                    setForm({ ...form, apellido: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="adm-cedula">Cédula</Label>
+                <CedulaInput
+                  id="adm-cedula"
+                  value={form.cedula}
+                  onChange={(v) => setForm({ ...form, cedula: v })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="adm-telefono">Teléfono *</Label>
+                <PhoneInput
+                  id="adm-telefono"
+                  value={form.telefono}
+                  onChange={(v) => setForm({ ...form, telefono: v })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="adm-email">Correo electrónico *</Label>
+                <Input
+                  id="adm-email"
+                  type="email"
+                  placeholder="admin@ejemplo.com"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="adm-username">Nombre de usuario *</Label>
+                <Input
+                  id="adm-username"
+                  placeholder="jperez"
+                  value={form.username}
+                  onChange={(e) =>
+                    setForm({ ...form, username: e.target.value })
+                  }
+                  autoCapitalize="none"
+                  spellCheck={false}
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="create-email">Email *</Label>
+              <Label htmlFor="adm-password">Contraseña *</Label>
               <Input
-                id="create-email"
-                type="email"
-                placeholder="admin@ejemplo.com"
-                value={createEmail}
-                onChange={(e) => setCreateEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="create-password">Contraseña temporal *</Label>
-              <Input
-                id="create-password"
+                id="adm-password"
                 type="password"
-                placeholder="Mínimo 8 caracteres"
-                value={createPassword}
-                onChange={(e) => setCreatePassword(e.target.value)}
+                placeholder="Mínimo 10 caracteres"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                autoComplete="new-password"
               />
-              <p className="text-xs text-muted-foreground">
-                El usuario deberá cambiar su contraseña al iniciar sesión.
-              </p>
             </div>
           </div>
           <DialogFooter>
@@ -714,27 +1025,81 @@ export function UsersTable({
               </DialogTitle>
               <DialogDescription>
                 {dialog.user.id === currentUserId
-                  ? "Actualiza tu nombre o correo electrónico. Los cambios son efectivos de inmediato."
-                  : `Modifica el nombre o email de ${dialog.user.full_name ?? dialog.user.email}.`}
+                  ? "Actualiza tus datos de contacto. Los cambios son efectivos de inmediato."
+                  : `Modifica los datos de ${dialog.user.full_name ?? dialog.user.email}. La contraseña se cambia con un enlace por correo.`}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-name">Nombre completo</Label>
-                <Input
-                  id="edit-name"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-email">Email</Label>
-                <Input
-                  id="edit-email"
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-nombre">Nombre *</Label>
+                  <Input
+                    id="adm-nombre"
+                    placeholder="Juan"
+                    value={form.nombre}
+                    onChange={(e) =>
+                      setForm({ ...form, nombre: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-apellido">Apellido *</Label>
+                  <Input
+                    id="adm-apellido"
+                    placeholder="Pérez"
+                    value={form.apellido}
+                    onChange={(e) =>
+                      setForm({ ...form, apellido: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-cedula">Cédula</Label>
+                  <Input
+                    id="adm-cedula"
+                    placeholder="001-0000000-0"
+                    value={form.cedula}
+                    onChange={(e) =>
+                      setForm({ ...form, cedula: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-telefono">Teléfono *</Label>
+                  <Input
+                    id="adm-telefono"
+                    placeholder="809-000-0000"
+                    value={form.telefono}
+                    onChange={(e) =>
+                      setForm({ ...form, telefono: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-email">Correo electrónico *</Label>
+                  <Input
+                    id="adm-email"
+                    type="email"
+                    placeholder="admin@ejemplo.com"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-username">Nombre de usuario *</Label>
+                  <Input
+                    id="adm-username"
+                    placeholder="jperez"
+                    value={form.username}
+                    onChange={(e) =>
+                      setForm({ ...form, username: e.target.value })
+                    }
+                    autoCapitalize="none"
+                    spellCheck={false}
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter>
@@ -858,6 +1223,249 @@ export function UsersTable({
               >
                 {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
                 Enviar email de recuperación
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── MANTENIMIENTO (§21) ──────────────────────────────────────────── */}
+      {dialog.type === "mantenimiento" && (
+        <Dialog open onOpenChange={(o) => !o && closeDialog()}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                Mantenimiento — {dialog.user.full_name ?? dialog.user.email}
+              </DialogTitle>
+            </DialogHeader>
+
+            {/* Resumen de un vistazo: el estado responde "¿ha pagado?" y las
+                dos fechas dicen desde cuando y hasta cuando. */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm">
+              <Badge
+                variant={
+                  MANTENIMIENTO_UI[
+                    dialog.user.mantenimiento?.estado ?? "PENDIENTE"
+                  ].variant
+                }
+              >
+                {
+                  MANTENIMIENTO_UI[
+                    dialog.user.mantenimiento?.estado ?? "PENDIENTE"
+                  ].label
+                }
+              </Badge>
+              <span className="text-muted-foreground">
+                Último pago:{" "}
+                <span className="font-medium text-foreground">
+                  {fmtDateShort(dialog.user.mantenimiento?.ultimo_pago ?? null)}
+                </span>
+              </span>
+              <span className="text-muted-foreground">
+                Próximo:{" "}
+                <span className="font-medium text-foreground">
+                  {fmtDateShort(
+                    dialog.user.mantenimiento?.proximo_pago ?? null,
+                  )}
+                </span>
+              </span>
+            </div>
+
+            <div className="space-y-4 py-2">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="mant-dia">Día de pago</Label>
+                  <Input
+                    id="mant-dia"
+                    type="date"
+                    value={mant.diaPagoFecha}
+                    onChange={(e) =>
+                      setMant({ ...mant, diaPagoFecha: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mant-monto">Monto</Label>
+                  <CurrencyInput
+                    id="mant-monto"
+                    placeholder="0.00"
+                    value={mant.monto}
+                    onChange={(v) => setMant({ ...mant, monto: v })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mant-proximo">Próximo pago</Label>
+                  <Input
+                    id="mant-proximo"
+                    type="date"
+                    value={mant.proximoPago}
+                    onChange={(e) =>
+                      setMant({ ...mant, proximoPago: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mant-estado">Estado</Label>
+                  <Select
+                    value={mant.estado || "AUTO"}
+                    onValueChange={(v) => setMant({ ...mant, estado: v })}
+                  >
+                    <SelectTrigger id="mant-estado" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    {/* Solo dos opciones: "Al día", "Pendiente" y "Vencido"
+                        los deduce el servidor de las fechas y los pagos, asi
+                        que ofrecerlos a mano solo serviria para contradecir la
+                        realidad. Lo unico que es una decision es eximir. */}
+                    <SelectContent>
+                      <SelectItem value="AUTO">Automático</SelectItem>
+                      <SelectItem value="EXENTO">Exento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-muted/40 p-3">
+                <p className="mb-2 text-sm font-medium text-foreground">
+                  Registrar pago
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pago-monto">Monto</Label>
+                    <CurrencyInput
+                      id="pago-monto"
+                      placeholder="0.00"
+                      value={pago.monto}
+                      onChange={(v) => setPago({ ...pago, monto: v })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pago-fecha">Fecha</Label>
+                    <Input
+                      id="pago-fecha"
+                      type="date"
+                      value={pago.fechaPago}
+                      onChange={(e) =>
+                        setPago({ ...pago, fechaPago: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-3"
+                  disabled={loading || !pago.monto}
+                  onClick={() => handleRegistrarPago(dialog.user.id)}
+                >
+                  {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
+                  Registrar pago
+                </Button>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={closeDialog}
+                disabled={loading}
+              >
+                Cerrar
+              </Button>
+              <Button
+                onClick={() => handleGuardarMantenimiento(dialog.user.id)}
+                disabled={loading}
+              >
+                {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
+                Guardar configuración
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── MENSAJE PERSONALIZADO (§23) ──────────────────────────────────── */}
+      {dialog.type === "mensaje" && (
+        <Dialog open onOpenChange={(o) => !o && closeDialog()}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Mensaje para {dialog.user.full_name ?? dialog.user.email}
+              </DialogTitle>
+              <DialogDescription>
+                Se le mostrará al iniciar sesión.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="msg-titulo">Título</Label>
+                <Input
+                  id="msg-titulo"
+                  placeholder="Recordatorio de mantenimiento"
+                  value={mensaje.titulo}
+                  onChange={(e) =>
+                    setMensaje({ ...mensaje, titulo: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="msg-cuerpo">Mensaje</Label>
+                <Textarea
+                  id="msg-cuerpo"
+                  rows={4}
+                  placeholder="Recuerda realizar tu pago antes del día 15."
+                  value={mensaje.cuerpo}
+                  onChange={(e) =>
+                    setMensaje({ ...mensaje, cuerpo: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="msg-tipo">Tipo</Label>
+                  <Select
+                    value={mensaje.tipo}
+                    onValueChange={(v) => setMensaje({ ...mensaje, tipo: v })}
+                  >
+                    <SelectTrigger id="msg-tipo" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="INFO">Informativo</SelectItem>
+                      <SelectItem value="ADVERTENCIA">Advertencia</SelectItem>
+                      <SelectItem value="URGENTE">Urgente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="msg-expira">Caduca el</Label>
+                  <Input
+                    id="msg-expira"
+                    type="date"
+                    value={mensaje.expiraEn}
+                    onChange={(e) =>
+                      setMensaje({ ...mensaje, expiraEn: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={closeDialog}
+                disabled={loading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => handleEnviarMensaje(dialog.user.id)}
+                disabled={loading || !mensaje.titulo || !mensaje.cuerpo}
+              >
+                {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
+                Enviar mensaje
               </Button>
             </DialogFooter>
           </DialogContent>

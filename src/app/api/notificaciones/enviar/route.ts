@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
-import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth";
+import {
+  badRequest,
+  getUserAndRole,
+  soloOrganizacion,
+  unauthorized,
+} from "@/lib/api-auth";
 import {
   construirMensajeReporte,
   obtenerMorososRepresentante,
 } from "@/lib/cobranza";
+import { notificationReporteEmail } from "@/lib/email-templates";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   resolveMoraTemplateSid,
@@ -12,7 +18,6 @@ import {
   toTwilioWhatsAppAddress,
 } from "@/lib/twilio-whatsapp";
 import { notificacionEnviarSchema } from "@/lib/validations/schemas";
-import { notificationReporteEmail } from "@/lib/email-templates";
 
 async function enviarEmailResend(
   to: string,
@@ -54,7 +59,10 @@ async function enviarEmailResend(
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  const bloqueo = soloOrganizacion(session);
+  if (bloqueo) return bloqueo;
 
   let body: unknown;
   try {

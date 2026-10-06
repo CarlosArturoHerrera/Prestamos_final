@@ -3,6 +3,7 @@ import {
   badRequest,
   ensureProfileRow,
   getUserAndRole,
+  requireTenant,
   unauthorized,
 } from "@/lib/api-auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -13,7 +14,12 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  // requireTenant devuelve la sesion ya validada, que hace falta mas abajo
+  // para registrar quien crea el seguimiento.
+  const auth = requireTenant(session);
+  if (auth instanceof NextResponse) return auth;
 
   const { id: idParam } = await ctx.params;
   const clienteId = Number(idParam);
@@ -52,7 +58,12 @@ export async function GET(_request: Request, ctx: Ctx) {
 export async function POST(request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  // requireTenant devuelve la sesion ya validada, que hace falta mas abajo
+  // para registrar quien crea el seguimiento.
+  const auth = requireTenant(session);
+  if (auth instanceof NextResponse) return auth;
 
   const { id: idParam } = await ctx.params;
   const clienteId = Number(idParam);
@@ -91,7 +102,7 @@ export async function POST(request: Request, ctx: Ctx) {
     );
   }
 
-  let prestamoIdFinal: number | null = prestamoId ?? null;
+  const prestamoIdFinal: number | null = prestamoId ?? null;
   if (prestamoIdFinal != null) {
     const { data: pr, error: ePr } = await supabase
       .from("prestamos")
@@ -105,14 +116,14 @@ export async function POST(request: Request, ctx: Ctx) {
 
   const ensuredProfile = await ensureProfileRow(
     supabase,
-    session.userId,
-    session.role,
+    auth.userId,
+    auth.role,
   );
   if (!ensuredProfile.ok) {
     console.error(
       "[gestion-cobranza][cliente] No se pudo asegurar profile antes del insert",
       {
-        userId: session.userId,
+        userId: auth.userId,
         clienteId,
         reason: ensuredProfile.message,
         code: ensuredProfile.code ?? null,
@@ -134,12 +145,12 @@ export async function POST(request: Request, ctx: Ctx) {
     promesa_fecha: promesaFecha ?? null,
     proxima_fecha_contacto: proximaFechaContacto ?? null,
     resultado,
-    creado_por: session.userId,
+    creado_por: auth.userId,
   };
 
   console.log(
-    "session.userId",
-    session.userId,
+    "auth.userId",
+    auth.userId,
     "creado_por final",
     insert.creado_por,
   );

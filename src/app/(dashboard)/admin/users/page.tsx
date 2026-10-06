@@ -1,10 +1,10 @@
 ﻿import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getUserAndRole } from "@/lib/api-auth";
 import { UsersTable } from "@/components/admin/users-table";
+import { getUserAndRole } from "@/lib/api-auth";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export const metadata = { title: "Administración de Usuarios" };
+export const metadata = { title: "Administradores" };
 
 export default async function AdminUsersPage() {
   // Server-side role check — this is the real guard
@@ -20,28 +20,66 @@ export default async function AdminUsersPage() {
   try {
     const adminClient = createSupabaseAdminClient();
 
+    // El estado de mantenimiento se deriva de las fechas, asi que se recalcula
+    // ANTES de leer la lista: de lo contrario un vencimiento que paso ayer
+    // seguiria mostrandose como "Pendiente" hasta que alguien abriera esa
+    // ficha concreta. Solo escribe las filas que cambian de verdad.
+    await adminClient.rpc("refrescar_estados_mantenimiento");
+
     const [{ data: profiles }, { data: authData }] = await Promise.all([
       adminClient
         .from("profiles")
-        .select("id, role, full_name, email, is_active, created_at, updated_at")
+        .select(
+          "id, role, admin_id, full_name, first_name, last_name, username, cedula, telefono, email, is_active, created_at, updated_at",
+        )
         .order("created_at", { ascending: true }),
       adminClient.auth.admin.listUsers({ perPage: 1000 }),
     ]);
+
+    // Mantenimiento y recuento de subusuarios, en dos consultas y no una por
+    // fila. El recuento se agrega en memoria sobre los perfiles ya traídos.
+    const { data: mantenimiento } = await adminClient
+      .from("admin_maintenance")
+      .select("admin_id, estado, dia_pago, monto, ultimo_pago, proximo_pago");
+
+    const mapaMant = new Map((mantenimiento ?? []).map((m) => [m.admin_id, m]));
+
+    const subusuariosPorAdmin = new Map<string, number>();
+    for (const p of profiles ?? []) {
+      if (p.role === "sub_user" && p.admin_id) {
+        subusuariosPorAdmin.set(
+          p.admin_id,
+          (subusuariosPorAdmin.get(p.admin_id) ?? 0) + 1,
+        );
+      }
+    }
 
     const authMap = new Map(
       (authData?.users ?? []).map((u) => [u.id, u.last_sign_in_at ?? null]),
     );
 
-    users = (profiles ?? []).map((p) => ({
-      id: p.id,
-      role: p.role as "super_admin" | "admin",
-      full_name: p.full_name ?? null,
-      email: p.email ?? null,
-      is_active: p.is_active,
-      created_at: p.created_at,
-      updated_at: p.updated_at,
-      last_sign_in_at: authMap.get(p.id) ?? null,
-    }));
+    // Esta pantalla gestiona administradores; los subusuarios los administra
+    // cada titular desde /subusuarios.
+    users = (profiles ?? [])
+      .filter((p) => p.role !== "sub_user")
+      .map((p) => ({
+        id: p.id,
+        role: p.role as "super_admin" | "admin",
+        full_name: p.full_name ?? null,
+        first_name: p.first_name ?? null,
+        last_name: p.last_name ?? null,
+        username: p.username ?? null,
+        cedula: p.cedula ?? null,
+        telefono: p.telefono ?? null,
+        email: p.email ?? null,
+        is_active: p.is_active,
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+        last_sign_in_at: authMap.get(p.id) ?? null,
+        mantenimiento:
+          (mapaMant.get(p.id) as AdminUser["mantenimiento"]) ?? null,
+        subusuarios: subusuariosPorAdmin.get(p.id) ?? 0,
+      }));
   } catch (err) {
     console.error("[admin/users page]", err);
     // Render the page with empty data; the table will show an error state
@@ -51,11 +89,10 @@ export default async function AdminUsersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-          Administración de Usuarios
+          Administradores
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Gestiona los administradores del sistema. Solo el Super Admin puede
-          acceder a esta sección.
+          Cuentas de administrador, mantenimiento y credenciales.
         </p>
       </div>
       <UsersTable
@@ -71,9 +108,24 @@ export type AdminUser = {
   id: string;
   role: "super_admin" | "admin";
   full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  cedula: string | null;
+  telefono: string | null;
   email: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
   last_sign_in_at: string | null;
+  /** Resumen de mantenimiento mensual (§21). null si aún no está configurado. */
+  mantenimiento: {
+    estado: "AL_DIA" | "PENDIENTE" | "VENCIDO" | "EXENTO";
+    dia_pago: number | null;
+    monto: number | null;
+    ultimo_pago: string | null;
+    proximo_pago: string | null;
+  } | null;
+  /** Número de subusuarios de su organización. */
+  subusuarios: number;
 };

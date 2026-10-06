@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
 import {
   Banknote,
   BarChart3,
@@ -16,6 +17,7 @@ import {
   TrendingUp,
   UserCircle,
   Users,
+  UsersRound,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,27 +32,81 @@ import {
 } from "@/components/ui/tooltip";
 import type { AppRole } from "@/lib/api-auth";
 import { EASE } from "@/lib/motion";
-import { isSuperAdmin } from "@/lib/roles";
+import type { PermissionCode } from "@/lib/permissions";
+import { isAdminOnly, isSuperAdmin } from "@/lib/roles";
 import {
   createSupabaseBrowserClient,
   isSupabaseConfiguredOnClient,
 } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
+// Cada módulo declara el permiso que lo abre. Un subusuario sólo ve en el
+// menú aquello que realmente puede usar (§20); administradores y
+// megaadministrador los tienen todos, así que lo ven completo.
+// Esto es presentación: aunque alguien escriba la URL a mano, la ruta API y
+// las policies RLS siguen rechazando lo que no le corresponde.
 const navBase = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/empresas", label: "Empresas", icon: Building2 },
-  { href: "/representantes", label: "Representantes", icon: Users },
-  { href: "/clientes", label: "Clientes", icon: UserCircle },
-  { href: "/prestamos", label: "Préstamos", icon: Banknote },
-  { href: "/notificaciones", label: "Notificaciones", icon: Bell },
-  { href: "/reportes", label: "Reportes", icon: BarChart3 },
-] as const;
+  {
+    href: "/",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    permiso: "dashboard.ver",
+  },
+  {
+    href: "/empresas",
+    label: "Empresas",
+    icon: Building2,
+    permiso: "empresas.ver",
+  },
+  {
+    href: "/representantes",
+    label: "Representantes",
+    icon: Users,
+    permiso: "representantes.ver",
+  },
+  {
+    href: "/clientes",
+    label: "Clientes",
+    icon: UserCircle,
+    permiso: "clientes.ver",
+  },
+  {
+    href: "/prestamos",
+    label: "Préstamos",
+    icon: Banknote,
+    permiso: "prestamos.ver",
+  },
+  {
+    href: "/notificaciones",
+    label: "Notificaciones",
+    icon: Bell,
+    permiso: "notificaciones.ver",
+  },
+  {
+    href: "/reportes",
+    label: "Reportes",
+    icon: BarChart3,
+    permiso: "reportes.ver",
+  },
+] as const satisfies readonly {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  permiso: PermissionCode;
+}[];
 
+/** Panel del megaadministrador: administradores de la plataforma. */
 const navAdminItem = {
   href: "/admin/users",
-  label: "Usuarios",
+  label: "Administradores",
   icon: Settings2,
+} as const;
+
+/** Subusuarios de la propia organización: lo ve el administrador titular. */
+const navSubusuariosItem = {
+  href: "/subusuarios",
+  label: "Subusuarios",
+  icon: UsersRound,
 } as const;
 
 const BOTTOM_NAV_ITEMS = 4;
@@ -58,9 +114,11 @@ const BOTTOM_NAV_ITEMS = 4;
 interface AppShellProps {
   children: React.ReactNode;
   role?: AppRole | null;
+  /** Permisos efectivos de la sesión, resueltos en el servidor. */
+  permissions?: PermissionCode[];
 }
 
-export function AppShell({ children, role }: AppShellProps) {
+export function AppShell({ children, role, permissions }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -73,10 +131,21 @@ export function AppShell({ children, role }: AppShellProps) {
     : { duration: 0.25, ease: EASE.out };
 
   const superAdmin = isSuperAdmin(role);
-  const nav = useMemo(
-    () => (superAdmin ? [...navBase, navAdminItem] : navBase),
-    [superAdmin],
-  );
+  const administrador = isAdminOnly(role);
+
+  const nav = useMemo(() => {
+    // El MEGAADMINISTRADOR no ve NINGUN modulo de cartera: administra cuentas
+    // de la plataforma, no clientes ni prestamos. Su menu es solo
+    // "Administradores". No es un ocultamiento cosmetico: la API le devuelve
+    // 403 en esas rutas y las policies RLS no le dejan ver ninguna fila.
+    if (superAdmin) return [navAdminItem];
+
+    // El administrador titular ve todos los modulos de su organizacion.
+    if (administrador) return [...navBase, navSubusuariosItem];
+
+    // El subusuario, solo aquellos para los que tenga permiso concedido.
+    return navBase.filter((item) => permissions?.includes(item.permiso));
+  }, [superAdmin, administrador, permissions]);
 
   // Current page label for header breadcrumb
   const currentNav = useMemo(

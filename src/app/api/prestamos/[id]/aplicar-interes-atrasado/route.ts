@@ -1,9 +1,14 @@
-import { NextResponse } from "next/server";
 import Decimal from "decimal.js";
-import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import {
+  badRequest,
+  getUserAndRole,
+  soloOrganizacion,
+  unauthorized,
+} from "@/lib/api-auth";
 import { sumDecimal } from "@/lib/finance";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { z } from "zod";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -15,7 +20,10 @@ const bodySchema = z.object({
 export async function POST(request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  const bloqueo = soloOrganizacion(session);
+  if (bloqueo) return bloqueo;
 
   const { id: idParam } = await ctx.params;
   const id = Number(idParam);

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth";
+import {
+  badRequest,
+  getUserAndRole,
+  soloOrganizacion,
+  unauthorized,
+} from "@/lib/api-auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type Ctx = { params: Promise<{ id: string; interesId: string }> };
@@ -7,7 +12,10 @@ type Ctx = { params: Promise<{ id: string; interesId: string }> };
 export async function DELETE(_request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  const bloqueo = soloOrganizacion(session);
+  if (bloqueo) return bloqueo;
 
   const { id: idParam, interesId: interesIdParam } = await ctx.params;
   const id = Number(idParam);

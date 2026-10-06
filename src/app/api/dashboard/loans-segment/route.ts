@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import type { LoanRow } from "@/components/dashboard/segments-tabs";
+import { supabase } from "@/lib/supabase";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-DO", {

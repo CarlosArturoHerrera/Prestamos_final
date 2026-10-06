@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import Link from "next/link";
+import { addDays } from "date-fns";
 import {
   AlertTriangle,
   CalendarClock,
@@ -27,11 +19,20 @@ import {
   User,
   Zap,
 } from "lucide-react";
-import { addDays } from "date-fns";
+import Link from "next/link";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
+import { EliminarPrestamoDialog } from "@/components/prestamos/eliminar-prestamo-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CurrencyInput } from "@/components/ui/currency-input";
+import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
 import {
   Card,
   CardContent,
@@ -40,6 +41,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   Dialog,
   DialogContent,
@@ -57,14 +67,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
@@ -85,19 +87,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { EliminarPrestamoDialog } from "@/components/prestamos/eliminar-prestamo-dialog";
-import { useIsSuperAdmin } from "@/hooks/use-is-super-admin";
+import { useIsAdminTitular } from "@/hooks/use-is-super-admin";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
-import { usePageCachedState } from "@/lib/page-cache";
-import { formatCedula, formatPhone } from "@/lib/formatters";
 import { formatRD } from "@/lib/format-currency";
+import { formatCedula, formatPhone } from "@/lib/formatters";
+import { usePageCachedState } from "@/lib/page-cache";
 import { cn } from "@/lib/utils";
 
 type PrestamoList = {
@@ -328,7 +328,7 @@ export default function PrestamosPage() {
   const [clientePickerLoading, setClientePickerLoading] = useState(false);
   const [clienteLabel, setClienteLabel] = useState("");
 
-  const superAdmin = useIsSuperAdmin();
+  const superAdmin = useIsAdminTitular();
   const [prestamoAEliminar, setPrestamoAEliminar] = useState<number | null>(
     null,
   );
@@ -1259,7 +1259,7 @@ export default function PrestamosPage() {
                   htmlFor="solo-int-pend"
                   className="cursor-pointer text-sm font-normal leading-snug"
                 >
-                  Con interés pendiente 
+                  Con interés pendiente
                 </Label>
               </div>
             </div>
@@ -1301,9 +1301,7 @@ export default function PrestamosPage() {
               </Button>
             </div>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground"></p>
           <p className="mt-3 text-sm text-muted-foreground">
             {loading && rows.length === 0 ? (
               "Cargando resultados…"

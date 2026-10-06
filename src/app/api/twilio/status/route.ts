@@ -14,7 +14,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const ERROR_MESSAGES: Record<string, string> = {
   "63051":
@@ -90,6 +90,13 @@ export async function POST(request: Request) {
     channelStatusMessage: channelStatusMessage ?? null,
     errorDetalle,
   });
+
+  // Webhook de Twilio: no hay sesión de usuario, así que no hay organización
+  // que resolver. Usa service_role (bypass de RLS) porque la actualización se
+  // localiza por twilio_message_sid, un identificador que sólo conoce Twilio.
+  // Antes usaba el cliente anónimo, que desde el aislamiento multi-tenant ya
+  // no tiene acceso a public.notificaciones.
+  const supabase = createSupabaseAdminClient();
 
   const { error } = await supabase
     .from("notificaciones")

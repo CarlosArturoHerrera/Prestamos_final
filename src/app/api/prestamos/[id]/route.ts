@@ -1,22 +1,27 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import {
   badRequest,
   forbidden,
   getUserAndRole,
   requireAdmin,
-  requireSuperAdmin,
+  requireTenant,
+  soloOrganizacion,
+  soloTitular,
   unauthorized,
 } from "@/lib/api-auth";
 import { sincronizarInteresesYCapitalizacionAuto } from "@/lib/prestamo-logic";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { z } from "zod";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  const bloqueo = soloOrganizacion(session);
+  if (bloqueo) return bloqueo;
 
   const { id: idParam } = await ctx.params;
   const id = Number(idParam);
@@ -92,7 +97,10 @@ const putSchema = z.object({
 export async function PUT(request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  const auth = requireTenant(session);
+  if (auth instanceof NextResponse) return auth;
 
   const { id: idParam } = await ctx.params;
   const id = Number(idParam);
@@ -110,7 +118,7 @@ export async function PUT(request: Request, ctx: Ctx) {
     return badRequest(parsed.error.issues[0]?.message ?? "Validación fallida");
   }
 
-  if (parsed.data.estado && !requireAdmin(session.role)) {
+  if (parsed.data.estado && !requireAdmin(auth.role)) {
     return forbidden();
   }
 
@@ -153,8 +161,14 @@ export async function DELETE(_request: Request, ctx: Ctx) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
 
-  const auth = requireSuperAdmin(session);
-  if (auth instanceof NextResponse) return auth;
+  // CAMBIO DE TITULARIDAD DEL PRIVILEGIO.
+  // Antes esta accion estaba reservada al megaadministrador. Con el modelo
+  // corregido el megaadministrador ya no accede a la cartera, asi que borrar
+  // prestamos pasa al ADMINISTRADOR TITULAR de la organizacion. Sigue fuera
+  // del alcance de un subusuario, que es lo que la restriccion protegia.
+  // La policy prestamos_delete_titular_only impone lo mismo en la base.
+  const bloqueo = soloTitular(session);
+  if (bloqueo) return bloqueo;
 
   const { id: idParam } = await ctx.params;
   const id = Number(idParam);

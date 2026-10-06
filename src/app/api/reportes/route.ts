@@ -1,13 +1,21 @@
-import { NextResponse } from "next/server";
 import Decimal from "decimal.js";
-import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth";
+import { NextResponse } from "next/server";
+import {
+  badRequest,
+  getUserAndRole,
+  soloOrganizacion,
+  unauthorized,
+} from "@/lib/api-auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { reportesQuerySchema } from "@/lib/validations/schemas";
 
 export async function GET(request: Request) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  const bloqueo = soloOrganizacion(session);
+  if (bloqueo) return bloqueo;
 
   const { searchParams } = new URL(request.url);
   const parsed = reportesQuerySchema.safeParse({

@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getSupabaseUrlAndAnonKeyForServer } from "@/lib/supabase/env";
 
 export async function proxy(request: NextRequest) {
@@ -62,38 +62,46 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(u);
   }
 
-  // ── Role-based access control for /admin/* ────────────────────────────────
+  // ── Control de acceso por rol ─────────────────────────────────────────────
+  // Una sola lectura del perfil, reutilizada por las tres comprobaciones.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, is_active")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const esMegaadmin = profile?.role === "super_admin";
+
+  // Cuentas desactivadas: fuera del panel.
+  if (profile && profile.is_active === false) {
+    const u = request.nextUrl.clone();
+    u.pathname = "/login";
+    u.searchParams.set("error", "inactive");
+    return NextResponse.redirect(u);
+  }
+
+  // /admin/* es exclusivo del megaadministrador.
   if (path.startsWith("/admin")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, is_active")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    const allowed =
-      profile?.role === "super_admin" && profile?.is_active === true;
-
-    if (!allowed) {
+    if (!esMegaadmin || profile?.is_active !== true) {
       const u = request.nextUrl.clone();
       u.pathname = "/403";
       return NextResponse.redirect(u);
     }
+    return response;
   }
 
-  // ── Block inactive accounts from the dashboard ────────────────────────────
-  if (!path.startsWith("/admin")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_active")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profile && profile.is_active === false) {
-      const u = request.nextUrl.clone();
-      u.pathname = "/login";
-      u.searchParams.set("error", "inactive");
-      return NextResponse.redirect(u);
-    }
+  // ── El megaadministrador NO entra en las pantallas de cartera ─────────────
+  // Dashboard, clientes, prestamos, representantes, empresas, notificaciones
+  // y reportes muestran datos operativos que pertenecen a cada administrador.
+  // Se le devuelve a su propio panel.
+  //
+  // Esto es comodidad de navegacion, no la medida de seguridad: aunque forzara
+  // la URL, la API le responde 403 y las policies RLS no le devuelven ninguna
+  // fila. La separacion real vive en la base de datos.
+  if (esMegaadmin) {
+    const u = request.nextUrl.clone();
+    u.pathname = "/admin/users";
+    return NextResponse.redirect(u);
   }
 
   return response;

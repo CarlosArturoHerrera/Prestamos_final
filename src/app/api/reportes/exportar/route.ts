@@ -3,7 +3,12 @@ import { join } from "node:path";
 import Decimal from "decimal.js";
 import { jsPDF } from "jspdf";
 import { NextResponse } from "next/server";
-import { badRequest, getUserAndRole, unauthorized } from "@/lib/api-auth";
+import {
+  badRequest,
+  getUserAndRole,
+  soloOrganizacion,
+  unauthorized,
+} from "@/lib/api-auth";
 import { formatCedula, formatPhone } from "@/lib/formatters";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { reportesQuerySchema } from "@/lib/validations/schemas";
@@ -1194,7 +1199,10 @@ async function generateExcel(params: {
 export async function GET(request: Request) {
   const supabase = await createSupabaseServerClient();
   const session = await getUserAndRole(supabase);
-  if (!session) return unauthorized();
+  // El megaadministrador no accede a datos operativos (403);
+  // el resto queda acotado a su propia organizacion.
+  const bloqueo = soloOrganizacion(session);
+  if (bloqueo) return bloqueo;
 
   const { searchParams } = new URL(request.url);
   const formato = searchParams.get("formato") || "pdf";
