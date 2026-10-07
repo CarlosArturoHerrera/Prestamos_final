@@ -4,15 +4,23 @@ import Decimal from "decimal.js";
  * Ganancias del representante a partir del interés EFECTIVAMENTE PAGADO por sus
  * clientes asignados.
  *
- * Regla de comisión, siempre sobre el interés EFECTIVAMENTE PAGADO del período:
- *   - Préstamo al 4 % → interésPagado × (1 / 4)   = 25 % del interés pagado.
- *     Equivale a 1 % del capital: RD$100 000 → interés RD$4 000 → comisión RD$1 000.
- *   - Préstamo al 5 % → interésPagado × (1.5 / 5) = 30 % del interés pagado.
- *     Equivale a 1.5 % del capital: RD$100 000 → interés RD$5 000 → comisión RD$1 500.
+ * Regla de comisión: cada PRÉSTAMO guarda su propio porcentaje en
+ * `comision_representante`, y la ganancia es
+ *
+ *     interés efectivamente pagado × (comisión / 100)
+ *
+ * El porcentaje se aplica sobre el INTERÉS PAGADO, no sobre el capital. Un
+ * préstamo con 30 % y RD$5 000 de interés cobrado produce RD$1 500.
+ *
+ * Antes el porcentaje se deducía de la tasa mediante una tabla fija
+ * (tasa 4 % → 1 % del capital, tasa 5 % → 1.5 %). Esa tabla ya no existe: los
+ * préstamos históricos se migraron a 25 % y 30 %, que son esas mismas reglas
+ * expresadas sobre el interés, de modo que las ganancias no cambiaron.
+ *
  * No es una comisión fija por cuota: escala proporcionalmente con lo que el cliente
- * pagó. Un abono que cubre RD$3 000 de un interés de RD$5 000 al 5 % genera RD$900,
+ * pagó. Un abono que cubre RD$3 000 de un interés de RD$5 000 al 30 % genera RD$900,
  * y los RD$2 000 restantes generan después los RD$600 que completan el período.
- * Cualquier otra tasa no tiene comisión configurada: aporta 0.00.
+ * Un préstamo sin comisión configurada aporta 0.00.
  *
  * Fuentes de «interés pagado» (las dos que produce el sistema hoy, sin solaparse):
  *   1. `abonos.interes_cobrado` — interés que el abono aplicó realmente
@@ -28,18 +36,19 @@ import Decimal from "decimal.js";
  * capital, no se cobraron) ni ANULADO.
  */
 
-// ── Tabla de comisiones ───────────────────────────────────────────────────────
+// ── Comisión ──────────────────────────────────────────────────────────────────
 
-/** Comisión del representante por tasa de préstamo (porcentajes). */
-export const COMISION_POR_TASA: ReadonlyArray<{
+/** Comisión sugerida al crear un préstamo, según su tasa. Sólo es un prefijo
+ *  del formulario: el usuario puede escribir cualquier otro porcentaje. */
+export const COMISION_SUGERIDA_POR_TASA: ReadonlyArray<{
   tasa: string;
   comision: string;
 }> = [
-  { tasa: "4", comision: "1" },
-  { tasa: "5", comision: "1.5" },
+  { tasa: "4", comision: "25" },
+  { tasa: "5", comision: "30" },
 ];
 
-/** Clave estable de agrupación por tasa: "4.0000" → "4", "5.5000" → "5.5". */
+/** Clave estable de agrupación: "4.0000" → "4", "25.000" → "25". */
 export function normalizarTasa(valor: string | number | null): string {
   try {
     return new Decimal(valor ?? 0).toDecimalPlaces(4).toString();
@@ -48,28 +57,39 @@ export function normalizarTasa(valor: string | number | null): string {
   }
 }
 
-/** Comisión configurada para una tasa, o `null` si esa tasa no comisiona. */
-export function comisionPorTasa(valor: string | number | null): string | null {
+/** Porcentaje que se propone en el formulario para una tasa dada, o "" si ninguno. */
+export function comisionSugerida(valor: string | number | null): string {
   const key = normalizarTasa(valor);
-  return COMISION_POR_TASA.find((c) => c.tasa === key)?.comision ?? null;
+  return COMISION_SUGERIDA_POR_TASA.find((c) => c.tasa === key)?.comision ?? "";
+}
+
+/** Normaliza el porcentaje de un préstamo a texto, con 0 por defecto. */
+export function normalizarComision(valor: string | number | null): string {
+  try {
+    const d = new Decimal(valor ?? 0);
+    if (d.lt(0)) return "0";
+    return d.toDecimalPlaces(3).toString();
+  } catch {
+    return "0";
+  }
 }
 
 /**
- * Ganancia del representante sobre un monto de interés ya cobrado.
- * `interesPagado × (comisión / tasa)` — el equivalente a aplicar la comisión
- * sobre el mismo capital que generó ese interés.
+ * Ganancia del representante sobre un interés ya cobrado:
+ * `interesPagado × comision / 100`.
+ *
+ * El porcentaje se aplica directamente al interés pagado. Un préstamo sin
+ * comisión configurada —NULL o 0— no genera ganancia.
  */
 export function gananciaDesdeInteresPagado(
   interesPagado: string | number,
-  tasa: string | number | null,
+  comision: string | number | null,
 ): string {
-  const comision = comisionPorTasa(tasa);
-  if (!comision) return "0.00";
-  const t = new Decimal(tasa ?? 0);
-  if (t.lte(0)) return "0.00";
+  const c = new Decimal(comision ?? 0);
+  if (c.lte(0)) return "0.00";
   return new Decimal(interesPagado)
-    .mul(comision)
-    .div(t)
+    .mul(c)
+    .div(100)
     .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
     .toFixed(2);
 }
@@ -87,6 +107,8 @@ export type GananciaPrestamoRow = {
   id: number;
   cliente_id: number;
   tasa_interes: string | number | null;
+  /** Porcentaje sobre el interés pagado que cobra el representante. */
+  comision_representante: string | number | null;
   estado: string | null;
 };
 
@@ -125,19 +147,21 @@ export type GananciaPrestamoDetalle = {
   clienteNombre: string;
   clienteCedula: string | null;
   estado: string;
-  /** Tasa del préstamo en porcentaje ("4", "5", …). */
+  /** Tasa del préstamo en porcentaje ("4", "5", …). Informativa. */
   tasa: string;
-  /** Comisión aplicada en porcentaje ("1", "1.5") o `null` si la tasa no comisiona. */
-  comisionTasa: string | null;
+  /** Porcentaje de comisión guardado en este préstamo ("25", "30", "1.5"…). */
+  comision: string;
   comisionable: boolean;
   interesPagado: string;
   ganancia: string;
   movimientos: GananciaMovimiento[];
 };
 
-export type GananciaPorTasa = {
-  tasa: string;
-  comisionTasa: string | null;
+/** Agrupación por porcentaje de comisión: con comisiones por préstamo, dos
+ *  préstamos a la misma tasa pueden pagar distinto, así que agrupar por tasa
+ *  daría una cifra engañosa. */
+export type GananciaPorComision = {
+  comision: string;
   comisionable: boolean;
   prestamos: number;
   clientes: number;
@@ -154,7 +178,7 @@ export type GananciasTotales = {
 
 export type GananciasResultado = {
   totales: GananciasTotales;
-  porTasa: GananciaPorTasa[];
+  porComision: GananciaPorComision[];
   detalle: GananciaPrestamoDetalle[];
 };
 
@@ -271,7 +295,7 @@ export function construirGananciasRepresentante(input: {
       .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
       .toFixed(2);
     const tasa = normalizarTasa(prestamo.tasa_interes);
-    const comisionTasa = comisionPorTasa(prestamo.tasa_interes);
+    const comision = normalizarComision(prestamo.comision_representante);
 
     detalle.push({
       prestamoId,
@@ -280,13 +304,10 @@ export function construirGananciasRepresentante(input: {
       clienteCedula: cliente?.cedula ?? null,
       estado: String(prestamo.estado ?? "—"),
       tasa,
-      comisionTasa,
-      comisionable: comisionTasa !== null,
+      comision,
+      comisionable: new Decimal(comision).gt(0),
       interesPagado,
-      ganancia: gananciaDesdeInteresPagado(
-        interesPagado,
-        prestamo.tasa_interes,
-      ),
+      ganancia: gananciaDesdeInteresPagado(interesPagado, comision),
       movimientos: agg.movimientos.sort((a, b) =>
         String(b.fecha ?? "").localeCompare(String(a.fecha ?? "")),
       ),
@@ -301,8 +322,8 @@ export function construirGananciasRepresentante(input: {
     return a.prestamoId - b.prestamoId;
   });
 
-  // 4) Desglose por tasa. Las tasas con comisión siempre aparecen (aunque en 0).
-  const porTasaMap = new Map<
+  // 4) Desglose por porcentaje de comisión.
+  const porComisionMap = new Map<
     string,
     {
       interes: Decimal;
@@ -311,17 +332,16 @@ export function construirGananciasRepresentante(input: {
       clientes: Set<number>;
     }
   >();
-  const asegurarTasa = (tasa: string) => {
-    const actual = porTasaMap.get(tasa) ?? {
+  const asegurarComision = (comision: string) => {
+    const actual = porComisionMap.get(comision) ?? {
       interes: new Decimal(0),
       ganancia: new Decimal(0),
       prestamos: 0,
       clientes: new Set<number>(),
     };
-    porTasaMap.set(tasa, actual);
+    porComisionMap.set(comision, actual);
     return actual;
   };
-  for (const c of COMISION_POR_TASA) asegurarTasa(c.tasa);
 
   let interesTotal = new Decimal(0);
   let gananciaTotal = new Decimal(0);
@@ -329,7 +349,7 @@ export function construirGananciasRepresentante(input: {
   let prestamosConGanancia = 0;
 
   for (const fila of detalle) {
-    const bucket = asegurarTasa(fila.tasa);
+    const bucket = asegurarComision(fila.comision);
     bucket.interes = bucket.interes.plus(fila.interesPagado);
     bucket.ganancia = bucket.ganancia.plus(fila.ganancia);
     bucket.prestamos += 1;
@@ -343,26 +363,19 @@ export function construirGananciasRepresentante(input: {
     }
   }
 
-  const porTasa: GananciaPorTasa[] = [...porTasaMap.entries()]
-    .filter(
-      ([tasa, b]) =>
-        COMISION_POR_TASA.some((c) => c.tasa === tasa) || b.prestamos > 0,
-    )
-    .map(([tasa, b]) => {
-      const comisionTasa = comisionPorTasa(tasa);
-      return {
-        tasa,
-        comisionTasa,
-        comisionable: comisionTasa !== null,
-        prestamos: b.prestamos,
-        clientes: b.clientes.size,
-        interesPagado: b.interes.toFixed(2),
-        ganancia: b.ganancia.toFixed(2),
-      };
-    })
+  const porComision: GananciaPorComision[] = [...porComisionMap.entries()]
+    .filter(([, b]) => b.prestamos > 0)
+    .map(([comision, b]) => ({
+      comision,
+      comisionable: new Decimal(comision).gt(0),
+      prestamos: b.prestamos,
+      clientes: b.clientes.size,
+      interesPagado: b.interes.toFixed(2),
+      ganancia: b.ganancia.toFixed(2),
+    }))
     .sort((a, b) => {
       if (a.comisionable !== b.comisionable) return a.comisionable ? -1 : 1;
-      return new Decimal(a.tasa).comparedTo(b.tasa);
+      return new Decimal(b.comision).comparedTo(a.comision);
     });
 
   return {
@@ -372,7 +385,7 @@ export function construirGananciasRepresentante(input: {
       clientesConGanancia: clientesConGanancia.size,
       prestamosConGanancia,
     },
-    porTasa,
+    porComision,
     detalle,
   };
 }

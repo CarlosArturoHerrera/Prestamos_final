@@ -87,6 +87,14 @@ export const prestamoCreateSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
+  /**
+   * Porcentaje sobre el INTERÉS PAGADO que cobrará el representante de este
+   * préstamo. Opcional: si no viene, el préstamo no comisiona.
+   */
+  comisionRepresentante: z
+    .union([z.coerce.number().min(0).max(100), z.literal(""), z.null()])
+    .optional()
+    .transform((v) => (v === "" || v === null || v === undefined ? null : v)),
   notas: z.string().max(5000).optional().nullable(),
 });
 

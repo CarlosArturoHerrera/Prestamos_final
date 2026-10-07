@@ -82,7 +82,7 @@ function TasaBadge({ fila }: { fila: GananciaPrestamoDetalle }) {
       variant={fila.comisionable ? "secondary" : "outline"}
       className="tabular-nums"
     >
-      {fila.tasa}%{fila.comisionable ? ` → ${fila.comisionTasa}%` : ""}
+      {fila.tasa}%{fila.comisionable ? ` → ${fila.comision}% del interés` : ""}
     </Badge>
   );
 }

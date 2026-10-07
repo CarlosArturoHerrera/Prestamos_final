@@ -81,6 +81,11 @@ export async function GET(_request: Request, ctx: Ctx) {
 
 const putSchema = z.object({
   notas: z.string().max(5000).optional().nullable(),
+  /** Porcentaje sobre el interés pagado que cobra el representante. */
+  comisionRepresentante: z
+    .union([z.coerce.number().min(0).max(100), z.literal(""), z.null()])
+    .optional()
+    .transform((v) => (v === "" || v === null || v === undefined ? null : v)),
   estado: z.enum(["ACTIVO", "SALDADO", "MORA"]).optional(),
   capitalADebitar: z
     .union([
@@ -128,6 +133,10 @@ export async function PUT(request: Request, ctx: Ctx) {
   if (parsed.data.estado) payload.estado = parsed.data.estado;
   if (parsed.data.capitalADebitar !== undefined)
     payload.capital_a_debitar = String(parsed.data.capitalADebitar);
+  // Se distingue "no vino en la petición" de "vino vacío": lo primero deja la
+  // comisión como estaba, lo segundo la retira.
+  if ("comisionRepresentante" in (body as Record<string, unknown>))
+    payload.comision_representante = parsed.data.comisionRepresentante;
 
   if (Object.keys(payload).length === 0) {
     return badRequest("Nada que actualizar");

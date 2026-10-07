@@ -98,6 +98,7 @@ import { useIsAdminTitular } from "@/hooks/use-is-super-admin";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatRD } from "@/lib/format-currency";
 import { formatCedula, formatPhone } from "@/lib/formatters";
+import { comisionSugerida } from "@/lib/ganancias-representante";
 import { usePageCachedState } from "@/lib/page-cache";
 import { cn } from "@/lib/utils";
 
@@ -344,6 +345,7 @@ export default function PrestamosPage() {
     clienteId: "",
     monto: "",
     tasaInteres: "",
+    comisionRepresentante: "",
     capitalADebitar: "",
     plazo: "12",
     tipoPlazo: "MENSUAL",
@@ -520,6 +522,7 @@ export default function PrestamosPage() {
         clienteId: Number(form.clienteId),
         monto: form.monto,
         tasaInteres: form.tasaInteres,
+        comisionRepresentante: form.comisionRepresentante || null,
         capitalADebitar: form.capitalADebitar,
         plazo: Number(form.plazo),
         tipoPlazo: form.tipoPlazo,
@@ -846,6 +849,7 @@ export default function PrestamosPage() {
                       clienteId: "",
                       monto: "",
                       tasaInteres: "",
+                      comisionRepresentante: "",
                       capitalADebitar: "",
                       plazo: "12",
                       tipoPlazo: "MENSUAL",
@@ -1008,11 +1012,46 @@ export default function PrestamosPage() {
                     <Label>Tasa % por período</Label>
                     <Input
                       value={form.tasaInteres}
-                      onChange={(e) =>
-                        setForm({ ...form, tasaInteres: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const tasa = e.target.value;
+                        // Al teclear la tasa se propone la comisión habitual,
+                        // pero sólo mientras el campo siga vacío: si ya se
+                        // escribió un porcentaje, no se pisa.
+                        setForm((f) => ({
+                          ...f,
+                          tasaInteres: tasa,
+                          comisionRepresentante:
+                            f.comisionRepresentante === ""
+                              ? comisionSugerida(tasa)
+                              : f.comisionRepresentante,
+                        }));
+                      }}
                       placeholder="5"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Comisión del representante</Label>
+                    <div className="relative">
+                      <Input
+                        value={form.comisionRepresentante}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            comisionRepresentante: e.target.value,
+                          })
+                        }
+                        inputMode="decimal"
+                        placeholder="30"
+                        className="pr-7"
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        %
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      El representante recibirá este porcentaje de los intereses
+                      efectivamente pagados de este préstamo.
+                    </p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="space-y-2">

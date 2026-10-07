@@ -36,8 +36,13 @@ import { Separator } from "@/components/ui/separator";
 import { useInView } from "@/hooks/use-in-view";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { interesPeriodo } from "@/lib/finance";
-import { formatCedula } from "@/lib/formatters";
 import { formatRD } from "@/lib/format-currency";
+import { formatCedula } from "@/lib/formatters";
+import {
+  gananciaDesdeInteresPagado,
+  normalizarComision,
+  remanenteInteresLiquidado,
+} from "@/lib/ganancias-representante";
 import { cn } from "@/lib/utils";
 
 function estBadgeVariant(
@@ -367,7 +372,7 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
       <CardHeader>
         <CardTitle className="text-base">Registrar abono</CardTitle>
         <CardDescription>
-            Interes calculado en el período:{" "}
+          Interes calculado en el período:{" "}
           <span className="font-medium text-foreground">
             {formatRD(interesCalculadoPeriodo)}
           </span>
@@ -532,6 +537,84 @@ const RegistrarAbonoCard = memo(function RegistrarAbonoCard({
     </Card>
   );
 });
+
+/**
+ * Edición en línea de la comisión del representante.
+ *
+ * Mismo patrón que `CapitalDebitarInline` en el listado: se guarda al salir del
+ * campo o con Enter, y si la petición falla se restaura el valor anterior para
+ * que lo que se ve coincida siempre con lo que hay guardado.
+ */
+function ComisionInline({
+  prestamoId,
+  valorGuardado,
+  onActualizado,
+}: {
+  prestamoId: number;
+  valorGuardado: string;
+  onActualizado: () => void | Promise<void>;
+}) {
+  const [draft, setDraft] = useState(valorGuardado);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft(valorGuardado);
+  }, [valorGuardado]);
+
+  const commit = async () => {
+    const limpio = draft.trim().replace(",", ".");
+    const n = Number(limpio === "" ? 0 : limpio);
+
+    if (!Number.isFinite(n) || n < 0 || n > 100) {
+      toast.error("La comisión debe ser un número entre 0 y 100");
+      setDraft(valorGuardado);
+      return;
+    }
+
+    // Sin cambio real no se molesta al servidor.
+    if (Number(valorGuardado || 0).toFixed(3) === n.toFixed(3)) {
+      setDraft(valorGuardado);
+      return;
+    }
+
+    setSaving(true);
+    const res = await fetchApi(`/api/prestamos/${prestamoId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comisionRepresentante: n }),
+    });
+    setSaving(false);
+
+    if (!res.ok) {
+      redirectToLoginIfUnauthorized(res.status);
+      toast.error(res.message);
+      setDraft(valorGuardado);
+      return;
+    }
+    toast.success("Comisión actualizada");
+    await onActualizado();
+  };
+
+  return (
+    <div className="relative w-24">
+      <Input
+        className="h-8 w-full pr-6 text-right text-sm tabular-nums"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => void commit()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+        inputMode="decimal"
+        disabled={saving}
+        aria-label="Comisión del representante"
+      />
+      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+        %
+      </span>
+    </div>
+  );
+}
 
 export default function PrestamoDetallePage() {
   const params = useParams();
@@ -754,6 +837,61 @@ export default function PrestamoDetallePage() {
     [id, updateInteresLocal],
   );
 
+  /**
+   * Comisión del representante en este préstamo.
+   *
+   * Se reutiliza el MISMO cálculo que el módulo de Representantes
+   * (`gananciaDesdeInteresPagado` y `remanenteInteresLiquidado`) para que la
+   * cifra que ve aquí el administrador no pueda discrepar de la que se le
+   * acumula al representante.
+   */
+  const comisionInfo = useMemo(() => {
+    if (!data)
+      return { comision: "0", interesPagado: "0.00", ganancia: "0.00" };
+
+    const comision = normalizarComision(
+      (data.prestamo?.comision_representante ?? null) as string | null,
+    );
+
+    // Las dos fuentes de interés realmente cobrado, sin solaparse: lo que
+    // aplicó cada abono y el remanente de los períodos cerrados como PAGADO.
+    const deAbonos = (data.abonos ?? []).reduce(
+      (acc, a) => acc + Number(a.interes_cobrado ?? 0),
+      0,
+    );
+    const dePeriodos = (data.intereses_atrasados ?? [])
+      .filter((i) => String(i.estado ?? "").toUpperCase() === "PAGADO")
+      .reduce(
+        (acc, i) =>
+          acc +
+          Number(
+            remanenteInteresLiquidado({
+              id: Number(i.id ?? 0),
+              prestamo_id: Number(i.prestamo_id ?? 0),
+              estado: String(i.estado ?? ""),
+              fecha_aplicado: null,
+              fecha_periodo: null,
+              fecha_generado: null,
+              interes_generado: (i.interes_generado ?? null) as string | null,
+              interes_pagado: (i.interes_pagado ?? null) as string | null,
+              monto: (i.monto ?? null) as string | null,
+            }),
+          ),
+        0,
+      );
+
+    const interesPagado = (deAbonos + dePeriodos).toFixed(2);
+    return {
+      comision,
+      interesPagado,
+      ganancia: gananciaDesdeInteresPagado(interesPagado, comision),
+    };
+  }, [data]);
+
+  const comisionPrestamo = comisionInfo.comision;
+  const interesPagadoPrestamo = comisionInfo.interesPagado;
+  const gananciaRepresentante = comisionInfo.ganancia;
+
   const agregados = useMemo(() => {
     if (!data) return null;
     const abonos = data.abonos ?? [];
@@ -837,6 +975,30 @@ export default function PrestamoDetallePage() {
             <div className="flex justify-between gap-4 border-b border-border/60 py-1.5">
               <span className="text-muted-foreground">Tasa (por período)</span>
               <span className="font-medium">{String(p.tasa_interes)}%</span>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-b border-border/60 py-1.5">
+              <span className="text-muted-foreground">
+                Comisión representante
+              </span>
+              <ComisionInline
+                prestamoId={Number(p.id)}
+                valorGuardado={comisionPrestamo}
+                onActualizado={load}
+              />
+            </div>
+            <div className="flex justify-between gap-4 border-b border-border/60 py-1.5">
+              <span className="text-muted-foreground">Intereses pagados</span>
+              <span className="font-medium tabular-nums">
+                {formatRD(interesPagadoPrestamo)}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4 border-b border-border/60 py-1.5">
+              <span className="text-muted-foreground">
+                Ganancia representante
+              </span>
+              <span className="font-medium tabular-nums text-primary">
+                {formatRD(gananciaRepresentante)}
+              </span>
             </div>
             <div className="flex justify-between gap-4 border-b border-border/60 py-1.5">
               <span className="text-muted-foreground">Capital a debitar</span>

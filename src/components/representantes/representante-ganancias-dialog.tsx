@@ -25,7 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatRD } from "@/lib/format-currency";
 import type {
-  GananciaPorTasa,
+  GananciaPorComision,
   GananciaPrestamoDetalle,
 } from "@/lib/ganancias-representante";
 import { stagger, staggerChild } from "@/lib/motion";
@@ -54,7 +54,7 @@ export type GananciasResponse = {
     clientesConGanancia: number;
     prestamosConGanancia: number;
   };
-  porTasa: GananciaPorTasa[];
+  porComision: GananciaPorComision[];
   detalle: GananciaPrestamoDetalle[];
 };
 
@@ -135,16 +135,16 @@ function StatCard({
   );
 }
 
-function TasaCard({ fila }: { fila: GananciaPorTasa }) {
+function TasaCard({ fila }: { fila: GananciaPorComision }) {
   return (
     <div className="rounded-xl border border-border/70 bg-card/70 p-3.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
           <Percent className="size-3.5 text-primary" />
-          Préstamos al {fila.tasa}%
+          Comisión {fila.comision}%
         </span>
         <Badge variant="secondary" className="tabular-nums">
-          comisión {fila.comisionTasa}%
+          {fila.prestamos} préstamo{fila.prestamos === 1 ? "" : "s"}
         </Badge>
       </div>
       <dl className="mt-3 space-y-1.5">
@@ -265,11 +265,11 @@ export function RepresentanteGananciasDialog({
   }, [open, load]);
 
   const comisionables = useMemo(
-    () => (data?.porTasa ?? []).filter((t) => t.comisionable),
+    () => (data?.porComision ?? []).filter((t) => t.comisionable),
     [data],
   );
   const otrasTasas = useMemo(
-    () => (data?.porTasa ?? []).filter((t) => !t.comisionable),
+    () => (data?.porComision ?? []).filter((t) => !t.comisionable),
     [data],
   );
 
@@ -387,20 +387,20 @@ export function RepresentanteGananciasDialog({
               {/* ── Desglose por tasa ── */}
               <section className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Desglose por tasa
+                  Desglose por comisión
                 </h3>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {comisionables.map((t) => (
-                    <TasaCard key={t.tasa} fila={t} />
+                    <TasaCard key={t.comision} fila={t} />
                   ))}
                 </div>
                 {otrasTasas.length > 0 && (
                   <p className="text-[11px] text-muted-foreground">
-                    Otras tasas sin comisión configurada:{" "}
+                    Préstamos sin comisión configurada:{" "}
                     {otrasTasas
-                      .map((t) => `${t.tasa}% (${formatRD(t.interesPagado)})`)
-                      .join(" · ")}
-                    . No generan ganancia.
+                      .map((t) => formatRD(t.interesPagado))
+                      .join(" · ")}{" "}
+                    de interés pagado. No generan ganancia.
                   </p>
                 )}
               </section>

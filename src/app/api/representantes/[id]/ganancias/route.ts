@@ -7,7 +7,6 @@ import {
   unauthorized,
 } from "@/lib/api-auth";
 import {
-  COMISION_POR_TASA,
   construirGananciasRepresentante,
   type GananciaAbonoRow,
   type GananciaClienteRow,
@@ -99,7 +98,9 @@ export async function GET(request: Request, ctx: Ctx) {
         `${representante.nombre ?? ""} ${representante.apellido ?? ""}`.trim(),
     },
     periodo: { desde: desde ?? null, hasta: hasta ?? null },
-    comisiones: COMISION_POR_TASA,
+    // La comisión ya no es una tabla global: cada préstamo trae la suya y
+    // viaja dentro de `detalle` y `porComision`.
+    comisiones: [],
   };
 
   const vacio = {
@@ -112,15 +113,9 @@ export async function GET(request: Request, ctx: Ctx) {
       clientesConGanancia: 0,
       prestamosConGanancia: 0,
     },
-    porTasa: COMISION_POR_TASA.map((c) => ({
-      tasa: c.tasa,
-      comisionTasa: c.comision,
-      comisionable: true,
-      prestamos: 0,
-      clientes: 0,
-      interesPagado: "0.00",
-      ganancia: "0.00",
-    })),
+    // Sin préstamos no hay comisiones que agrupar: antes se sembraban las
+    // tasas fijas, pero ahora el porcentaje lo trae cada préstamo.
+    porComision: [],
     detalle: [],
   };
 
@@ -143,7 +138,7 @@ export async function GET(request: Request, ctx: Ctx) {
   const clienteIds = clientes.map((c) => c.id);
   const { data: prestamosData, error: pe } = await supabase
     .from("prestamos")
-    .select("id, cliente_id, tasa_interes, estado")
+    .select("id, cliente_id, tasa_interes, comision_representante, estado")
     .in("cliente_id", clienteIds);
 
   if (pe) {
