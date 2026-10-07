@@ -1,7 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import {
   AlertCircle,
   Building2,
@@ -18,7 +16,11 @@ import {
   Trash2,
   User,
 } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { SiPuede } from "@/components/providers/permisos-provider";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +31,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +40,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CedulaInput } from "@/components/ui/cedula-input";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +58,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
   SelectContent,
@@ -77,8 +80,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CedulaInput } from "@/components/ui/cedula-input";
-import { PhoneInput } from "@/components/ui/phone-input";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatCedula, formatPhone } from "@/lib/formatters";
 import { usePageCachedState } from "@/lib/page-cache";
@@ -454,18 +455,22 @@ export default function ClientesPage() {
                   Ver ficha
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => void openEdit(c)}>
-                <Pencil className="mr-2 size-4 opacity-70" />
-                Editar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => setDeleteId(c.id)}
-              >
-                <Trash2 className="mr-2 size-4" />
-                Eliminar
-              </DropdownMenuItem>
+              <SiPuede permiso="clientes.editar">
+                <DropdownMenuItem onClick={() => void openEdit(c)}>
+                  <Pencil className="mr-2 size-4 opacity-70" />
+                  Editar
+                </DropdownMenuItem>
+              </SiPuede>
+              <SiPuede permiso="clientes.eliminar">
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => setDeleteId(c.id)}
+                >
+                  <Trash2 className="mr-2 size-4" />
+                  Eliminar
+                </DropdownMenuItem>
+              </SiPuede>
             </DropdownMenuContent>
           </DropdownMenu>
         </TableCell>
@@ -492,27 +497,29 @@ export default function ClientesPage() {
               if (!v) setEditing(null);
             }}
           >
-            <DialogTrigger asChild>
-              <Button
-                onClick={() => {
-                  setEditing(null);
-                  setForm({
-                    nombre: "",
-                    apellido: "",
-                    cedula: "",
-                    ubicacion: "",
-                    telefono: "",
-                    estadoValidacion: "VALIDADO",
-                    empresaId: "",
-                    representanteId: "",
-                  });
-                  setOpen(true);
-                }}
-              >
-                <Plus className="mr-2 size-4" />
-                Nuevo cliente
-              </Button>
-            </DialogTrigger>
+            <SiPuede permiso="clientes.crear">
+              <DialogTrigger asChild>
+                <Button
+                  onClick={() => {
+                    setEditing(null);
+                    setForm({
+                      nombre: "",
+                      apellido: "",
+                      cedula: "",
+                      ubicacion: "",
+                      telefono: "",
+                      estadoValidacion: "VALIDADO",
+                      empresaId: "",
+                      representanteId: "",
+                    });
+                    setOpen(true);
+                  }}
+                >
+                  <Plus className="mr-2 size-4" />
+                  Nuevo cliente
+                </Button>
+              </DialogTrigger>
+            </SiPuede>
             {open && (
               <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>

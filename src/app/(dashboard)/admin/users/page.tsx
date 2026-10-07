@@ -30,7 +30,7 @@ export default async function AdminUsersPage() {
       adminClient
         .from("profiles")
         .select(
-          "id, role, admin_id, full_name, first_name, last_name, username, cedula, telefono, email, is_active, created_at, updated_at",
+          "id, role, admin_id, full_name, first_name, last_name, username, cedula, telefono, email, is_active, limite_subusuarios, created_at, updated_at",
         )
         .order("created_at", { ascending: true }),
       adminClient.auth.admin.listUsers({ perPage: 1000 }),
@@ -73,6 +73,7 @@ export default async function AdminUsersPage() {
         telefono: p.telefono ?? null,
         email: p.email ?? null,
         is_active: p.is_active,
+        limite_subusuarios: p.limite_subusuarios ?? null,
         created_at: p.created_at,
         updated_at: p.updated_at,
         last_sign_in_at: authMap.get(p.id) ?? null,
@@ -115,12 +116,14 @@ export type AdminUser = {
   telefono: string | null;
   email: string | null;
   is_active: boolean;
+  /** Máximo de subusuarios. null = sin límite. */
+  limite_subusuarios: number | null;
   created_at: string;
   updated_at: string;
   last_sign_in_at: string | null;
   /** Resumen de mantenimiento mensual (§21). null si aún no está configurado. */
   mantenimiento: {
-    estado: "AL_DIA" | "PENDIENTE" | "VENCIDO" | "EXENTO";
+    estado: "AL_DIA" | "PENDIENTE" | "VENCIDO" | "EXENTO" | "PRUEBA";
     dia_pago: number | null;
     monto: number | null;
     ultimo_pago: string | null;

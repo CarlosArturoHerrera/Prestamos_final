@@ -49,6 +49,14 @@ export const administradorCreateSchema = z.object({
   email: z.string().email("Email inválido"),
   username: usernameField,
   password: passwordField,
+  /** Máximo de subusuarios. null o ausente = sin límite. */
+  limiteSubusuarios: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(1000)
+    .nullable()
+    .optional(),
 });
 
 export const administradorUpdateSchema = z.object({
@@ -59,6 +67,14 @@ export const administradorUpdateSchema = z.object({
   email: z.string().email("Email inválido").optional(),
   username: usernameField.optional(),
   isActive: z.boolean().optional(),
+  /** Máximo de subusuarios. null = sin límite. Sólo lo fija el megaadmin. */
+  limiteSubusuarios: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(1000)
+    .nullable()
+    .optional(),
 });
 
 /** §13 — creación de subusuarios por parte de un administrador. */
@@ -100,7 +116,7 @@ export const mantenimientoUpdateSchema = z.object({
    * calcula el estado a partir de las fechas y los pagos". La ruta lo traduce.
    */
   estado: z
-    .enum(["AUTO", "AL_DIA", "PENDIENTE", "VENCIDO", "EXENTO"])
+    .enum(["AUTO", "AL_DIA", "PENDIENTE", "VENCIDO", "EXENTO", "PRUEBA"])
     .optional(),
   diaPago: z.coerce.number().int().min(1).max(31).nullable().optional(),
   monto: z.coerce.number().min(0).nullable().optional(),

@@ -50,6 +50,14 @@ function mensajeDeError(
   if (m.includes("uq_profiles_username_lower") || m.includes("username")) {
     return { status: 400, message: "Ese nombre de usuario ya está en uso" };
   }
+  if (
+    m.includes("límite de subusuarios") ||
+    m.includes("limite de subusuarios")
+  ) {
+    // El trigger validar_limite_subusuarios ya compone un mensaje legible con
+    // las cifras; se deja pasar tal cual en vez de reescribirlo.
+    return { status: 400, message: raw.replace(/^.*?ERROR:\s*/i, "").trim() };
+  }
   if (m.includes("profiles_hierarchy_check")) {
     return {
       status: 400,

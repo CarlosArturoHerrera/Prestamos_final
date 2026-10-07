@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   MoreHorizontal,
+  ScrollText,
   Settings2,
   TrendingUp,
   UserCircle,
@@ -102,6 +103,13 @@ const navAdminItem = {
   icon: Settings2,
 } as const;
 
+/** Registro de acciones administrativas. Solo el megaadministrador. */
+const navAuditoriaItem = {
+  href: "/admin/auditoria",
+  label: "Auditoría",
+  icon: ScrollText,
+} as const;
+
 /** Subusuarios de la propia organización: lo ve el administrador titular. */
 const navSubusuariosItem = {
   href: "/subusuarios",
@@ -138,7 +146,7 @@ export function AppShell({ children, role, permissions }: AppShellProps) {
     // de la plataforma, no clientes ni prestamos. Su menu es solo
     // "Administradores". No es un ocultamiento cosmetico: la API le devuelve
     // 403 en esas rutas y las policies RLS no le dejan ver ninguna fila.
-    if (superAdmin) return [navAdminItem];
+    if (superAdmin) return [navAdminItem, navAuditoriaItem];
 
     // El administrador titular ve todos los modulos de su organizacion.
     if (administrador) return [...navBase, navSubusuariosItem];

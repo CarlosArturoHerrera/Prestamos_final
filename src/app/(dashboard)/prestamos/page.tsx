@@ -30,6 +30,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { EliminarPrestamoDialog } from "@/components/prestamos/eliminar-prestamo-dialog";
+import { SiPuede } from "@/components/providers/permisos-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
@@ -328,7 +329,7 @@ export default function PrestamosPage() {
   const [clientePickerLoading, setClientePickerLoading] = useState(false);
   const [clienteLabel, setClienteLabel] = useState("");
 
-  const superAdmin = useIsAdminTitular();
+  const esTitular = useIsAdminTitular();
   const [prestamoAEliminar, setPrestamoAEliminar] = useState<number | null>(
     null,
   );
@@ -800,8 +801,12 @@ export default function PrestamosPage() {
                     </Link>
                   </DropdownMenuItem>
                 ) : null}
-                {superAdmin ? (
-                  <>
+                {/* Doble condicion a proposito: borrar un prestamo esta
+                    reservado al ADMINISTRADOR TITULAR (lo imponen la policy
+                    prestamos_delete_titular_only y el guard soloTitular), y
+                    ademas se respeta el permiso granular. */}
+                {esTitular ? (
+                  <SiPuede permiso="prestamos.eliminar">
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="destructive"
@@ -810,7 +815,7 @@ export default function PrestamosPage() {
                       <Trash2 className="mr-2 size-4" />
                       Eliminar préstamo
                     </DropdownMenuItem>
-                  </>
+                  </SiPuede>
                 ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -818,7 +823,7 @@ export default function PrestamosPage() {
         </TableRow>
       );
     });
-  }, [loading, rows, load, superAdmin]);
+  }, [loading, rows, load, esTitular]);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -833,31 +838,33 @@ export default function PrestamosPage() {
             </p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button
-                onClick={() => {
-                  setForm({
-                    clienteId: "",
-                    monto: "",
-                    tasaInteres: "",
-                    capitalADebitar: "",
-                    plazo: "12",
-                    tipoPlazo: "MENSUAL",
-                    fechaInicio: new Date().toISOString().slice(0, 10),
-                    fechaProximoPago: "",
-                    notas: "",
-                  });
-                  setClienteSearch("");
-                  setDebouncedClienteQ("");
-                  setClienteResults([]);
-                  setClienteLabel("");
-                  setClientePickerOpen(false);
-                }}
-              >
-                <Plus className="mr-2 size-4" />
-                Nuevo préstamo
-              </Button>
-            </DialogTrigger>
+            <SiPuede permiso="prestamos.crear">
+              <DialogTrigger asChild>
+                <Button
+                  onClick={() => {
+                    setForm({
+                      clienteId: "",
+                      monto: "",
+                      tasaInteres: "",
+                      capitalADebitar: "",
+                      plazo: "12",
+                      tipoPlazo: "MENSUAL",
+                      fechaInicio: new Date().toISOString().slice(0, 10),
+                      fechaProximoPago: "",
+                      notas: "",
+                    });
+                    setClienteSearch("");
+                    setDebouncedClienteQ("");
+                    setClienteResults([]);
+                    setClienteLabel("");
+                    setClientePickerOpen(false);
+                  }}
+                >
+                  <Plus className="mr-2 size-4" />
+                  Nuevo préstamo
+                </Button>
+              </DialogTrigger>
+            </SiPuede>
             {open && (
               <DialogContent>
                 <DialogHeader>
@@ -1531,16 +1538,18 @@ export default function PrestamosPage() {
                           </Link>
                         </Button>
                       ) : null}
-                      {superAdmin ? (
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="size-9 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          aria-label={`Eliminar préstamo #${p.id}`}
-                          onClick={() => setPrestamoAEliminar(p.id)}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
+                      {esTitular ? (
+                        <SiPuede permiso="prestamos.eliminar">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="size-9 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            aria-label={`Eliminar préstamo #${p.id}`}
+                            onClick={() => setPrestamoAEliminar(p.id)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </SiPuede>
                       ) : null}
                     </div>
                   </div>

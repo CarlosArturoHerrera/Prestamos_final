@@ -101,7 +101,20 @@ function fecha(iso: string | null): string {
   }
 }
 
-export function SubusuariosPanel() {
+type PanelProps = {
+  /**
+   * Organizacion sobre la que se opera. Solo lo usa el megaadministrador para
+   * gestionar los subusuarios de un administrador concreto; un administrador
+   * lo deja vacio y el servidor resuelve su propia organizacion a partir de la
+   * sesion. Enviarlo no concede nada por si mismo: /api/subusuarios solo lo
+   * acepta cuando quien llama es megaadministrador.
+   */
+  adminId?: string;
+};
+
+export function SubusuariosPanel({ adminId }: PanelProps = {}) {
+  // Sufijo de consulta comun a todas las llamadas de la coleccion.
+  const qs = adminId ? `?adminId=${encodeURIComponent(adminId)}` : "";
   const [subusuarios, setSubusuarios] = useState<Subusuario[]>([]);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -111,19 +124,19 @@ export function SubusuariosPanel() {
 
   const cargar = async () => {
     const res = await fetchApi<{ subusuarios: Subusuario[] }>(
-      "/api/subusuarios",
+      `/api/subusuarios${qs}`,
     );
     if (res.ok) setSubusuarios(res.data.subusuarios);
     else toast.error(res.message);
     setCargando(false);
   };
 
-  // Sólo en el montaje: `cargar` se redefine en cada render, así que ponerlo
-  // en las dependencias dispararía una recarga infinita.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: carga inicial única
+  // Se recarga al montar y si cambia la organizacion. `cargar` se redefine en
+  // cada render, asi que no puede ir en las dependencias: provocaria un bucle.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: depende solo de qs
   useEffect(() => {
     void cargar();
-  }, []);
+  }, [qs]);
 
   const cerrar = () => {
     setDialogo({ tipo: "ninguno" });
@@ -159,7 +172,7 @@ export function SubusuariosPanel() {
 
   const crear = async () => {
     setGuardando(true);
-    const res = await fetchApi<{ message: string }>("/api/subusuarios", {
+    const res = await fetchApi<{ message: string }>(`/api/subusuarios${qs}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, permisos }),
@@ -496,7 +509,9 @@ export function SubusuariosPanel() {
           <DialogHeader>
             <DialogTitle>Nuevo subusuario</DialogTitle>
             <DialogDescription>
-              Trabajará dentro de tu organización.
+              {adminId
+                ? "Trabajará dentro de la organización de este administrador."
+                : "Trabajará dentro de tu organización."}
             </DialogDescription>
           </DialogHeader>
 

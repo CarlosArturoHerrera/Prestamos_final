@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { SiPuede } from "@/components/providers/permisos-provider";
 import { RepresentanteGananciasDialog } from "@/components/representantes/representante-ganancias-dialog";
 import { TableSkeleton } from "@/components/shared/data-skeleton";
 import {
@@ -165,22 +166,28 @@ const RepresentanteDesktopRow = memo(function RepresentanteDesktopRow({
                 Ver cartera en préstamos
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onOpenGanancias(rep.id)}>
-              <TrendingUp className="mr-2 size-4 opacity-70" />
-              Ganancias
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onOpenEdit(rep.id)}>
-              <Pencil className="mr-2 size-4 opacity-70" />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => onDelete(rep.id)}
-            >
-              <Trash2 className="mr-2 size-4" />
-              Eliminar
-            </DropdownMenuItem>
+            <SiPuede permiso="representantes.ganancias">
+              <DropdownMenuItem onClick={() => onOpenGanancias(rep.id)}>
+                <TrendingUp className="mr-2 size-4 opacity-70" />
+                Ganancias
+              </DropdownMenuItem>
+            </SiPuede>
+            <SiPuede permiso="representantes.editar">
+              <DropdownMenuItem onClick={() => onOpenEdit(rep.id)}>
+                <Pencil className="mr-2 size-4 opacity-70" />
+                Editar
+              </DropdownMenuItem>
+            </SiPuede>
+            <SiPuede permiso="representantes.eliminar">
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => onDelete(rep.id)}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Eliminar
+              </DropdownMenuItem>
+            </SiPuede>
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
@@ -263,20 +270,24 @@ const RepresentanteMobileCard = memo(function RepresentanteMobileCard({
           <TrendingUp className="mr-2 size-4 opacity-70" />
           Ganancias
         </Button>
-        <Button
-          variant="outline"
-          className="w-full justify-center"
-          onClick={() => onOpenEdit(rep.id)}
-        >
-          Editar
-        </Button>
-        <Button
-          variant="destructive"
-          className="w-full justify-center"
-          onClick={() => onDelete(rep.id)}
-        >
-          Eliminar
-        </Button>
+        <SiPuede permiso="representantes.editar">
+          <Button
+            variant="outline"
+            className="w-full justify-center"
+            onClick={() => onOpenEdit(rep.id)}
+          >
+            Editar
+          </Button>
+        </SiPuede>
+        <SiPuede permiso="representantes.eliminar">
+          <Button
+            variant="destructive"
+            className="w-full justify-center"
+            onClick={() => onDelete(rep.id)}
+          >
+            Eliminar
+          </Button>
+        </SiPuede>
       </div>
     </div>
   );
@@ -539,23 +550,25 @@ export default function RepresentantesPage() {
               if (!v) setEditing(null);
             }}
           >
-            <DialogTrigger asChild>
-              <Button
-                onClick={() => {
-                  setEditing(null);
-                  setForm({
-                    nombre: "",
-                    apellido: "",
-                    telefono: "",
-                    email: "",
-                  });
-                  setOpen(true);
-                }}
-              >
-                <Plus className="mr-2 size-4" />
-                Nuevo representante
-              </Button>
-            </DialogTrigger>
+            <SiPuede permiso="representantes.crear">
+              <DialogTrigger asChild>
+                <Button
+                  onClick={() => {
+                    setEditing(null);
+                    setForm({
+                      nombre: "",
+                      apellido: "",
+                      telefono: "",
+                      email: "",
+                    });
+                    setOpen(true);
+                  }}
+                >
+                  <Plus className="mr-2 size-4" />
+                  Nuevo representante
+                </Button>
+              </DialogTrigger>
+            </SiPuede>
             {open && (
               <DialogContent>
                 <DialogHeader>

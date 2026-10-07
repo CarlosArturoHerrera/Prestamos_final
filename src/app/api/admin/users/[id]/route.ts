@@ -45,7 +45,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
     const { data: profile, error } = await db
       .from("profiles")
       .select(
-        "id, role, admin_id, full_name, first_name, last_name, username, cedula, telefono, email, is_active, created_at, updated_at",
+        "id, role, admin_id, full_name, first_name, last_name, username, cedula, telefono, email, is_active, limite_subusuarios, created_at, updated_at",
       )
       .eq("id", targetId)
       .maybeSingle();
@@ -167,6 +167,9 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   if (d.email !== undefined) updates.email = d.email;
   if (d.username !== undefined) updates.username = d.username;
   if (d.isActive !== undefined) updates.is_active = d.isActive;
+  if (d.limiteSubusuarios !== undefined) {
+    updates.limite_subusuarios = d.limiteSubusuarios;
+  }
 
   if (Object.keys(updates).length === 0) {
     return badRequest("No hay cambios que aplicar");

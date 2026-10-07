@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { SiPuede } from "@/components/providers/permisos-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
@@ -288,20 +289,24 @@ export default function ReportesPage() {
             <Button onClick={load} className="w-full sm:w-auto">
               Aplicar
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => exportar("pdf")}
-              className="w-full sm:w-auto"
-            >
-              PDF
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => exportar("excel")}
-              className="w-full sm:w-auto"
-            >
-              Excel
-            </Button>
+            <SiPuede permiso="reportes.exportar">
+              <Button
+                variant="outline"
+                onClick={() => exportar("pdf")}
+                className="w-full sm:w-auto"
+              >
+                PDF
+              </Button>
+            </SiPuede>
+            <SiPuede permiso="reportes.exportar">
+              <Button
+                variant="outline"
+                onClick={() => exportar("excel")}
+                className="w-full sm:w-auto"
+              >
+                Excel
+              </Button>
+            </SiPuede>
           </div>
         </div>
 

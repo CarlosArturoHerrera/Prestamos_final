@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { motion } from "framer-motion";
 import {
   Building2,
   ChevronLeft,
@@ -15,6 +16,8 @@ import {
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { SiPuede } from "@/components/providers/permisos-provider";
+import { TableSkeleton } from "@/components/shared/data-skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +55,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Table,
   TableBody,
@@ -61,12 +65,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { PhoneInput } from "@/components/ui/phone-input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchApi, redirectToLoginIfUnauthorized } from "@/lib/fetch-api";
 import { formatPhone } from "@/lib/formatters";
-import { motion } from "framer-motion";
-import { TableSkeleton } from "@/components/shared/data-skeleton";
 import { stagger, staggerChild } from "@/lib/motion";
 import { usePageCachedState } from "@/lib/page-cache";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -175,18 +176,22 @@ const EmpresaDesktopRow = memo(function EmpresaDesktopRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onOpenEdit(empresa.id)}>
-              <Pencil className="mr-2 size-4 opacity-70" />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => onDelete(empresa.id)}
-            >
-              <Trash2 className="mr-2 size-4" />
-              Eliminar
-            </DropdownMenuItem>
+            <SiPuede permiso="empresas.editar">
+              <DropdownMenuItem onClick={() => onOpenEdit(empresa.id)}>
+                <Pencil className="mr-2 size-4 opacity-70" />
+                Editar
+              </DropdownMenuItem>
+            </SiPuede>
+            <SiPuede permiso="empresas.eliminar">
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => onDelete(empresa.id)}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Eliminar
+              </DropdownMenuItem>
+            </SiPuede>
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
@@ -273,20 +278,24 @@ const EmpresaMobileCard = memo(function EmpresaMobileCard({
       </div>
 
       <div className="mt-4 flex flex-col gap-2">
-        <Button
-          variant="secondary"
-          className="w-full justify-center"
-          onClick={() => onOpenEdit(empresa.id)}
-        >
-          Editar
-        </Button>
-        <Button
-          variant="destructive"
-          className="w-full justify-center"
-          onClick={() => onDelete(empresa.id)}
-        >
-          Eliminar
-        </Button>
+        <SiPuede permiso="empresas.editar">
+          <Button
+            variant="secondary"
+            className="w-full justify-center"
+            onClick={() => onOpenEdit(empresa.id)}
+          >
+            Editar
+          </Button>
+        </SiPuede>
+        <SiPuede permiso="empresas.eliminar">
+          <Button
+            variant="destructive"
+            className="w-full justify-center"
+            onClick={() => onDelete(empresa.id)}
+          >
+            Eliminar
+          </Button>
+        </SiPuede>
       </div>
     </div>
   );
@@ -547,24 +556,26 @@ export default function EmpresasPage() {
               if (!v) setEditing(null);
             }}
           >
-            <DialogTrigger asChild>
-              <Button
-                onClick={() => {
-                  setEditing(null);
-                  setForm({
-                    nombre: "",
-                    rnc: "",
-                    direccion: "",
-                    telefono: "",
-                    email: "",
-                  });
-                  setOpen(true);
-                }}
-              >
-                <Plus className="mr-2 size-4" />
-                Nueva empresa
-              </Button>
-            </DialogTrigger>
+            <SiPuede permiso="empresas.crear">
+              <DialogTrigger asChild>
+                <Button
+                  onClick={() => {
+                    setEditing(null);
+                    setForm({
+                      nombre: "",
+                      rnc: "",
+                      direccion: "",
+                      telefono: "",
+                      email: "",
+                    });
+                    setOpen(true);
+                  }}
+                >
+                  <Plus className="mr-2 size-4" />
+                  Nueva empresa
+                </Button>
+              </DialogTrigger>
+            </SiPuede>
             {open && (
               <DialogContent>
                 <DialogHeader>

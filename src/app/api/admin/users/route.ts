@@ -6,6 +6,7 @@ import {
   serverError,
 } from "@/lib/api-auth";
 import { auditLog, clientIp } from "@/lib/audit";
+import { procesarAvisosMantenimiento } from "@/lib/mantenimiento-avisos";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { crearUsuario } from "@/lib/user-admin";
@@ -45,12 +46,18 @@ export async function GET() {
     // hoy, no el ultimo recalculo que alguien provocase por casualidad.
     await db.rpc("refrescar_estados_mantenimiento");
 
+    // Tras el recálculo pueden haber aparecido vencimientos nuevos —incluido
+    // el final de un mes de prueba—. Se avisa aquí además de en el cron, para
+    // que abrir el panel no muestre un "Vencido" del que nadie se ha enterado.
+    // Es idempotente: `aviso_vencimiento_en` impide repetirlo.
+    await procesarAvisosMantenimiento();
+
     const [{ data: profiles, error: profilesError }, { data: authData }] =
       await Promise.all([
         db
           .from("profiles")
           .select(
-            "id, role, admin_id, full_name, first_name, last_name, username, cedula, telefono, email, is_active, created_at, updated_at",
+            "id, role, admin_id, full_name, first_name, last_name, username, cedula, telefono, email, is_active, limite_subusuarios, created_at, updated_at",
           )
           .order("created_at", { ascending: true }),
         db.auth.admin.listUsers({ perPage: 1000 }),
@@ -143,9 +150,22 @@ export async function POST(req: Request) {
     );
   }
 
+  const db = createSupabaseAdminClient();
+
+  // El límite de subusuarios se guarda aparte: `crearUsuario` se ocupa de la
+  // identidad y las credenciales, no de la configuración de la cuenta.
+  if (d.limiteSubusuarios !== undefined && d.limiteSubusuarios !== null) {
+    const { error: limError } = await db
+      .from("profiles")
+      .update({ limite_subusuarios: d.limiteSubusuarios })
+      .eq("id", resultado.userId);
+    if (limError) {
+      console.error("[admin/users POST] límite", limError.message);
+    }
+  }
+
   // Ficha de mantenimiento en blanco, para que el megaadministrador sólo tenga
   // que fijar el día de pago desde la interfaz (§21).
-  const db = createSupabaseAdminClient();
   const { error: mantError } = await db
     .from("admin_maintenance")
     .insert({ admin_id: resultado.userId });

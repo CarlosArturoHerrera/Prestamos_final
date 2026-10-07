@@ -15,9 +15,11 @@ import {
   ShieldAlert,
   Trash2,
   UserCog,
+  UsersRound,
   UserX,
   XCircle,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -91,6 +93,7 @@ type DialogState =
 /** Etiqueta y tono del estado de mantenimiento (§21). */
 const MANTENIMIENTO_UI = {
   AL_DIA: { label: "Al día", variant: "secondary" as const },
+  PRUEBA: { label: "Mes de prueba", variant: "outline" as const },
   PENDIENTE: { label: "Pendiente", variant: "outline" as const },
   VENCIDO: { label: "Vencido", variant: "destructive" as const },
   EXENTO: { label: "Exento", variant: "secondary" as const },
@@ -142,6 +145,12 @@ export function UsersTable({
   const [filterStatus, setFilterStatus] = useState<
     "all" | "active" | "inactive"
   >("all");
+  // Filtro por situación de mantenimiento. "atrasado" agrupa VENCIDO y
+  // PENDIENTE: ambos son cobros que están esperando, que es lo que se quiere
+  // localizar de un vistazo.
+  const [filterMant, setFilterMant] = useState<
+    "all" | "atrasado" | "vencido" | "al_dia" | "prueba" | "exento"
+  >("all");
 
   // Formularios: la API de administradores pide los campos de §9/§10
   // (nombre y apellido por separado, cédula, teléfono y nombre de usuario).
@@ -153,6 +162,7 @@ export function UsersTable({
     email: "",
     username: "",
     password: "",
+    limiteSubusuarios: "",
   };
   const [form, setForm] = useState(FORM_VACIO);
 
@@ -220,7 +230,12 @@ export function UsersTable({
     setMant({
       diaPagoFecha,
       monto: user.mantenimiento?.monto?.toString() ?? "",
-      estado: estadoActual === "EXENTO" ? "EXENTO" : "AUTO",
+      // EXENTO y PRUEBA son decisiones manuales: se conservan al reabrir.
+      // El resto arranca en "Automático" para que lo deduzcan las fechas.
+      estado:
+        estadoActual === "EXENTO" || estadoActual === "PRUEBA"
+          ? estadoActual
+          : "AUTO",
       proximoPago: user.mantenimiento?.proximo_pago ?? "",
     });
     setPago(PAGO_VACIO);
@@ -241,6 +256,7 @@ export function UsersTable({
       email: user.email ?? "",
       username: user.username ?? "",
       password: "",
+      limiteSubusuarios: user.limite_subusuarios?.toString() ?? "",
     });
     setDialog({ type: "edit", user });
   }
@@ -263,8 +279,25 @@ export function UsersTable({
       (filterStatus === "active" && u.is_active) ||
       (filterStatus === "inactive" && !u.is_active);
 
-    return matchSearch && matchStatus;
+    const em = u.mantenimiento?.estado;
+    const matchMant =
+      filterMant === "all" ||
+      (filterMant === "atrasado" && (em === "VENCIDO" || em === "PENDIENTE")) ||
+      (filterMant === "vencido" && em === "VENCIDO") ||
+      (filterMant === "al_dia" && em === "AL_DIA") ||
+      (filterMant === "prueba" && em === "PRUEBA") ||
+      (filterMant === "exento" && em === "EXENTO");
+
+    return matchSearch && matchStatus && matchMant;
   });
+
+  // Cuántos tienen el cobro esperando, para poder enseñarlo en el propio
+  // selector sin que haya que filtrar para descubrirlo.
+  const atrasados = initialUsers.filter(
+    (u) =>
+      u.mantenimiento?.estado === "VENCIDO" ||
+      u.mantenimiento?.estado === "PENDIENTE",
+  ).length;
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -293,6 +326,8 @@ export function UsersTable({
         email: form.email,
         username: form.username,
         password: form.password,
+        limiteSubusuarios:
+          form.limiteSubusuarios === "" ? null : Number(form.limiteSubusuarios),
       });
       if (res.error) {
         toast.error(res.error);
@@ -311,13 +346,17 @@ export function UsersTable({
   async function handleEdit(userId: string) {
     setLoading(true);
     try {
-      const body: Record<string, string> = {};
+      const body: Record<string, string | number | null> = {};
       if (form.nombre) body.nombre = form.nombre;
       if (form.apellido) body.apellido = form.apellido;
       if (form.cedula) body.cedula = form.cedula;
       if (form.telefono) body.telefono = form.telefono;
       if (form.email) body.email = form.email;
       if (form.username) body.username = form.username;
+      // Vacío significa "sin límite", que en la base es NULL. Hay que
+      // enviarlo explícitamente: omitirlo dejaría el límite anterior intacto.
+      body.limiteSubusuarios =
+        form.limiteSubusuarios === "" ? null : Number(form.limiteSubusuarios);
 
       const res = await apiFetch(`/api/admin/users/${userId}`, "PATCH", body);
       if (res.error) {
@@ -517,6 +556,27 @@ export function UsersTable({
               </Button>
             ))}
           </div>
+
+          {/* Situacion de mantenimiento. "Atrasados" lleva el contador al lado
+              para que se vea cuantos hay sin necesidad de filtrar. */}
+          <Select
+            value={filterMant}
+            onValueChange={(v) => setFilterMant(v as typeof filterMant)}
+          >
+            <SelectTrigger className="h-8 w-full text-xs sm:w-[190px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Mantenimiento: todos</SelectItem>
+              <SelectItem value="atrasado">
+                Atrasados{atrasados > 0 ? ` (${atrasados})` : ""}
+              </SelectItem>
+              <SelectItem value="vencido">Sólo vencidos</SelectItem>
+              <SelectItem value="al_dia">Al día</SelectItem>
+              <SelectItem value="prueba">Mes de prueba</SelectItem>
+              <SelectItem value="exento">Exentos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex items-center gap-2">
@@ -813,7 +873,20 @@ export function UsersTable({
                       )}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell text-muted-foreground text-sm tabular-nums">
-                      {user.role === "super_admin" ? "—" : user.subusuarios}
+                      {user.role === "super_admin" ? (
+                        "—"
+                      ) : user.limite_subusuarios == null ? (
+                        user.subusuarios
+                      ) : (
+                        <span
+                          className={cn(
+                            user.subusuarios >= user.limite_subusuarios &&
+                              "font-medium text-amber-600 dark:text-amber-400",
+                          )}
+                        >
+                          {user.subusuarios} / {user.limite_subusuarios}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell text-muted-foreground text-sm">
                       {fmtDate(user.created_at)}
@@ -850,6 +923,19 @@ export function UsersTable({
                             </DropdownMenuItem>
                             {user.role === "admin" && (
                               <>
+                                <DropdownMenuItem asChild>
+                                  <Link
+                                    href={`/admin/users/${user.id}/subusuarios`}
+                                  >
+                                    <UsersRound className="size-4 mr-2" />
+                                    Subusuarios
+                                    {user.subusuarios > 0 && (
+                                      <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                                        {user.subusuarios}
+                                      </span>
+                                    )}
+                                  </Link>
+                                </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => openMantenimiento(user)}
                                 >
@@ -988,6 +1074,19 @@ export function UsersTable({
                   spellCheck={false}
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="adm-limite">Límite de subusuarios</Label>
+                <Input
+                  id="adm-limite"
+                  type="number"
+                  min={0}
+                  placeholder="Sin límite"
+                  value={form.limiteSubusuarios}
+                  onChange={(e) =>
+                    setForm({ ...form, limiteSubusuarios: e.target.value })
+                  }
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="adm-password">Contraseña *</Label>
@@ -1098,6 +1197,19 @@ export function UsersTable({
                     }
                     autoCapitalize="none"
                     spellCheck={false}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-limite-edit">Límite de subusuarios</Label>
+                  <Input
+                    id="adm-limite-edit"
+                    type="number"
+                    min={0}
+                    placeholder="Sin límite"
+                    value={form.limiteSubusuarios}
+                    onChange={(e) =>
+                      setForm({ ...form, limiteSubusuarios: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -1319,6 +1431,7 @@ export function UsersTable({
                         realidad. Lo unico que es una decision es eximir. */}
                     <SelectContent>
                       <SelectItem value="AUTO">Automático</SelectItem>
+                      <SelectItem value="PRUEBA">Mes de prueba</SelectItem>
                       <SelectItem value="EXENTO">Exento</SelectItem>
                     </SelectContent>
                   </Select>
