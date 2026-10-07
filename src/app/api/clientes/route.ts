@@ -5,6 +5,7 @@ import {
   soloOrganizacion,
   unauthorized,
 } from "@/lib/api-auth";
+import { urlsFirmadas } from "@/lib/cliente-foto";
 import { normalizeSearchTerm } from "@/lib/formatters";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { clienteCreateSchema } from "@/lib/validations/schemas";
@@ -63,8 +64,11 @@ export async function GET(request: Request) {
   if (search) {
     const s = `%${search}%`;
     const sn = `%${normalizeSearchTerm(search)}%`;
+    // El apodo se suma a los campos que ya se buscaban, no los reemplaza.
+    // `.or()` se combina con los filtros de arriba mediante AND, así que
+    // buscar "moreno" dentro de un representante concreto sigue funcionando.
     q = q.or(
-      `nombre.ilike.${s},apellido.ilike.${s},cedula.ilike.${sn},telefono.ilike.${sn}`,
+      `nombre.ilike.${s},apellido.ilike.${s},apodo.ilike.${s},cedula.ilike.${sn},telefono.ilike.${sn}`,
     );
   }
 
@@ -74,8 +78,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  // Las fotos se firman en lote: una página de 20 clientes sería 20 peticiones
+  // a Storage si se hiciera de una en una.
+  const firmas = await urlsFirmadas(
+    supabase,
+    (data ?? []).map((c) => c.foto_path as string | null),
+  );
+
   return NextResponse.json({
-    data: data ?? [],
+    data: (data ?? []).map((c) => ({
+      ...c,
+      foto_url: c.foto_path ? (firmas.get(c.foto_path) ?? null) : null,
+    })),
     page,
     pageSize,
     total: count ?? 0,
@@ -105,6 +119,7 @@ export async function POST(request: Request) {
   const payload = {
     nombre: parsed.data.nombre.trim(),
     apellido: parsed.data.apellido.trim(),
+    apodo: parsed.data.apodo,
     cedula: parsed.data.cedula.trim(),
     ubicacion: parsed.data.ubicacion.trim(),
     telefono: parsed.data.telefono.trim(),

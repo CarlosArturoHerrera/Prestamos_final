@@ -5,6 +5,7 @@ import {
   soloOrganizacion,
   unauthorized,
 } from "@/lib/api-auth";
+import { borrarFoto, urlFirmada } from "@/lib/cliente-foto";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { clienteCreateSchema } from "@/lib/validations/schemas";
 
@@ -47,7 +48,19 @@ export async function GET(_request: Request, ctx: Ctx) {
     .eq("cliente_id", id)
     .order("created_at", { ascending: false });
 
-  return NextResponse.json({ ...cliente, prestamos: prestamos ?? [] });
+  // La URL firmada se genera con el cliente de SESIÓN: si la ruta no fuese de
+  // esta organización, las policies de Storage impedirían firmarla y saldría
+  // null, aunque alguien conociera la ruta exacta.
+  const fotoUrl = await urlFirmada(
+    supabase,
+    cliente.foto_path as string | null,
+  );
+
+  return NextResponse.json({
+    ...cliente,
+    foto_url: fotoUrl,
+    prestamos: prestamos ?? [],
+  });
 }
 
 export async function PUT(request: Request, ctx: Ctx) {
@@ -77,6 +90,7 @@ export async function PUT(request: Request, ctx: Ctx) {
   const payload = {
     nombre: parsed.data.nombre.trim(),
     apellido: parsed.data.apellido.trim(),
+    apodo: parsed.data.apodo,
     cedula: parsed.data.cedula.trim(),
     ubicacion: parsed.data.ubicacion.trim(),
     telefono: parsed.data.telefono.trim(),
@@ -126,11 +140,23 @@ export async function DELETE(_request: Request, ctx: Ctx) {
     );
   }
 
+  // Se lee la ruta ANTES de borrar la fila: después no habría de dónde sacarla
+  // y el archivo quedaría huérfano en el bucket para siempre.
+  const { data: previo } = await supabase
+    .from("clientes")
+    .select("foto_path")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase.from("clientes").delete().eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  // Después de borrar la fila, y sin bloquear la respuesta si falla: un archivo
+  // suelto es menos grave que dejar al usuario sin poder borrar el cliente.
+  await borrarFoto(supabase, previo?.foto_path as string | null);
 
   return NextResponse.json({ ok: true });
 }

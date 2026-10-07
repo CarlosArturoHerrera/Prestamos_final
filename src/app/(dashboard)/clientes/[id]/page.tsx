@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { GestionCobranzaPanel } from "@/components/gestion-cobranza-panel";
 import { EliminarPrestamoDialog } from "@/components/prestamos/eliminar-prestamo-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -152,9 +153,26 @@ export default function ClienteDetallePage() {
             <Link href="/clientes">← Volver al listado</Link>
           </Button>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-              {String(data.nombre)} {String(data.apellido)}
-            </h1>
+            <Avatar className="size-12 shrink-0">
+              {data.foto_url ? (
+                <AvatarImage src={String(data.foto_url)} alt="" />
+              ) : null}
+              <AvatarFallback>
+                {`${String(data.nombre ?? "")[0] ?? ""}${
+                  String(data.apellido ?? "")[0] ?? ""
+                }`.toUpperCase() || "?"}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+                {String(data.nombre)} {String(data.apellido)}
+              </h1>
+              {data.apodo ? (
+                <p className="text-sm italic text-muted-foreground">
+                  {String(data.apodo)}
+                </p>
+              ) : null}
+            </div>
             {validacionClienteBadge(estadoVal)}
           </div>
           <p className="font-mono text-sm text-muted-foreground">

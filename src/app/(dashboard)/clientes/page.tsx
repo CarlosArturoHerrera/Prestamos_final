@@ -31,6 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +57,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ImagePicker } from "@/components/ui/image-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -86,9 +88,16 @@ import { usePageCachedState } from "@/lib/page-cache";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { cn } from "@/lib/utils";
 
+/** Iniciales para el avatar cuando el cliente no tiene foto. */
+function iniciales(nombre: string, apellido: string): string {
+  return `${nombre?.[0] ?? ""}${apellido?.[0] ?? ""}`.toUpperCase() || "?";
+}
+
 type ClienteRow = {
   id: number;
   nombre: string;
+  apodo: string | null;
+  foto_url: string | null;
   apellido: string;
   cedula: string;
   telefono: string;
@@ -164,6 +173,7 @@ export default function ClientesPage() {
   >([]);
   const [form, setForm] = useState({
     nombre: "",
+    apodo: "",
     apellido: "",
     cedula: "",
     ubicacion: "",
@@ -172,6 +182,12 @@ export default function ClientesPage() {
     empresaId: "",
     representanteId: "",
   });
+
+  // Foto: el archivo elegido vive aquí hasta que se guarda el formulario, de
+  // modo que cancelar la edición deja la foto anterior intacta.
+  const [fotoArchivo, setFotoArchivo] = useState<File | null>(null);
+  const [fotoEliminar, setFotoEliminar] = useState(false);
+  const [fotoActual, setFotoActual] = useState<string | null>(null);
 
   const urlSynced = useRef(false);
   useEffect(() => {
@@ -272,6 +288,7 @@ export default function ClientesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nombre: form.nombre,
+        apodo: form.apodo,
         apellido: form.apellido,
         cedula: form.cedula,
         ubicacion: form.ubicacion,
@@ -287,9 +304,36 @@ export default function ClientesPage() {
       setIsSaving(false);
       return;
     }
+
+    // La foto se sube DESPUÉS de que el cliente exista: al crear no hay id al
+    // que asociarla hasta este momento. Un fallo aquí no invalida el alta: el
+    // cliente queda guardado y se avisa de que la foto no subió.
+    const guardado = res.data as { id?: number } | undefined;
+    const clienteId = editing?.id ?? guardado?.id;
+
+    if (clienteId) {
+      if (fotoEliminar && !fotoArchivo) {
+        const del = await fetchApi(`/api/clientes/${clienteId}/foto`, {
+          method: "DELETE",
+        });
+        if (!del.ok) toast.error(`Cliente guardado, pero: ${del.message}`);
+      } else if (fotoArchivo) {
+        const fd = new FormData();
+        fd.append("file", fotoArchivo);
+        const up = await fetchApi(`/api/clientes/${clienteId}/foto`, {
+          method: "POST",
+          body: fd,
+        });
+        if (!up.ok) toast.error(`Cliente guardado, pero: ${up.message}`);
+      }
+    }
+
     toast.success("Cliente guardado");
     setOpen(false);
     setEditing(null);
+    setFotoArchivo(null);
+    setFotoEliminar(false);
+    setFotoActual(null);
     await loadResumen();
     await load();
     setIsSaving(false);
@@ -324,8 +368,12 @@ export default function ClientesPage() {
     }
     const j = res.data;
     setEditing(c);
+    setFotoArchivo(null);
+    setFotoEliminar(false);
+    setFotoActual((j.foto_url as string | null) ?? null);
     setForm({
       nombre: String(j.nombre),
+      apodo: j.apodo ? String(j.apodo) : "",
       apellido: String(j.apellido),
       cedula: String(j.cedula),
       ubicacion: String(j.ubicacion),
@@ -396,12 +444,27 @@ export default function ClientesPage() {
           #{c.id}
         </TableCell>
         <TableCell>
-          <Link
-            href={`/clientes/${c.id}`}
-            className="font-semibold text-primary hover:underline"
-          >
-            {c.nombre} {c.apellido}
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <Avatar className="size-8 shrink-0">
+              {c.foto_url && <AvatarImage src={c.foto_url} alt="" />}
+              <AvatarFallback className="text-xs">
+                {iniciales(c.nombre, c.apellido)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <Link
+                href={`/clientes/${c.id}`}
+                className="font-semibold text-primary hover:underline"
+              >
+                {c.nombre} {c.apellido}
+              </Link>
+              {c.apodo && (
+                <p className="truncate text-xs italic text-muted-foreground">
+                  {c.apodo}
+                </p>
+              )}
+            </div>
+          </div>
         </TableCell>
         <TableCell className="font-mono text-sm">
           {formatCedula(c.cedula)}
@@ -502,8 +565,12 @@ export default function ClientesPage() {
                 <Button
                   onClick={() => {
                     setEditing(null);
+                    setFotoArchivo(null);
+                    setFotoEliminar(false);
+                    setFotoActual(null);
                     setForm({
                       nombre: "",
+                      apodo: "",
                       apellido: "",
                       cedula: "",
                       ubicacion: "",
@@ -581,6 +648,24 @@ export default function ClientesPage() {
                       />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Apodo</Label>
+                    <Input
+                      value={form.apodo}
+                      onChange={(e) =>
+                        setForm({ ...form, apodo: e.target.value })
+                      }
+                      placeholder="Opcional — p. ej. El Moreno"
+                    />
+                  </div>
+                  <ImagePicker
+                    valorActual={fotoActual}
+                    archivo={fotoArchivo}
+                    onArchivoChange={setFotoArchivo}
+                    eliminar={fotoEliminar}
+                    onEliminarChange={setFotoEliminar}
+                    disabled={isSaving}
+                  />
                   <div className="space-y-2">
                     <Label>Cédula / DNI</Label>
                     <CedulaInput
@@ -811,7 +896,7 @@ export default function ClientesPage() {
                 <Input
                   id="cli-search"
                   className="pl-9"
-                  placeholder="Nombre, apellido o cédula"
+                  placeholder="Nombre, apodo, cédula o teléfono"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />

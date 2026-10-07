@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { RESULTADOS_GESTION_COBRANZA } from "@/lib/gestion-cobranza";
-import { unformatCedula, unformatPhone } from "@/lib/formatters";
 import { unformatCurrency } from "@/lib/currency-input";
+import { unformatCedula, unformatPhone } from "@/lib/formatters";
+import { RESULTADOS_GESTION_COBRANZA } from "@/lib/gestion-cobranza";
 
 const moneyString = z.union([
   z
@@ -49,6 +49,11 @@ export const representanteCreateSchema = z.object({
 export const clienteCreateSchema = z.object({
   nombre: z.string().min(1).max(200),
   apellido: z.string().min(1).max(200),
+  /** Apodo con el que se conoce al cliente. Opcional; "" se guarda como null. */
+  apodo: z
+    .union([z.string().max(120), z.literal(""), z.null()])
+    .optional()
+    .transform((v) => (v ? v.trim() : null)),
   cedula: cedulaField(),
   ubicacion: z.string().min(1).max(1000),
   telefono: phoneField(),
